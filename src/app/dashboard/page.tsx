@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { FREE_MONTHLY_LIMIT, isPro, currentMonthStartISO } from "@/lib/plan";
 import { CopyLinkButton } from "./copy-link-button";
 
 export default async function DashboardPage() {
@@ -31,6 +32,20 @@ export default async function DashboardPage() {
     .eq("business_id", business.id)
     .order("created_at", { ascending: false });
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan, subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const pro = isPro(profile);
+
+  const { count: usedThisMonth } = await supabase
+    .from("submission")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", business.id)
+    .gte("signed_at", currentMonthStartISO());
+
   const appUrl = env.appUrl;
 
   return (
@@ -41,7 +56,19 @@ export default async function DashboardPage() {
           <span className="text-lg font-semibold tracking-tight">SafeSign</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[var(--color-muted)]">{user.email}</span>
+          <Link
+            href="/dashboard/billing"
+            className="flex items-center gap-2 text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
+          >
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                pro ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {pro ? "Pro" : `Gratuit ${usedThisMonth ?? 0}/${FREE_MONTHLY_LIMIT}`}
+            </span>
+            Facturation
+          </Link>
           <form action="/auth/signout" method="post">
             <button
               type="submit"

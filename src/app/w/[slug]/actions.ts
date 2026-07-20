@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { FREE_MONTHLY_LIMIT, isPro, currentMonthStartISO } from "@/lib/plan";
 import type { Json } from "@/types/database.types";
 
 type WaiverField = {
@@ -32,6 +33,33 @@ export async function submitWaiver(formData: FormData) {
 
   if (!template || !template.is_active) {
     redirect("/");
+  }
+
+  // Enforce the free-plan monthly limit (based on the business owner's plan).
+  const { data: business } = await supabase
+    .from("business")
+    .select("owner_id")
+    .eq("id", template.business_id)
+    .maybeSingle();
+
+  if (business) {
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("plan, subscription_status")
+      .eq("id", business.owner_id)
+      .maybeSingle();
+
+    if (!isPro(ownerProfile)) {
+      const { count } = await supabase
+        .from("submission")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", template.business_id)
+        .gte("signed_at", currentMonthStartISO());
+
+      if ((count ?? 0) >= FREE_MONTHLY_LIMIT) {
+        redirect(`/w/${slug}?error=limit`);
+      }
+    }
   }
 
   const fields = (Array.isArray(template.fields)

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { FREE_MONTHLY_LIMIT, isPro, currentMonthStartISO } from "@/lib/plan";
 import { SignForm } from "./sign-form";
 
 type WaiverField = {
@@ -32,7 +33,7 @@ export default async function PublicWaiverPage({
 
   const { data: business } = await supabase
     .from("business")
-    .select("name, brand_color")
+    .select("name, brand_color, owner_id")
     .eq("id", template.business_id)
     .maybeSingle();
 
@@ -41,6 +42,25 @@ export default async function PublicWaiverPage({
     : []) as unknown as WaiverField[];
 
   const brandColor = business?.brand_color ?? "#111827";
+
+  // Check the free-plan monthly limit so we can hide the form when reached.
+  let limitReached = false;
+  if (business) {
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("plan, subscription_status")
+      .eq("id", business.owner_id)
+      .maybeSingle();
+
+    if (!isPro(ownerProfile)) {
+      const { count } = await supabase
+        .from("submission")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", template.business_id)
+        .gte("signed_at", currentMonthStartISO());
+      limitReached = (count ?? 0) >= FREE_MONTHLY_LIMIT;
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-6 py-10">
@@ -64,12 +84,19 @@ export default async function PublicWaiverPage({
         </p>
       </section>
 
-      <SignForm
-        slug={slug}
-        fields={fields}
-        brandColor={brandColor}
-        hasError={error}
-      />
+      {limitReached ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Ce formulaire est temporairement indisponible. Merci de contacter
+          l&apos;établissement directement.
+        </section>
+      ) : (
+        <SignForm
+          slug={slug}
+          fields={fields}
+          brandColor={brandColor}
+          hasError={error}
+        />
+      )}
     </main>
   );
 }
