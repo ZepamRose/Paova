@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           .update({
             plan: "pro",
             subscription_status: "active",
-            stripe_customer_id: customerId ?? undefined,
+            ...(customerId ? { stripe_customer_id: customerId } : {}),
           })
           .eq("id", userId);
       } else if (customerId) {

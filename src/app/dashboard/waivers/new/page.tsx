@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { WaiverForm } from "./waiver-form";
+import { WaiverForm } from "../waiver-form";
 
 export default async function NewWaiverPage({
   searchParams,

@@ -1,17 +1,59 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #ffffff;
+  --color-background: #f5f6f8;
   --color-foreground: #0a0a0a;
-  --color-muted: #6b7280;
-  --color-border: #e5e7eb;
-  --color-brand: #111827;
+  --color-muted: #555e69;
+  --color-border: #e2e4e8;
+  /* Slightly richer sage in light mode — same family as dark #6b8f71 */
+  --color-brand: #5e926c;
+  --color-surface: #ffffff;
+  --color-surface-2: #eceef2;
+  --color-on-brand: #ffffff;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
 :root {
   color-scheme: light;
+  background-color: var(--color-background);
+  --color-brand: #5e926c;
+  /* Soft elevation ladder — felt, not seen */
+  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.03);
+  --elev-2: 0 1px 2px rgba(15, 23, 42, 0.035),
+    0 6px 16px -10px rgba(15, 23, 42, 0.07);
+  --elev-3: 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 24px -12px rgba(15, 23, 42, 0.09);
+  --elev-hover: 0 2px 4px rgba(15, 23, 42, 0.04),
+    0 14px 28px -14px rgba(15, 23, 42, 0.11);
+}
+
+html.dark {
+  --color-background: #0b0f16;
+  --color-foreground: #e5e7eb;
+  --color-muted: #a8b2c0;
+  --color-border: #232b36;
+  --color-brand: #6b8f71;
+  --color-surface: #141b26;
+  --color-surface-2: #1e2735;
+  --color-on-brand: #ffffff;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --elev-2: 0 1px 2px rgba(0, 0, 0, 0.22), 0 8px 20px -12px rgba(0, 0, 0, 0.35);
+  --elev-3: 0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 28px -14px rgba(0, 0, 0, 0.4);
+  --elev-hover: 0 2px 4px rgba(0, 0, 0, 0.28),
+    0 16px 32px -14px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+  background-color: var(--color-background);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset anchored sections so the sticky header doesn't cover them. */
+:target,
+[id] {
+  scroll-margin-top: 80px;
 }
 
 html,
@@ -30,4 +72,81 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Tailwind Preflight leaves buttons on cursor:default — restore the hand. */
+button:not(:disabled),
+[type="button"]:not(:disabled),
+[type="submit"]:not(:disabled),
+[type="reset"]:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
+@keyframes nav-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.nav-progress-bar {
+  animation: nav-progress-slide 1s ease-in-out infinite;
+}
+
+/* While a page is loading: show wait cursor and soften the UI so
+   users don't hammer the same link again. */
+body[data-navigating="true"] {
+  cursor: progress;
+}
+
+body[data-navigating="true"] a {
+  pointer-events: none;
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.22s ease-out both;
+}
+
+.animate-fade-up-delay {
+  animation: fade-up 0.24s ease-out 0.06s both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-up-delay,
+  .animate-scale-in {
+    animation: none !important;
+  }
 }

@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 import type { Database } from "@/types/database.types";
@@ -35,14 +36,14 @@ export async function createClient() {
  * waiver submission). Never import this into client code.
  */
 export function createServiceRoleClient() {
-  return createServerClient<Database>(env.supabase.url(), env.supabase.serviceRoleKey(), {
-    cookies: {
-      getAll() {
-        return [];
-      },
-      setAll() {
-        // no-op: service role client is stateless
+  return createSupabaseClient<Database>(
+    env.supabase.url(),
+    env.supabase.serviceRoleKey(),
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     },
-  });
+  );
 }

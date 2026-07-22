@@ -1,5 +1,5 @@
 -- ===========================================================================
--- SafeSign — initial schema
+-- Paova — initial schema
 -- 4 tables: profiles, business, waiver_template, submission
 -- ===========================================================================
 

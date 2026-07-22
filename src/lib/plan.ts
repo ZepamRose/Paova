@@ -1,6 +1,9 @@
 /** Free plan: number of signatures allowed per calendar month. */
 export const FREE_MONTHLY_LIMIT = 10;
 
+/** Pro plan display price (EUR / month). Keep in sync with Stripe. */
+export const PRO_PRICE_EUR = 19;
+
 type PlanFields = {
   plan?: string | null;
   subscription_status?: string | null;

@@ -1,53 +1,74 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { resolveBrandFont } from "@/lib/brand-fonts";
+import { BrandFontLink } from "@/components/brand-font-link";
+import { MerciView } from "./merci-view";
 
 export default async function ThankYouPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ sid?: string; borne?: string }>;
 }) {
   const { slug } = await params;
+  const { sid, borne } = await searchParams;
   const supabase = createServiceRoleClient();
 
   const { data: template } = await supabase
     .from("waiver_template")
-    .select("title, business_id")
+    .select("id, title, business_id")
     .eq("public_slug", slug)
     .maybeSingle();
 
   let businessName: string | null = null;
+  let logoUrl: string | null = null;
+  let brandColor = "#5e926c";
+  let brandFontId: string | null = null;
+  let signedAt: string | null = null;
+  let reference: string | null = null;
+
   if (template) {
     const { data: business } = await supabase
       .from("business")
-      .select("name")
+      .select("name, logo_url, brand_color, brand_font")
       .eq("id", template.business_id)
       .maybeSingle();
     businessName = business?.name ?? null;
+    logoUrl = business?.logo_url ?? null;
+    brandColor = business?.brand_color || brandColor;
+    brandFontId = business?.brand_font ?? null;
+
+    if (sid) {
+      const { data: submission } = await supabase
+        .from("submission")
+        .select("id, signed_at")
+        .eq("id", sid)
+        .eq("template_id", template.id)
+        .maybeSingle();
+
+      if (submission) {
+        signedAt = submission.signed_at;
+        reference = `PV-${submission.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+      }
+    }
   }
 
+  const brandFont = resolveBrandFont(brandFontId);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-        <svg
-          width="28"
-          height="28"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#16a34a"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
+    <>
+      <BrandFontLink fontId={brandFont.id} />
+      <div style={{ fontFamily: brandFont.family }}>
+        <MerciView
+          slug={slug}
+          businessName={businessName}
+          logoUrl={logoUrl}
+          brandColor={brandColor}
+          signedAt={signedAt}
+          reference={reference}
+          borne={borne === "1"}
+        />
       </div>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Décharge signée !
-      </h1>
-      <p className="text-[var(--color-muted)]">
-        Merci. Votre signature a bien été enregistrée
-        {businessName ? ` auprès de ${businessName}` : ""}. Vous pouvez fermer
-        cette page.
-      </p>
-    </main>
+    </>
   );
 }

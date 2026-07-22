@@ -1,8 +1,6 @@
-# SafeSign
+# Paova
 
 Digital liability waivers for activity businesses (escape rooms, climbing gyms, trampoline parks, karting, watersports, wellness…). FR/EU-native, RGPD-friendly, hosted in the EU.
-
-> This repository is a **clean scaffold**: infrastructure, config and client wiring are in place. Business features (waiver editor, public signing page, PDF generation, dashboard, billing gating) are **not implemented yet**.
 
 ## Stack
 

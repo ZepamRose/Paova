@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
+import { recordAuditEvent } from "@/lib/audit";
+import { generateWaiverPdf, type WaiverField } from "@/lib/pdf";
+import type { SignedContentSnapshotV1 } from "@/lib/proof";
 
-type WaiverField = {
-  key: string;
-  label: string;
-  type: string;
-  required: boolean;
-};
-
-const MARGIN = 50;
-const PAGE_WIDTH = 595.28; // A4
-const PAGE_HEIGHT = 841.89;
+function isSnapshotV1(value: unknown): value is SignedContentSnapshotV1 {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return v.schema_version === 1 && typeof v.template === "object" && v.template != null;
+}
 
 export async function GET(
   _request: Request,
@@ -42,7 +39,7 @@ export async function GET(
 
   const { data: template } = await supabase
     .from("waiver_template")
-    .select("title, legal_text, fields")
+    .select("title, legal_text, fields, signer_name_label, business_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -50,114 +47,106 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const fields = (Array.isArray(template.fields)
-    ? template.fields
-    : []) as unknown as WaiverField[];
-  const answers = (submission.answers ?? {}) as Record<string, unknown>;
-
-  const pdf = await PDFDocument.create();
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  let y = PAGE_HEIGHT - MARGIN;
-
-  function ensureSpace(needed: number) {
-    if (y - needed < MARGIN) {
-      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN;
-    }
+  // Confirm ownership via business (RLS already scopes template select).
+  const { data: ownedBusiness } = await supabase
+    .from("business")
+    .select("id")
+    .eq("id", template.business_id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!ownedBusiness) {
+    return new NextResponse("Not found", { status: 404 });
   }
 
-  function wrapText(text: string, size: number, maxWidth: number): string[] {
-    const lines: string[] = [];
-    for (const paragraph of text.split("\n")) {
-      const words = paragraph.split(/\s+/);
-      let current = "";
-      for (const word of words) {
-        const candidate = current ? `${current} ${word}` : word;
-        if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
-          lines.push(current);
-          current = word;
-        } else {
-          current = candidate;
+  const { data: business } = await supabase
+    .from("business")
+    .select("name, brand_color, brand_font, logo_url")
+    .eq("id", template.business_id)
+    .maybeSingle();
+
+  const { data: proofRow } = await supabase
+    .from("signature_proof")
+    .select(
+      "reference, signed_at, timezone, timezone_offset_minutes, ip_address, user_agent, device_hint, template_version, content_sha256, hash_algorithm, content_snapshot",
+    )
+    .eq("submission_id", sid)
+    .maybeSingle();
+
+  const snapshot = isSnapshotV1(proofRow?.content_snapshot)
+    ? proofRow.content_snapshot
+    : null;
+
+  const fields = (
+    Array.isArray(snapshot?.template.fields)
+      ? snapshot.template.fields
+      : Array.isArray(template.fields)
+        ? template.fields
+        : []
+  ) as unknown as WaiverField[];
+
+  const pdfBytes = await generateWaiverPdf({
+    title: snapshot?.template.title ?? template.title,
+    legalText: snapshot?.template.legal_text ?? template.legal_text,
+    fields,
+    signerName: snapshot?.signer.name ?? submission.signer_name,
+    signerNameLabel:
+      snapshot?.template.signer_name_label ?? template.signer_name_label,
+    signerEmail: snapshot?.signer.email ?? submission.signer_email,
+    answers: (snapshot?.answers ??
+      submission.answers ??
+      {}) as Record<string, unknown>,
+    signatureDataUrl:
+      snapshot?.signature_data_url ?? submission.signature_url,
+    ipAddress: proofRow?.ip_address ?? submission.ip_address,
+    signedAt: snapshot?.signed_at ?? submission.signed_at,
+    businessName: business?.name ?? null,
+    brandColor: business?.brand_color ?? "#111827",
+    brandFont: business?.brand_font ?? null,
+    logoUrl: business?.logo_url ?? null,
+    proof: proofRow
+      ? {
+          reference: proofRow.reference,
+          signedAt: proofRow.signed_at,
+          timezone: proofRow.timezone,
+          timezoneOffsetMinutes: proofRow.timezone_offset_minutes,
+          ipAddress: proofRow.ip_address,
+          userAgent: proofRow.user_agent,
+          deviceHint: proofRow.device_hint,
+          templateVersion: proofRow.template_version,
+          contentSha256: proofRow.content_sha256,
+          hashAlgorithm: proofRow.hash_algorithm,
         }
-      }
-      lines.push(current);
-    }
-    return lines;
-  }
-
-  function drawText(
-    text: string,
-    size: number,
-    options?: { bold?: boolean; gap?: number },
-  ) {
-    const usedFont = options?.bold ? fontBold : font;
-    const maxWidth = PAGE_WIDTH - MARGIN * 2;
-    const lines = wrapText(text, size, maxWidth);
-    for (const line of lines) {
-      ensureSpace(size + 4);
-      page.drawText(line, {
-        x: MARGIN,
-        y,
-        size,
-        font: usedFont,
-        color: rgb(0.1, 0.1, 0.12),
-      });
-      y -= size + 4;
-    }
-    y -= options?.gap ?? 0;
-  }
-
-  drawText(template.title, 18, { bold: true, gap: 10 });
-  drawText(template.legal_text, 10, { gap: 14 });
-
-  drawText("Signataire", 12, { bold: true, gap: 4 });
-  drawText(`Nom : ${submission.signer_name}`, 10);
-  if (submission.signer_email) {
-    drawText(`Email : ${submission.signer_email}`, 10);
-  }
-  for (const field of fields) {
-    const raw = answers[field.key];
-    const value =
-      typeof raw === "boolean" ? (raw ? "Oui" : "Non") : String(raw ?? "");
-    drawText(`${field.label} : ${value}`, 10);
-  }
-  y -= 6;
-
-  const signedAt = new Date(submission.signed_at).toLocaleString("fr-FR", {
-    dateStyle: "long",
-    timeStyle: "short",
+      : null,
   });
-  drawText(`Signé le : ${signedAt}`, 10);
-  if (submission.ip_address) {
-    drawText(`Adresse IP : ${submission.ip_address}`, 10, { gap: 10 });
-  }
 
-  drawText("Signature", 12, { bold: true, gap: 6 });
-
-  if (
-    typeof submission.signature_url === "string" &&
-    submission.signature_url.startsWith("data:image/png;base64,")
-  ) {
-    try {
-      const base64 = submission.signature_url.split(",")[1];
-      const bytes = Uint8Array.from(Buffer.from(base64, "base64"));
-      const png = await pdf.embedPng(bytes);
-      const maxW = 240;
-      const scale = maxW / png.width;
-      const w = maxW;
-      const h = png.height * scale;
-      ensureSpace(h + 10);
-      page.drawImage(png, { x: MARGIN, y: y - h, width: w, height: h });
-      y -= h + 10;
-    } catch {
-      drawText("(signature non disponible)", 10);
-    }
-  }
-
-  const pdfBytes = await pdf.save();
+  await recordAuditEvent(supabase, {
+    businessId: template.business_id,
+    actorUserId: user.id,
+    actorKind: "owner",
+    entityType: "submission",
+    entityId: sid,
+    templateId: id,
+    submissionId: sid,
+    eventType: "pdf.generated",
+    payload: {
+      channel: "dashboard_download",
+      reference: proofRow?.reference ?? null,
+    },
+  });
+  await recordAuditEvent(supabase, {
+    businessId: template.business_id,
+    actorUserId: user.id,
+    actorKind: "owner",
+    entityType: "submission",
+    entityId: sid,
+    templateId: id,
+    submissionId: sid,
+    eventType: "pdf.downloaded",
+    payload: {
+      reference: proofRow?.reference ?? null,
+      signer_name: submission.signer_name,
+    },
+  });
 
   return new NextResponse(Buffer.from(pdfBytes), {
     headers: {
