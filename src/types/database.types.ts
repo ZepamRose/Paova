@@ -86,6 +86,7 @@ export type Database = {
           expiration_mode: string;
           expiration_days: number | null;
           expires_at: string | null;
+          deleted_at: string | null;
           version: number;
           created_at: string;
         };
@@ -102,6 +103,7 @@ export type Database = {
           expiration_mode?: string;
           expiration_days?: number | null;
           expires_at?: string | null;
+          deleted_at?: string | null;
           version?: number;
           created_at?: string;
         };
@@ -118,6 +120,7 @@ export type Database = {
           expiration_mode?: string;
           expiration_days?: number | null;
           expires_at?: string | null;
+          deleted_at?: string | null;
           version?: number;
           created_at?: string;
         };

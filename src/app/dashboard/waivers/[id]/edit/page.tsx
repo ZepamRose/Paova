@@ -32,12 +32,16 @@ export default async function EditWaiverPage({
 
   const { data: template } = await supabase
     .from("waiver_template")
-    .select("id, title, legal_text, fields, signer_name_label")
+    .select("id, title, legal_text, fields, signer_name_label, deleted_at")
     .eq("id", id)
     .maybeSingle();
 
   if (!template) {
     notFound();
+  }
+
+  if (template.deleted_at) {
+    redirect(`/dashboard/waivers/${template.id}`);
   }
 
   const fields = (Array.isArray(template.fields)

@@ -96,7 +96,7 @@ export function DeleteWaiverDialog({
                     id={titleId}
                     className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]"
                   >
-                    Supprimer cette décharge ?
+                    Archiver cette décharge ?
                   </h2>
                   <div
                     id={descId}
@@ -110,30 +110,31 @@ export function DeleteWaiverDialog({
                       »
                     </p>
                     <p>
-                      Cette décharge sera définitivement supprimée de votre
-                      espace.
+                      Elle disparaîtra de votre tableau de bord et n&apos;acceptera
+                      plus de nouvelles signatures.
                     </p>
                     <p>
-                      Toutes les signatures associées seront également
-                      supprimées.
+                      Les signatures et preuves numériques déjà collectées seront
+                      conservées.
                     </p>
                   </div>
                 </div>
               </div>
 
               {submissionCount > 0 ? (
-                <div className="mt-5 flex gap-3 rounded-xl border border-[color-mix(in_srgb,#b45309_28%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-3.5 py-3.5 dark:border-[color-mix(in_srgb,#fbbf24_28%,var(--color-border))] dark:bg-[color-mix(in_srgb,#fbbf24_8%,var(--color-background))]">
-                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,#b45309_12%,transparent)] text-[color-mix(in_srgb,#b45309_92%,#78350f)] dark:bg-[color-mix(in_srgb,#fbbf24_12%,transparent)] dark:text-[color-mix(in_srgb,#fbbf24_88%,#fef3c7)]">
+                <div className="mt-5 flex gap-3 rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_22%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-background))] px-3.5 py-3.5">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]">
                     <AlertTriangle size={14} strokeWidth={1.9} aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium leading-snug text-[color-mix(in_srgb,#92400e_92%,var(--color-foreground))] dark:text-[color-mix(in_srgb,#fbbf24_88%,var(--color-foreground))]">
+                    <p className="text-[13px] font-medium leading-snug text-[var(--color-foreground)]">
                       {submissionCount} signature
-                      {submissionCount === 1 ? "" : "s"} seront effacées
+                      {submissionCount === 1 ? "" : "s"} conservée
+                      {submissionCount === 1 ? "" : "s"}
                     </p>
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-[color-mix(in_srgb,#92400e_78%,var(--color-muted))] dark:text-[color-mix(in_srgb,#fbbf24_72%,var(--color-muted))]">
-                      Exportez le CSV ou téléchargez les PDF avant de continuer
-                      si vous devez les conserver comme preuve.
+                    <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
+                      Vous pourrez toujours les retrouver via la recherche et les
+                      exports, ou en restaurant la décharge.
                     </p>
                   </div>
                 </div>
@@ -145,9 +146,7 @@ export function DeleteWaiverDialog({
               >
                 <input type="hidden" name="id" value={id} />
                 <p className="mb-3.5 text-[12.5px] leading-relaxed text-[var(--color-muted)] sm:text-right">
-                  <span className="font-medium tracking-tight text-[var(--color-foreground)]/80">
-                    Cette action est irréversible.
-                  </span>
+                  Vous pourrez la restaurer plus tard depuis sa page détail.
                 </p>
                 <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end sm:gap-2">
                   <button
@@ -167,9 +166,7 @@ export function DeleteWaiverDialog({
                     }}
                   >
                     <Trash2 size={14} strokeWidth={2} aria-hidden />
-                    <span className="whitespace-nowrap">
-                      Supprimer définitivement
-                    </span>
+                    <span className="whitespace-nowrap">Archiver</span>
                   </button>
                 </div>
               </form>

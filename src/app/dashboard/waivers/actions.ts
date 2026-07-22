@@ -380,7 +380,7 @@ export async function deleteTemplate(formData: FormData) {
 
   const { data: existing } = await supabase
     .from("waiver_template")
-    .select("business_id, title")
+    .select("business_id, title, deleted_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -388,7 +388,27 @@ export async function deleteTemplate(formData: FormData) {
     redirect("/dashboard");
   }
 
-  // Record before delete so template_id FK remains valid for the journal row.
+  // Already archived — treat as success.
+  if (existing.deleted_at) {
+    redirect("/dashboard");
+  }
+
+  const deletedAt = new Date().toISOString();
+
+  // Soft-delete: archive the template. Submissions & proofs are retained.
+  const { error } = await supabase
+    .from("waiver_template")
+    .update({
+      status: "archived",
+      deleted_at: deletedAt,
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
   await recordAuditEvent(supabase, {
     businessId: existing.business_id,
     actorUserId: user.id,
@@ -396,22 +416,11 @@ export async function deleteTemplate(formData: FormData) {
     entityType: "template",
     entityId: id,
     templateId: id,
-    eventType: "template.deleted",
-    payload: { title: existing.title },
+    eventType: "template.archived",
+    payload: { title: existing.title, deleted_at: deletedAt },
   });
 
-  // RLS ("template_all_own") ensures only the owner's templates can be deleted.
-  // Deleting a template cascades to its submissions (see schema).
-  const { error } = await supabase
-    .from("waiver_template")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  redirect("/dashboard");
+  redirect(`/dashboard/waivers/${id}`);
 }
 
 export async function toggleTemplateActive(formData: FormData) {
@@ -431,7 +440,7 @@ export async function toggleTemplateActive(formData: FormData) {
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "status, business_id, title, expiration_mode, expiration_days, expires_at",
+      "status, deleted_at, business_id, title, expiration_mode, expiration_days, expires_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -445,21 +454,25 @@ export async function toggleTemplateActive(formData: FormData) {
   });
 
   let nextStatus: TemplateStatus;
-  if (current === "open") {
+  const patch: {
+    status: TemplateStatus;
+    expires_at?: string | null;
+    deleted_at?: string | null;
+  } = { status: "open" };
+
+  if (current === "open" && !template.deleted_at) {
     nextStatus = "inactive";
+    patch.status = "inactive";
   } else {
-    // inactive | expired | archived → reopen
+    // inactive | expired | archived → reopen and clear soft-delete
     nextStatus = "open";
+    patch.status = "open";
+    patch.deleted_at = null;
   }
 
   const mode = isExpirationMode(template.expiration_mode)
     ? template.expiration_mode
     : "none";
-
-  const patch: {
-    status: TemplateStatus;
-    expires_at?: string | null;
-  } = { status: nextStatus };
 
   // When reopening with a relative window, restart the countdown from now.
   if (nextStatus === "open" && mode === "relative_days") {

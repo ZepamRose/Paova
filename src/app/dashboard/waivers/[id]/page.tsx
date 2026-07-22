@@ -234,7 +234,7 @@ export default async function WaiverDetailPage({
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, legal_text, fields, public_slug, status, expiration_mode, expiration_days, expires_at, version, created_at",
+      "id, business_id, title, legal_text, fields, public_slug, status, expiration_mode, expiration_days, expires_at, deleted_at, version, created_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -259,15 +259,20 @@ export default async function WaiverDetailPage({
     expiration_days: template.expiration_days,
     expires_at: template.expires_at,
   });
-  const displayStatus = lifecycle.status;
+  const displayStatus = template.deleted_at
+    ? "archived"
+    : lifecycle.status;
 
-  const canAcceptSignatures = displayStatus === "open";
+  const canAcceptSignatures =
+    !template.deleted_at && displayStatus === "open";
   const toggleLabel =
     displayStatus === "open"
       ? "Désactiver"
-      : displayStatus === "expired"
-        ? "Réouvrir"
-        : "Activer";
+      : displayStatus === "archived"
+        ? "Restaurer"
+        : displayStatus === "expired"
+          ? "Réouvrir"
+          : "Activer";
   const expiresLabel = formatExpiresAt(template.expires_at);
 
   const fields = (Array.isArray(template.fields)
@@ -466,12 +471,14 @@ export default async function WaiverDetailPage({
                 className="hidden h-5 w-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] sm:block"
                 aria-hidden
               />
-              <DeleteWaiverButton
-                id={template.id}
-                title={template.title}
-                submissionCount={submissionCount}
-                variant="full"
-              />
+              {!template.deleted_at ? (
+                <DeleteWaiverButton
+                  id={template.id}
+                  title={template.title}
+                  submissionCount={submissionCount}
+                  variant="full"
+                />
+              ) : null}
             </div>
           </div>
         </div>
@@ -491,9 +498,11 @@ export default async function WaiverDetailPage({
           role="status"
           className="rounded-xl border border-[color-mix(in_srgb,#b45309_25%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-4 py-3 text-[13px] leading-relaxed text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]"
         >
-          {displayStatus === "expired"
-            ? "Cette décharge est expirée : le lien public n’accepte plus de nouvelles signatures. Ajustez l’expiration ou réouvrez-la."
-            : "Cette décharge est désactivée : le lien public n’accepte plus de nouvelles signatures."}
+          {displayStatus === "archived"
+            ? "Cette décharge est archivée : elle n’apparaît plus dans le tableau de bord et n’accepte plus de signatures. Les signatures existantes sont conservées. Utilisez Restaurer pour la réactiver."
+            : displayStatus === "expired"
+              ? "Cette décharge est expirée : le lien public n’accepte plus de nouvelles signatures. Ajustez l’expiration ou réouvrez-la."
+              : "Cette décharge est désactivée : le lien public n’accepte plus de nouvelles signatures."}
         </p>
       ) : null}
 
@@ -581,11 +590,11 @@ export default async function WaiverDetailPage({
           {submissionCount > 0 ? (
             <p
               role="note"
-              className="mt-5 rounded-xl border border-[color-mix(in_srgb,#b45309_20%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_6%,var(--color-background))] px-4 py-3 text-[12px] leading-relaxed text-[color-mix(in_srgb,#92400e_85%,var(--color-muted))] dark:border-[color-mix(in_srgb,#fbbf24_22%,var(--color-border))] dark:bg-[color-mix(in_srgb,#fbbf24_7%,var(--color-background))] dark:text-[color-mix(in_srgb,#fbbf24_78%,var(--color-muted))]"
+              className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_35%,var(--color-background))] px-4 py-3 text-[12px] leading-relaxed text-[var(--color-muted)]"
             >
-              Si vous supprimez cette décharge, ces signatures seront effacées
-              définitivement. Exportez le CSV ou téléchargez les PDF au
-              préalable si vous devez les conserver.
+              Les signatures et preuves restent conservées même si vous archivez
+              cette décharge. Exportez le CSV ou téléchargez les PDF pour vos
+              dossiers.
             </p>
           ) : null}
 

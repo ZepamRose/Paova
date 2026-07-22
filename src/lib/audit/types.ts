@@ -9,6 +9,7 @@ export type AuditEventType =
   | "template.deactivated"
   | "template.expired"
   | "template.deleted"
+  | "template.archived"
   | "template.link_viewed"
   | "submission.started"
   | "submission.signed"
@@ -55,6 +56,7 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   "template.deactivated": "Décharge désactivée",
   "template.expired": "Décharge expirée",
   "template.deleted": "Décharge supprimée",
+  "template.archived": "Décharge archivée",
   "template.link_viewed": "Lien public consulté",
   "submission.started": "Signature commencée",
   "submission.signed": "Signature validée",

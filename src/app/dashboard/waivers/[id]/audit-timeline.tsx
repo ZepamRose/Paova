@@ -72,6 +72,8 @@ function EventIcon({ type }: { type: string }) {
       return <TimerOff {...props} />;
     case "template.deleted":
       return <Trash2 {...props} />;
+    case "template.archived":
+      return <Trash2 {...props} />;
     case "template.link_viewed":
       return <Eye {...props} />;
     case "submission.started":

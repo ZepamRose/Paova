@@ -43,12 +43,16 @@ export async function POST(
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, status, expiration_mode, expiration_days, expires_at",
+      "id, business_id, title, status, expiration_mode, expiration_days, expires_at, deleted_at",
     )
     .eq("public_slug", slug)
     .maybeSingle();
 
-  if (!template || !isTemplateStatus(template.status)) {
+  if (
+    !template ||
+    !isTemplateStatus(template.status) ||
+    template.deleted_at
+  ) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 

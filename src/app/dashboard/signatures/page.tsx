@@ -60,6 +60,7 @@ export default async function SignaturesSearchPage({
     .from("waiver_template")
     .select("id, title")
     .eq("business_id", business.id)
+    .is("deleted_at", null)
     .order("title", { ascending: true });
 
   const q = sp.q?.trim() || "";

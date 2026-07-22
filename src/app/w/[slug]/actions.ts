@@ -63,12 +63,16 @@ export async function submitWaiver(formData: FormData) {
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, legal_text, fields, signer_name_label, status, expiration_mode, expiration_days, expires_at, version",
+      "id, business_id, title, legal_text, fields, signer_name_label, status, expiration_mode, expiration_days, expires_at, deleted_at, version",
     )
     .eq("public_slug", slug)
     .maybeSingle();
 
-  if (!template || !isTemplateStatus(template.status)) {
+  if (
+    !template ||
+    !isTemplateStatus(template.status) ||
+    template.deleted_at
+  ) {
     redirect("/");
   }
 

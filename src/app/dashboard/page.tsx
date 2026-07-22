@@ -75,6 +75,7 @@ export default async function DashboardPage() {
     .from("waiver_template")
     .select("id, title, public_slug, status, expires_at, created_at")
     .eq("business_id", business.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const { data: profile } = await supabase

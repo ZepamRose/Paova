@@ -81,7 +81,7 @@ export function WaiverActionsMenu({
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-[var(--color-surface-2)]"
           >
-            Supprimer
+            Archiver
           </button>
         </div>
       ) : null}
