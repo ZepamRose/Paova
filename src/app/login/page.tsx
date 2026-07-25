@@ -114,18 +114,19 @@ function TrustItem({
   );
 }
 
-/** Static, non-interactive preview of the product after login. */
+/** Static, non-interactive preview — mirrors the real dashboard language. */
 function DashboardPreview() {
   return (
     <aside
       aria-hidden
-      className="w-full max-w-[380px] scale-[0.92] origin-top animate-fade-up-delay sm:origin-center lg:max-w-[400px] lg:origin-left lg:scale-[0.88]"
+      className="w-full max-w-[400px] origin-top animate-fade-up-delay sm:origin-center lg:max-w-[420px] lg:origin-left"
     >
       <p className="mb-2.5 text-center text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--color-muted)]/70 lg:text-left">
         Aperçu de votre espace
       </p>
-      <div className="overflow-hidden rounded-[1.25rem] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.14),0_20px_40px_-24px_rgba(0,0,0,0.12)]">
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] px-3.5 py-2.5">
+      <div className="overflow-hidden rounded-[1.35rem] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)]">
+        {/* Header chrome */}
+        <div className="flex items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-3.5 py-2.5">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -140,66 +141,122 @@ function DashboardPreview() {
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-brand)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand)]" />
-              En ligne
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--color-brand)_18%,transparent)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-brand)]">
+              Pro
+            </span>
+            <span className="rounded-md bg-[var(--color-brand)] px-2 py-1 text-[10px] font-medium text-[var(--color-on-brand)]">
+              + Nouvelle
             </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-3.5 py-2">
-          <span className="truncate text-[11px] text-[var(--color-muted)]">
-            Escape Room Lyon
-          </span>
-          <span className="shrink-0 text-[11px] font-medium text-[var(--color-foreground)]/80">
-            3 signatures aujourd&apos;hui
-          </span>
+        {/* Business identity */}
+        <div className="border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-3.5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[15px] font-semibold tracking-tight">
+              Escape Room Lyon
+            </p>
+            <span className="rounded-md bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] px-1.5 py-[2px] text-[10px] font-semibold tracking-wide text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_26%,transparent)]">
+              Plan Pro
+            </span>
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--color-muted)]">
+            2 décharges actives · 24 signatures ce mois
+          </p>
+          <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]/85">
+            Dernière activité il y a 12 min
+          </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 border-b border-[var(--color-border)] p-2.5">
-          {[
-            { label: "Ce mois", value: "24" },
-            { label: "7 jours", value: "8" },
-            { label: "Actives", value: "3" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-lg bg-[var(--color-surface-2)]/80 px-2 py-1.5"
-            >
-              <p className="text-[9px] text-[var(--color-muted)]">{stat.label}</p>
-              <p className="mt-0.5 text-sm font-semibold tracking-tight">
-                {stat.value}
-              </p>
+        {/* Stats — Aperçu */}
+        <div className="border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-3.5 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Aperçu
+            </span>
+            <span
+              className="h-px flex-1 bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { label: "Ce mois", value: "24", hint: "+12 % vs mois dernier" },
+              { label: "7 jours", value: "8", hint: "Stable" },
+              { label: "Actives", value: "2", hint: "2 sur 2" },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-[0.85rem] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-2 py-2 shadow-[var(--elev-1)]"
+              >
+                <p className="text-[15px] font-semibold tracking-tight tabular-nums leading-none">
+                  {stat.value}
+                </p>
+                <p className="mt-1.5 text-[9px] font-medium text-[var(--color-foreground)]/85">
+                  {stat.label}
+                </p>
+                <p className="mt-0.5 text-[8.5px] leading-snug text-[var(--color-muted)]">
+                  {stat.hint}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Décharges list */}
+        <div className="flex flex-col gap-2 px-3.5 py-3">
+          <div className="mb-0.5 flex items-center gap-2">
+            <span className="text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Décharges
+            </span>
+            <div className="flex items-center gap-0.5 rounded-md border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] p-0.5 shadow-[var(--elev-1)]">
+              <span className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[9px] font-medium shadow-[var(--elev-1)]">
+                Actives{" "}
+                <span className="tabular-nums opacity-70">2</span>
+              </span>
+              <span className="px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-muted)]">
+                Archivées
+              </span>
             </div>
-          ))}
-        </div>
+          </div>
 
-        <div className="flex flex-col gap-1.5 p-2.5">
           {[
             {
               title: "Décharge — Escape game",
-              meta: "12 signatures · Active",
+              count: "12 signatures",
+              meta: "Dernière signature il y a 12 min",
             },
             {
               title: "Autorisation parentale",
-              meta: "7 signatures · Active",
+              count: "7 signatures",
+              meta: "Dernière signature hier",
             },
           ].map((row) => (
             <div
               key={row.title}
-              className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-2.5 py-2"
+              className="rounded-[1rem] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-surface)] px-3 py-2.5 shadow-[var(--elev-2)]"
             >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium tracking-tight">
-                  {row.title}
-                </p>
-                <p className="mt-0.5 text-[10px] text-[var(--color-muted)]">
-                  {row.meta}
-                </p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="truncate text-[12px] font-semibold tracking-tight">
+                      {row.title}
+                    </p>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_22%,transparent)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-brand)_22%,transparent)]" />
+                      Ouverte
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] font-medium tabular-nums text-[var(--color-brand)]">
+                    {row.count}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-[var(--color-muted)]">
+                    {row.meta}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--color-brand)_35%,var(--color-border))] px-2 py-1 text-[10px] font-medium text-[var(--color-brand)]">
+                  Voir
+                </span>
               </div>
-              <span className="shrink-0 rounded-md border border-[var(--color-border)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-muted)]">
-                Lien
-              </span>
             </div>
           ))}
         </div>

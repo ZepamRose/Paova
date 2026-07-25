@@ -1,18 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { FileDown } from "lucide-react";
 
 export function ExportCsvButton({
   href,
   className,
+  label = "Exporter les signatures (CSV)",
+  title,
+  disabled = false,
 }: {
   href: string;
   className?: string;
+  label?: string;
+  title?: string;
+  disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
 
   async function handleClick() {
-    if (busy) return;
+    if (busy || disabled) return;
     setBusy(true);
     try {
       const res = await fetch(href);
@@ -32,11 +39,9 @@ export function ExportCsvButton({
       a.remove();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      // Fallback: navigate to the export URL if fetch fails
       window.location.assign(href);
     } finally {
-      // Brief pause so the spinner remains readable on fast responses
-      window.setTimeout(() => setBusy(false), 280);
+      window.setTimeout(() => setBusy(false), 320);
     }
   }
 
@@ -44,16 +49,18 @@ export function ExportCsvButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={busy}
+      disabled={busy || disabled}
       aria-busy={busy}
+      aria-label={busy ? "Export des données en cours" : label}
+      title={busy ? undefined : title}
       className={className}
     >
       {busy ? (
         <>
           <svg
             className="animate-spin"
-            width="14"
-            height="14"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             aria-hidden
@@ -73,10 +80,13 @@ export function ExportCsvButton({
               strokeLinecap="round"
             />
           </svg>
-          Export…
+          Préparation…
         </>
       ) : (
-        "Exporter en CSV"
+        <>
+          <FileDown size={15} strokeWidth={1.85} aria-hidden />
+          {label}
+        </>
       )}
     </button>
   );

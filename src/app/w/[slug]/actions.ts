@@ -13,13 +13,16 @@ import {
 } from "@/lib/proof";
 import { recordAuditEvent } from "@/lib/audit";
 import {
+  configFromTemplateRow,
   ensureTemplateNotStale,
   isExpirationMode,
   isTemplateStatus,
+  isWithinSignatureHours,
   type ExpirationMode,
 } from "@/lib/templates";
 import { upsertSubmissionSearch } from "@/lib/search";
 import { resolveTemplateVersionId } from "@/lib/versions";
+import { ensureGroupAccepting } from "@/lib/groups/lifecycle";
 import type { Json } from "@/types/database.types";
 
 type WaiverField = {
@@ -63,7 +66,7 @@ export async function submitWaiver(formData: FormData) {
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, legal_text, fields, signer_name_label, status, expiration_mode, expiration_days, expires_at, deleted_at, version",
+      "id, business_id, title, legal_text, fields, signer_name_label, status, expiration_mode, expiration_days, expires_at, deleted_at, version, signature_hours_enabled, signature_timezone, signature_hours_start, signature_hours_end, signature_hours_days",
     )
     .eq("public_slug", slug)
     .maybeSingle();
@@ -95,10 +98,17 @@ export async function submitWaiver(formData: FormData) {
     redirect(`/w/${slug}?error=closed`);
   }
 
+  const hoursConfig = configFromTemplateRow(template);
+  if (!isWithinSignatureHours(hoursConfig)) {
+    redirect(`/w/${slug}?error=hours`);
+  }
+
   // Enforce the free-plan monthly limit (based on the business owner's plan).
   const { data: business } = await supabase
     .from("business")
-    .select("owner_id, name, brand_color, brand_font, logo_url")
+    .select(
+      "owner_id, name, brand_color, brand_font, logo_url, brand_accent, tagline, contact_address, contact_phone, contact_email, website_url, pdf_show_logo, pdf_show_name, pdf_show_contact, pdf_show_website, pdf_show_phone, pdf_show_footer, email_from_name, email_subject_template, email_signature, email_footer, email_show_logo",
+    )
     .eq("id", template.business_id)
     .maybeSingle();
 
@@ -141,6 +151,119 @@ export async function submitWaiver(formData: FormData) {
   const answers: Record<string, unknown> = {
     __rgpd_consent_at: new Date().toISOString(),
   };
+
+  const groupToken = String(formData.get("group_token") ?? "").trim();
+  let groupMemberIds: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("group_member_ids") ?? "[]"));
+    if (Array.isArray(parsed)) {
+      groupMemberIds = [...new Set(parsed.map((id) => String(id)).filter(Boolean))];
+    }
+  } catch {
+    groupMemberIds = [];
+  }
+
+  // Group signing: roster members, or express walk-in (create members on the fly).
+  let verifiedGroupId: string | null = null;
+  let groupParticipants: Participant[] = [];
+  const expressWalkIn = String(formData.get("express_walk_in") ?? "") === "1";
+
+  if (groupToken && (groupMemberIds.length > 0 || expressWalkIn)) {
+    const { data: group } = await supabase
+      .from("signing_group")
+      .select("id, business_id, template_id, status, closes_at, kind")
+      .eq("public_token", groupToken)
+      .maybeSingle();
+
+    const groupOpen =
+      group &&
+      group.business_id === template.business_id &&
+      group.template_id === template.id
+        ? await ensureGroupAccepting(supabase, group)
+        : false;
+
+    if (!group || !groupOpen) {
+      redirect(`/g/${groupToken}?error=closed`);
+    }
+
+    if (expressWalkIn) {
+      if (group.kind !== "express") {
+        redirect(`/g/${groupToken}?error=closed`);
+      }
+
+      let walkIn: Participant[] = [];
+      try {
+        const parsed = JSON.parse(
+          String(formData.get("express_participants") ?? "[]"),
+        );
+        if (Array.isArray(parsed)) {
+          walkIn = parsed
+            .map((p) => ({
+              name: String((p as Participant)?.name ?? "").trim(),
+              dob: String((p as Participant)?.dob ?? "").trim(),
+              note: String((p as Participant)?.note ?? "").trim(),
+            }))
+            .filter((p) => p.name.length > 0);
+        }
+      } catch {
+        walkIn = [];
+      }
+
+      if (walkIn.length === 0) {
+        redirect(`/g/${groupToken}?error=required`);
+      }
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from("signing_group_member")
+        .insert(
+          walkIn.map((p) => ({
+            group_id: group.id,
+            full_name: p.name.slice(0, 160),
+            dob: p.dob || null,
+            note: p.note || null,
+          })),
+        )
+        .select("id, full_name, dob, note");
+
+      if (insertErr || !inserted?.length) {
+        console.error("express walk-in member insert failed:", insertErr);
+        redirect(`/g/${groupToken}?error=members`);
+      }
+
+      verifiedGroupId = group.id;
+      groupMemberIds = inserted.map((m) => m.id);
+      groupParticipants = inserted.map((m) => ({
+        name: m.full_name,
+        dob: m.dob ?? "",
+        note: m.note ?? "",
+      }));
+    } else {
+      const { data: roster } = await supabase
+        .from("signing_group_member")
+        .select("id, full_name, dob, note, signed_submission_id")
+        .eq("group_id", group.id)
+        .in("id", groupMemberIds);
+
+      const valid = (roster ?? []).filter((m) => !m.signed_submission_id);
+      if (valid.length === 0 || valid.length !== groupMemberIds.length) {
+        redirect(`/g/${groupToken}?error=members`);
+      }
+
+      verifiedGroupId = group.id;
+      groupMemberIds = valid.map((m) => m.id);
+      groupParticipants = valid.map((m) => ({
+        name: m.full_name,
+        dob: m.dob ?? "",
+        note: m.note ?? "",
+      }));
+    }
+
+    answers.__group_token = groupToken;
+    answers.__group_id = verifiedGroupId;
+    answers.__group_member_ids = groupMemberIds;
+    if (expressWalkIn) answers.__group_express = true;
+  }
+
   for (const field of fields) {
     const raw = formData.get(`field_${field.key}`);
     if (field.type === "checkbox") {
@@ -165,6 +288,10 @@ export async function submitWaiver(formData: FormData) {
       } catch {
         list = [];
       }
+      // Prefer verified roster when signing via a group link.
+      if (groupParticipants.length > 0) {
+        list = groupParticipants;
+      }
       if (field.required && list.length === 0) {
         redirect(`/w/${slug}?error=required`);
       }
@@ -176,6 +303,11 @@ export async function submitWaiver(formData: FormData) {
       }
       answers[field.key] = value;
     }
+  }
+
+  // Templates without a participants field still keep children on the PDF side-channel.
+  if (groupParticipants.length > 0 && !fields.some((f) => f.type === "participants")) {
+    answers.__group_participants = groupParticipants;
   }
 
   const headerList = await headers();
@@ -295,6 +427,23 @@ export async function submitWaiver(formData: FormData) {
     status: "signed",
   });
 
+  // Mark group roster members as signed (service role).
+  if (verifiedGroupId && groupMemberIds.length > 0) {
+    try {
+      await supabase
+        .from("signing_group_member")
+        .update({
+          signed_submission_id: inserted.id,
+          signed_at: signedAt,
+        })
+        .eq("group_id", verifiedGroupId)
+        .in("id", groupMemberIds)
+        .is("signed_submission_id", null);
+    } catch (groupErr) {
+      console.error("group member mark signed failed:", groupErr);
+    }
+  }
+
   // Best-effort: email the signer their signed PDF. Never block the flow.
   if (signerEmail) {
     try {
@@ -311,8 +460,20 @@ export async function submitWaiver(formData: FormData) {
         signedAt,
         businessName: business?.name ?? null,
         brandColor: business?.brand_color ?? "#111827",
+        brandAccent: business?.brand_accent ?? null,
         brandFont: business?.brand_font ?? null,
         logoUrl: business?.logo_url ?? null,
+        tagline: business?.tagline ?? null,
+        contactAddress: business?.contact_address ?? null,
+        contactPhone: business?.contact_phone ?? null,
+        contactEmail: business?.contact_email ?? null,
+        websiteUrl: business?.website_url ?? null,
+        showLogo: business?.pdf_show_logo !== false,
+        showName: business?.pdf_show_name !== false,
+        showContact: business?.pdf_show_contact !== false,
+        showWebsite: business?.pdf_show_website === true,
+        showPhone: business?.pdf_show_phone !== false,
+        showFooter: business?.pdf_show_footer !== false,
         proof: {
           reference: proof.reference,
           signedAt: proof.signedAt,
@@ -331,6 +492,12 @@ export async function submitWaiver(formData: FormData) {
         to: signerEmail,
         signerName,
         businessName: business?.name ?? null,
+        fromName: business?.email_from_name ?? null,
+        subjectTemplate: business?.email_subject_template ?? null,
+        signature: business?.email_signature ?? null,
+        footer: business?.email_footer ?? null,
+        showLogo: business?.email_show_logo !== false,
+        logoUrl: business?.logo_url ?? null,
         waiverTitle: template.title,
         brandColor: business?.brand_color ?? "#111827",
         pdfBytes,
@@ -351,9 +518,17 @@ export async function submitWaiver(formData: FormData) {
     }
   }
 
-  redirect(
-    `/w/${slug}/merci?sid=${encodeURIComponent(inserted.id)}${
-      String(formData.get("borne") ?? "") === "1" ? "&borne=1" : ""
-    }`,
-  );
+  const { mintPdfDownloadToken } = await import("@/lib/pdf-download-token");
+  const pdfToken = mintPdfDownloadToken({
+    submissionId: inserted.id,
+    slug,
+  });
+  const merciParams = new URLSearchParams({
+    sid: inserted.id,
+    t: pdfToken,
+  });
+  if (String(formData.get("borne") ?? "") === "1") {
+    merciParams.set("borne", "1");
+  }
+  redirect(`/w/${slug}/merci?${merciParams.toString()}`);
 }

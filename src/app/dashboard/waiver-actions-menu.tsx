@@ -1,7 +1,31 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DeleteWaiverDialog } from "./delete-waiver-dialog";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+function ArchiveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="2" y="3" width="20" height="5" rx="1" />
+      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
 
 export function WaiverActionsMenu({
   id,
@@ -14,8 +38,9 @@ export function WaiverActionsMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const menuId = useId();
+  const menuId = `waiver-menu-${id}`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion() ?? false;
 
   useEffect(() => {
     if (!open) return;
@@ -45,46 +70,55 @@ export function WaiverActionsMenu({
         aria-label="Plus d'actions"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-controls={menuId}
+        aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-[var(--color-surface)] shadow-[var(--elev-1)] transition-[color,background-color,border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.985] ${
+        className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full transition-[color,background-color,transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.94] ${
           open
-            ? "border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[var(--color-surface-2)] text-[var(--color-foreground)]"
-            : "border-[var(--color-border)] text-[var(--color-muted)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)]"
+            ? "bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] text-[var(--color-foreground)] shadow-[var(--elev-1)]"
+            : "text-[var(--color-muted)]/70 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
         }`}
       >
-        <svg
-          width="16"
-          height="16"
+        <motion.svg
+          width="14"
+          height="14"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden
+          animate={open ? { scale: 1.06 } : { scale: 1 }}
+          transition={{ duration: 0.16, ease: EASE }}
         >
-          <circle cx="5" cy="12" r="1.6" />
-          <circle cx="12" cy="12" r="1.6" />
-          <circle cx="19" cy="12" r="1.6" />
-        </svg>
+          <circle cx="12" cy="5" r="1.55" />
+          <circle cx="12" cy="12" r="1.55" />
+          <circle cx="12" cy="19" r="1.55" />
+        </motion.svg>
       </button>
 
-      {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          className="absolute right-0 z-50 mt-1.5 min-w-[10.5rem] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.28)] animate-fade-up"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              setConfirmOpen(true);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-[var(--color-surface-2)]"
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            id={menuId}
+            role="menu"
+            initial={reduced ? false : { opacity: 0, y: 5, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 3, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: EASE }}
+            className="absolute right-0 z-50 mt-1.5 min-w-[10.5rem] origin-top-right overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] py-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.18),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
           >
-            Archiver
-          </button>
-        </div>
-      ) : null}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setConfirmOpen(true);
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] font-medium tracking-tight text-[var(--color-foreground)]/88 transition-[background-color,color,padding] duration-150 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
+            >
+              <ArchiveIcon className="opacity-55" />
+              Archiver
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <DeleteWaiverDialog
         open={confirmOpen}

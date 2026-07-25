@@ -127,9 +127,19 @@ type ColorPickerProps = {
   name: string;
   value: string;
   onChange: (hex: string) => void;
+  label?: string;
+  /** Dense trigger for horizontal settings rows. */
+  compact?: boolean;
 };
 
-export function ColorPicker({ id, name, value, onChange }: ColorPickerProps) {
+export function ColorPicker({
+  id,
+  name,
+  value,
+  onChange,
+  label = "Couleur principale",
+  compact = false,
+}: ColorPickerProps) {
   const reduced = useReducedMotion() ?? false;
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -216,7 +226,7 @@ export function ColorPicker({ id, name, value, onChange }: ColorPickerProps) {
     "rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-2 font-mono text-[13px] outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-[var(--color-brand)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_14%,transparent)]";
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={`relative ${compact ? "min-w-0 flex-1" : ""}`}>
       <input type="hidden" name={name} value={hex} />
 
       <button
@@ -226,27 +236,51 @@ export function ColorPicker({ id, name, value, onChange }: ColorPickerProps) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="group flex w-full items-center gap-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[var(--color-background)] p-3 text-left shadow-[var(--elev-1)] transition-[border-color,box-shadow,transform,background-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_55%,var(--color-muted))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:p-3.5"
+        className={
+          compact
+            ? "group flex w-full items-center gap-2.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_70%,var(--color-surface))] px-2.5 py-2 text-left transition-[border-color,background-color,box-shadow] duration-[160ms] hover:border-[color-mix(in_srgb,var(--color-border)_50%,var(--color-muted))] hover:bg-[var(--color-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            : "group flex w-full items-center gap-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[var(--color-background)] p-3 text-left shadow-[var(--elev-1)] transition-[border-color,box-shadow,transform,background-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_55%,var(--color-muted))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:p-3.5"
+        }
       >
         <span
-          className="h-14 w-14 shrink-0 rounded-xl shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04] transition-transform duration-[180ms] group-hover:scale-[1.02] dark:ring-white/10 sm:h-16 sm:w-16"
+          className={
+            compact
+              ? "h-8 w-8 shrink-0 rounded-lg shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04] dark:ring-white/10"
+              : "h-14 w-14 shrink-0 rounded-xl shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04] transition-transform duration-[180ms] group-hover:scale-[1.02] dark:ring-white/10 sm:h-16 sm:w-16"
+          }
           style={{ backgroundColor: hex }}
           aria-hidden
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-[12px] font-medium tracking-tight text-[var(--color-muted)]">
-            Couleur principale
+          <span
+            className={
+              compact
+                ? "block text-[11px] font-medium tracking-tight text-[var(--color-muted)]"
+                : "block text-[12px] font-medium tracking-tight text-[var(--color-muted)]"
+            }
+          >
+            {label}
           </span>
-          <span className="mt-1 block font-mono text-[1.0625rem] font-semibold uppercase tracking-[-0.02em] text-[var(--color-foreground)]">
+          <span
+            className={
+              compact
+                ? "mt-0.5 block font-mono text-[13px] font-semibold uppercase tracking-[-0.02em] text-[var(--color-foreground)]"
+                : "mt-1 block font-mono text-[1.0625rem] font-semibold uppercase tracking-[-0.02em] text-[var(--color-foreground)]"
+            }
+          >
             {hex}
           </span>
-          <span className="mt-1 block font-mono text-[11px] text-[var(--color-muted)]/65">
-            RGB {rgb.r}, {rgb.g}, {rgb.b}
+          {compact ? null : (
+            <span className="mt-1 block font-mono text-[11px] text-[var(--color-muted)]/65">
+              RGB {rgb.r}, {rgb.g}, {rgb.b}
+            </span>
+          )}
+        </span>
+        {compact ? null : (
+          <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[color,border-color,background-color] duration-[180ms] group-hover:border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] group-hover:text-[var(--color-brand)]">
+            Modifier
           </span>
-        </span>
-        <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[color,border-color,background-color] duration-[180ms] group-hover:border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] group-hover:text-[var(--color-brand)]">
-          Modifier
-        </span>
+        )}
       </button>
 
       <AnimatePresence>

@@ -45,7 +45,7 @@ function PlusMinus({ open }: { open: boolean }) {
 export function BillingFaq() {
   const baseId = useId();
   const reducedMotion = useReducedMotion() ?? false;
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] bg-[var(--color-surface)]">

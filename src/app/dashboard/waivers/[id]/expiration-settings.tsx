@@ -1,32 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { updateTemplateExpiration } from "../actions";
+import { useRouter } from "next/navigation";
+import {
+  updateTemplateExpiration,
+  type UpdateExpirationResult,
+} from "../actions";
 import type { ExpirationMode } from "@/lib/templates";
+import { PendingSubmitButton } from "../../pending-submit-button";
 
 const selectClass =
   "h-10 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-sm shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow] focus:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] focus:shadow-[var(--elev-2)]";
 
 const inputClass = selectClass;
 
+const submitClass =
+  "inline-flex h-9 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[13px] font-medium shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color,opacity] duration-200 hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)] disabled:pointer-events-none disabled:opacity-65";
+
+export type ExpirationSavedPayload = Extract<
+  UpdateExpirationResult,
+  { ok: true }
+>;
+
 export function ExpirationSettings({
   templateId,
   initialMode,
   initialDays,
   initialExpiresAt,
+  onSaved,
 }: {
   templateId: string;
   initialMode: ExpirationMode;
   initialDays: number | null;
   initialExpiresAt: string | null;
+  onSaved?: (payload: ExpirationSavedPayload) => void;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<ExpirationMode>(initialMode);
+  const [error, setError] = useState<string | null>(null);
   const initialDate = initialExpiresAt
     ? initialExpiresAt.slice(0, 10)
     : "";
 
+  async function handleAction(formData: FormData) {
+    setError(null);
+    const result = await updateTemplateExpiration(formData);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    onSaved?.(result);
+    router.refresh();
+  }
+
   return (
-    <form action={updateTemplateExpiration} className="mt-6 flex flex-col gap-4">
+    <form action={handleAction} className="mt-4 flex flex-col gap-3.5">
       <input type="hidden" name="id" value={templateId} />
 
       <div className="flex flex-col gap-1.5">
@@ -83,13 +111,21 @@ export function ExpirationSettings({
         </div>
       ) : null}
 
-      <div>
-        <button
-          type="submit"
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-4 text-sm font-medium shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color] duration-200 hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)]"
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-lg border border-[color-mix(in_srgb,#b45309_28%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-surface))] px-3 py-2 text-[12.5px] text-[color-mix(in_srgb,#92400e_90%,var(--color-foreground))]"
         >
-          Enregistrer l&apos;expiration
-        </button>
+          {error}
+        </p>
+      ) : null}
+
+      <div>
+        <PendingSubmitButton
+          className={submitClass}
+          idle="Enregistrer l’expiration"
+          pendingLabel="Enregistrement…"
+        />
       </div>
     </form>
   );

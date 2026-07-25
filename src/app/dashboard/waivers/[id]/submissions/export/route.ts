@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { recordAuditEvent } from "@/lib/audit";
 import { csvCell } from "@/lib/search";
+import {
+  extractSubjectsFromAnswers,
+  formatSubjectsColumnLabel,
+  formatSubjectsSummary,
+} from "@/lib/submissions";
 
 type WaiverField = {
   key: string;
@@ -40,6 +45,22 @@ export async function GET(
   const fields = (Array.isArray(template.fields)
     ? template.fields
     : []) as unknown as WaiverField[];
+  const participantFields = fields.filter((f) => f.type === "participants");
+  const otherFields = fields.filter((f) => f.type !== "participants");
+  const hasSubjects = participantFields.length > 0;
+  const subjectsColumn = hasSubjects
+    ? formatSubjectsColumnLabel(
+        participantFields.every((f) =>
+          /enfant|mineur|élève|eleve/.test(f.label.toLowerCase()),
+        )
+          ? "minors"
+          : participantFields.some((f) =>
+                /enfant|mineur|élève|eleve/.test(f.label.toLowerCase()),
+              )
+            ? "mixed"
+            : "participants",
+      )
+    : null;
 
   let submissionsQuery = supabase
     .from("submission")
@@ -84,10 +105,12 @@ export async function GET(
   }
 
   const header = [
-    "Nom",
+    "Signataire",
     "Email",
+    ...(subjectsColumn ? [subjectsColumn] : []),
     "Date de signature",
-    ...fields.map((f) => f.label),
+    ...otherFields.map((f) => f.label),
+    ...(hasSubjects ? participantFields.map((f) => f.label) : []),
     "Consentement RGPD",
     "Adresse IP",
     "Référence preuve",
@@ -103,12 +126,21 @@ export async function GET(
         ? new Date(consentAt).toLocaleString("fr-FR")
         : "";
     const proof = proofBySubmission.get(s.id);
+    const subjectsSummary = hasSubjects
+      ? formatSubjectsSummary(extractSubjectsFromAnswers(fields, answers), {
+          maxNames: 20,
+        })
+      : null;
 
     return [
       csvCell(s.signer_name),
       csvCell(s.signer_email),
+      ...(hasSubjects ? [csvCell(subjectsSummary ?? "")] : []),
       csvCell(new Date(s.signed_at).toLocaleString("fr-FR")),
-      ...fields.map((f) => csvCell(answers[f.key])),
+      ...otherFields.map((f) => csvCell(answers[f.key])),
+      ...(hasSubjects
+        ? participantFields.map((f) => csvCell(answers[f.key]))
+        : []),
       csvCell(consentCell),
       csvCell(s.ip_address),
       csvCell(proof?.reference ?? ""),

@@ -13,3 +13,19 @@ export {
   type TemplateLifecycle,
   type TemplateStatus,
 } from "./status";
+export {
+  SIGNATURE_TIMEZONES,
+  WEEKDAY_LABELS_FR,
+  configFromTemplateRow,
+  formatSignatureHoursSummary,
+  formatTimeFr,
+  isWithinSignatureHours,
+  isValidTimezone,
+  normalizeTimeInput,
+  parseTimeToMinutes,
+  describeNextSignatureOpen,
+  signatureHoursClosedCopy,
+  signatureHoursClosedMessage,
+  type SignatureHoursClosedCopy,
+  type SignatureHoursConfig,
+} from "./hours";

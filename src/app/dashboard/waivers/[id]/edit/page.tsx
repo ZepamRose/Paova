@@ -54,30 +54,44 @@ export default async function EditWaiverPage({
     .eq("template_id", template.id);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-12">
-      <div className="flex flex-col gap-1">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-5 py-10 sm:gap-9 sm:px-6 sm:py-12">
+      <header className="animate-fade-up flex flex-col gap-3.5">
         <Link
           href={`/dashboard/waivers/${template.id}`}
-          className="text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
+          className="group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
         >
-          ← Retour à la décharge
+          <span
+            aria-hidden
+            className="transition-transform duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-0.5"
+          >
+            ←
+          </span>
+          Retour à la décharge
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Modifier la décharge
-        </h1>
-      </div>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-[1.625rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-2xl">
+            Modifier la décharge
+          </h1>
+          <p className="max-w-lg text-[14px] leading-relaxed text-[var(--color-muted)] sm:text-[15px]">
+            Ajustez le titre, le texte juridique et les champs. Les
+            modifications s&apos;appliquent aux prochaines signatures.
+          </p>
+        </div>
+      </header>
 
-      <WaiverForm
-        hasError={error === "required"}
-        initial={{
-          id: template.id,
-          title: template.title,
-          legalText: template.legal_text,
-          signerNameLabel: template.signer_name_label ?? "",
-          fields,
-          hasSubmissions: (count ?? 0) > 0,
-        }}
-      />
+      <div className="animate-fade-up-delay">
+        <WaiverForm
+          hasError={error === "required"}
+          initial={{
+            id: template.id,
+            title: template.title,
+            legalText: template.legal_text,
+            signerNameLabel: template.signer_name_label ?? "",
+            fields,
+            hasSubmissions: (count ?? 0) > 0,
+          }}
+        />
+      </div>
     </main>
   );
 }

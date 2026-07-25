@@ -7,38 +7,58 @@ import {
   ScrollText,
   ListChecks,
   PenLine,
-  Download,
   Calendar,
   Users,
-  Clock,
   History,
   GitBranch,
-  Timer,
+  CalendarClock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import {
+  configFromTemplateRow,
+  describeNextSignatureOpen,
   effectiveTemplateStatus,
   ensureTemplateNotStale,
   formatExpiresAt,
+  formatSignatureHoursSummary,
   isExpirationMode,
   isTemplateStatus,
+  isWithinSignatureHours,
   type ExpirationMode,
 } from "@/lib/templates";
 import { StatusBadge } from "@/components/status-badge";
 import { CopyLinkButton } from "../../copy-link-button";
 import { DeleteWaiverButton } from "../../delete-waiver-button";
-import { toggleTemplateActive } from "../actions";
+import { ToggleStatusForm } from "../../toggle-status-form";
 import { SubmissionsList } from "./submissions-list";
 import { ExportCsvButton } from "./export-csv-button";
 import { AuditTimeline } from "./audit-timeline";
 import { VersionHistory } from "./version-history";
-import { ExpirationSettings } from "./expiration-settings";
+import { WaiverDetailTabs } from "./waiver-detail-tabs";
+import { ActivityInsights } from "./activity-insights";
+import { AvailabilitySection } from "./availability-section";
+import {
+  summarizeExpiration,
+  summarizeHours,
+} from "./availability-summary";
+import { QrPreview } from "./qr-preview";
 import {
   isWaiverDetailTab,
-  WaiverDetailTabs,
   type WaiverDetailTabId,
-} from "./waiver-detail-tabs";
+} from "./waiver-detail-tab-ids";
+import {
+  extractSubjectsFromAnswers,
+  formatSubjectsLabel,
+  formatSubjectsSummary,
+  subjectsSearchHaystack,
+} from "@/lib/submissions";
+import { getPackById, resolveTemplateIntent } from "@/lib/waiver-packs";
+import {
+  deriveTemplateActivity,
+  formatRelativeActivityFr,
+  isTimelineStoryEvent,
+} from "@/lib/audit";
 
 type WaiverField = {
   key: string;
@@ -61,23 +81,26 @@ const TYPE_LABELS: Record<string, string> = {
 
 /** Shared motion — keep every interactive surface on the same curve. */
 const ease = "ease-[cubic-bezier(0.22,1,0.36,1)]";
-const motion = `duration-200 ${ease}`;
+const motion = `duration-[180ms] ${ease}`;
 
 const card =
-  `rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] bg-[var(--color-surface)] p-6 shadow-[var(--elev-2)] transition-[box-shadow,border-color] ${motion} hover:border-[color-mix(in_srgb,var(--color-border)_62%,var(--color-muted))] hover:shadow-[var(--elev-3)] sm:p-7`;
+  `rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] p-6 shadow-[var(--elev-3)] ring-1 ring-black/[0.02] transition-[box-shadow,border-color] ${motion} hover:border-[color-mix(in_srgb,var(--color-border)_58%,var(--color-muted))] hover:shadow-[var(--elev-hover)] dark:ring-white/[0.04] sm:p-7`;
 
 /** Primary “Partage” card — one step above secondary cards, same radius/padding. */
 const cardFeatured =
-  `rounded-2xl border border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-brand))] p-6 shadow-[var(--elev-hover)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[box-shadow,border-color,ring-color] ${motion} hover:border-[color-mix(in_srgb,var(--color-brand)_38%,var(--color-border))] hover:shadow-[var(--elev-hover)] hover:ring-[color-mix(in_srgb,var(--color-brand)_16%,transparent)] sm:p-7 dark:bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-brand))] dark:ring-[color-mix(in_srgb,var(--color-brand)_14%,transparent)]`;
+  `rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-brand)_26%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-brand))] p-6 shadow-[var(--elev-3)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_10%,transparent)] transition-[box-shadow,border-color,ring-color] ${motion} hover:border-[color-mix(in_srgb,var(--color-brand)_34%,var(--color-border))] hover:shadow-[var(--elev-hover)] hover:ring-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] sm:p-7 dark:bg-[color-mix(in_srgb,var(--color-surface)_94%,var(--color-brand))] dark:ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)]`;
+
+const btnPrimary =
+  `inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--color-brand)] px-4 text-sm font-medium tracking-tight text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter,box-shadow,opacity] ${motion} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-65`;
 
 const btnSecondary =
-  `inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-4 text-sm font-medium tracking-tight shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color,opacity] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_42%,var(--color-muted))] hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 disabled:pointer-events-none disabled:opacity-65`;
+  `inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-4 text-sm font-medium tracking-tight text-[var(--color-foreground)]/82 shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color,color,opacity] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-65`;
 
 const badgeFine =
-  `inline-flex items-center rounded-full px-2.5 py-0.5 text-[10.5px] font-medium leading-4 tracking-[0.01em] transition-[background-color,color,box-shadow] ${motion}`;
+  `inline-flex items-center rounded-md px-1.5 py-0.5 text-[10.5px] font-medium leading-4 tracking-tight transition-[background-color,color,box-shadow] ${motion}`;
 
 const metaChip =
-  `inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--color-border)_58%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_75%,var(--color-surface-2))] px-2.5 py-1 text-[12px] text-[var(--color-muted)] shadow-[var(--elev-1)] transition-[border-color,background-color,box-shadow] ${motion} hover:border-[color-mix(in_srgb,var(--color-border)_45%,var(--color-muted))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)]`;
+  `inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_48%,var(--color-surface))] px-2.5 py-1 text-[12px] text-[var(--color-muted)] transition-[border-color,background-color] ${motion}`;
 
 const textSecondary = "text-[13px] leading-relaxed text-[var(--color-muted)]";
 const textCaption =
@@ -173,7 +196,7 @@ function FieldIcon({ type }: { type: string }) {
 function SectionIcon({ children }: { children: ReactNode }) {
   return (
     <span
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_17%,var(--color-surface))] text-[var(--color-brand)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_24%,transparent),var(--elev-1)] dark:bg-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-surface))] dark:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_30%,transparent)]"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_18%,transparent)]"
       aria-hidden
     >
       {children}
@@ -194,10 +217,10 @@ function SectionHeader({
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex min-w-0 items-start gap-3.5">
+      <div className="flex min-w-0 items-start gap-3">
         <SectionIcon>{icon}</SectionIcon>
-        <div className="min-w-0 pt-0.5">
-          <h2 className="text-[1.0625rem] font-semibold tracking-tight text-[var(--color-foreground)]">
+        <div className="min-w-0 pt-px">
+          <h2 className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.1rem]">
             {title}
           </h2>
           {description ? (
@@ -222,6 +245,12 @@ export default async function WaiverDetailPage({
   const activeTab: WaiverDetailTabId = isWaiverDetailTab(tabParam)
     ? tabParam
     : "signatures";
+  const availabilityInitiallyOpen =
+    tabParam === "horaires" || error === "horaires"
+      ? ("hours" as const)
+      : tabParam === "expiration" || error === "expiration"
+        ? ("expiration" as const)
+        : null;
   const supabase = await createClient();
 
   const {
@@ -234,7 +263,7 @@ export default async function WaiverDetailPage({
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, legal_text, fields, public_slug, status, expiration_mode, expiration_days, expires_at, deleted_at, version, created_at",
+      "id, business_id, title, legal_text, fields, signer_name_label, starter_pack_id, public_slug, status, expiration_mode, expiration_days, expires_at, deleted_at, version, created_at, signature_hours_enabled, signature_timezone, signature_hours_start, signature_hours_end, signature_hours_days",
     )
     .eq("id", id)
     .maybeSingle();
@@ -263,6 +292,11 @@ export default async function WaiverDetailPage({
     ? "archived"
     : lifecycle.status;
 
+  const hoursConfig = configFromTemplateRow(template);
+  const withinHours = isWithinSignatureHours(hoursConfig);
+  const hoursSummary = formatSignatureHoursSummary(hoursConfig);
+  const nextOpenHint = describeNextSignatureOpen(hoursConfig);
+
   const canAcceptSignatures =
     !template.deleted_at && displayStatus === "open";
   const toggleLabel =
@@ -273,17 +307,52 @@ export default async function WaiverDetailPage({
         : displayStatus === "expired"
           ? "Réouvrir"
           : "Activer";
+  const togglePendingLabel =
+    displayStatus === "open"
+      ? "Désactivation…"
+      : displayStatus === "archived"
+        ? "Restauration…"
+        : displayStatus === "expired"
+          ? "Réouverture…"
+          : "Activation…";
   const expiresLabel = formatExpiresAt(template.expires_at);
 
   const fields = (Array.isArray(template.fields)
     ? template.fields
     : []) as unknown as WaiverField[];
 
-  const { data: submissions } = await supabase
+  const templateIntent = resolveTemplateIntent({
+    starterPackId: template.starter_pack_id,
+    fields,
+    signerNameLabel: template.signer_name_label,
+  });
+  const isParentalContext =
+    templateIntent.signerRole === "legal_representative" ||
+    templateIntent.subjects === "minors";
+  const starterPack = template.starter_pack_id
+    ? getPackById(template.starter_pack_id)
+    : undefined;
+
+  const { data: submissionRows } = await supabase
     .from("submission")
-    .select("id, signer_name, signer_email, signed_at")
+    .select("id, signer_name, signer_email, signed_at, answers")
     .eq("template_id", template.id)
     .order("signed_at", { ascending: false });
+
+  const submissions = (submissionRows ?? []).map((row) => {
+    const answers = (row.answers ?? {}) as Record<string, unknown>;
+    const groups = extractSubjectsFromAnswers(fields, answers);
+    return {
+      id: row.id,
+      signer_name: row.signer_name,
+      signer_email: row.signer_email,
+      signed_at: row.signed_at,
+      subjectsSummary: formatSubjectsSummary(groups),
+      subjectsLabel: groups.length > 0 ? formatSubjectsLabel(groups) : null,
+      subjectsSearch: subjectsSearchHaystack(groups),
+      answers,
+    };
+  });
 
   const { data: auditEvents } = await supabase
     .from("audit_event")
@@ -292,7 +361,7 @@ export default async function WaiverDetailPage({
     )
     .eq("template_id", template.id)
     .order("created_at", { ascending: false })
-    .limit(80);
+    .limit(200);
 
   const { data: versionRows } = await supabase
     .from("waiver_template_version")
@@ -334,6 +403,9 @@ export default async function WaiverDetailPage({
 
   const submissionCount = submissions?.length ?? 0;
   const lastSignedAt = submissions?.[0]?.signed_at ?? null;
+  const activity = deriveTemplateActivity(auditEvents ?? []);
+  const currentVersion = versions.find((v) => v.is_current) ?? versions[0];
+  const lastUpdateRelative = formatRelativeActivityFr(activity.lastUpdatedAt);
 
   const builtInFields: {
     key: string;
@@ -357,8 +429,27 @@ export default async function WaiverDetailPage({
     },
   ];
 
+  const hoursGlance = summarizeHours(hoursConfig);
+  const expirationGlance = summarizeExpiration({
+    mode: expirationMode,
+    expiresAt: template.expires_at,
+    expiresLabel,
+    isExpired: displayStatus === "expired",
+  });
+  const outsideHours =
+    canAcceptSignatures && hoursConfig.enabled && !withinHours;
+
+  const { data: templateGroups } = await supabase
+    .from("signing_group")
+    .select("id, name, status")
+    .eq("template_id", template.id)
+    .eq("business_id", template.business_id)
+    .order("created_at", { ascending: false });
+
+  const groupsForTemplate = templateGroups ?? [];
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-5 py-10 sm:gap-7 sm:px-6 sm:py-12">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-7 px-5 py-10 sm:gap-8 sm:px-6 sm:py-12">
       {welcome === "1" ? (
         <section className="animate-fade-up rounded-2xl border border-[color-mix(in_srgb,var(--color-brand)_35%,var(--color-border))] bg-[var(--color-surface)] p-5 shadow-[var(--elev-2)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] sm:p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-brand)]">
@@ -388,95 +479,114 @@ export default async function WaiverDetailPage({
 
       <header className="animate-fade-up flex flex-col gap-5">
         <Link
-          href="/dashboard"
-          className={`w-fit text-sm text-[var(--color-muted)] transition-colors ${motion} hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+          href={
+            template.deleted_at ? "/dashboard?view=archived" : "/dashboard"
+          }
+          className={`group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,transform] ${motion} hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
         >
-          ← Retour au tableau de bord
+          <span
+            aria-hidden
+            className={`transition-transform ${motion} group-hover:-translate-x-0.5`}
+          >
+            ←
+          </span>
+          {template.deleted_at ? "Archivées" : "Tableau de bord"}
         </Link>
 
         <div className="flex flex-col">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
-              <h1 className="text-[1.75rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[2rem]">
+              <h1 className="text-[1.625rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-2xl">
                 {template.title}
               </h1>
               <StatusBadge status={displayStatus} />
-              <span
-                className={`${badgeFine} gap-1 bg-[color-mix(in_srgb,var(--color-surface-2)_70%,var(--color-surface))] text-[var(--color-muted)] ring-1 ring-[color-mix(in_srgb,var(--color-border)_60%,transparent)]`}
-              >
-                <GitBranch size={11} strokeWidth={1.85} aria-hidden />
-                Version {template.version ?? 1}
+              <span className="rounded-md bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[10.5px] font-medium tracking-tight text-[var(--color-muted)]">
+                v{template.version ?? 1}
               </span>
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-muted)]">
-              Décharge de responsabilité
-              {expiresLabel
-                ? ` · expire le ${expiresLabel}`
-                : expirationMode === "none"
-                  ? " · sans expiration"
-                  : ""}
+            <p className="mt-2 text-[14px] leading-relaxed text-[var(--color-muted)] sm:text-[15px]">
+              {starterPack ? starterPack.label : "Décharge de responsabilité"}
             </p>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className={metaChip}>
-              <Calendar
-                size={12}
-                strokeWidth={1.85}
-                className="opacity-70"
-                aria-hidden
-              />
-              Créée le {formatDate(template.created_at)}
-            </span>
-            <span className={metaChip}>
-              <Users
-                size={12}
-                strokeWidth={1.85}
-                className="opacity-70"
-                aria-hidden
-              />
-              {submissionCount} signature{submissionCount === 1 ? "" : "s"}
-            </span>
-            {lastSignedAt ? (
+          <div className="mt-3.5 flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className={metaChip}>
-                <Clock
+                <Calendar
                   size={12}
                   strokeWidth={1.85}
                   className="opacity-70"
                   aria-hidden
                 />
-                Dernière signature le {formatDate(lastSignedAt)}
+                Créée le {formatDate(template.created_at)}
               </span>
-            ) : null}
+              <span className={metaChip}>
+                <Users
+                  size={12}
+                  strokeWidth={1.85}
+                  className="opacity-70"
+                  aria-hidden
+                />
+                {submissionCount === 0
+                  ? "Aucune signature"
+                  : `${submissionCount} signature${submissionCount === 1 ? "" : "s"}`}
+              </span>
+            </div>
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
+              {lastSignedAt ? (
+                <span>
+                  Dernière signature{" "}
+                  <span className="font-medium text-[var(--color-foreground)]/75">
+                    {formatRelativeActivityFr(lastSignedAt) ??
+                      `le ${formatDate(lastSignedAt)}`}
+                  </span>
+                </span>
+              ) : (
+                <span>En attente de la première signature</span>
+              )}
+              {lastUpdateRelative ? (
+                <>
+                  <span
+                    className="text-[var(--color-muted)]/40"
+                    aria-hidden
+                  >
+                    ·
+                  </span>
+                  <span>
+                    Modifiée{" "}
+                    <span className="font-medium text-[var(--color-foreground)]/75">
+                      {lastUpdateRelative}
+                    </span>
+                  </span>
+                </>
+              ) : null}
+            </p>
           </div>
 
-          {/* Action bar */}
-          <div className="mt-5 flex flex-wrap items-center gap-2.5 border-t border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] pt-5">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link
-                href={`/dashboard/waivers/${template.id}/edit`}
+          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-5">
+            <div className="flex flex-wrap items-center gap-2">
+              {!template.deleted_at ? (
+                <Link
+                  href={`/dashboard/waivers/${template.id}/edit`}
+                  className={btnPrimary}
+                >
+                  Modifier
+                </Link>
+              ) : null}
+              <ToggleStatusForm
+                id={template.id}
+                label={toggleLabel}
+                pendingLabel={togglePendingLabel}
                 className={btnSecondary}
-              >
-                Modifier
-              </Link>
-              <form action={toggleTemplateActive}>
-                <input type="hidden" name="id" value={template.id} />
-                <button type="submit" className={btnSecondary}>
-                  {toggleLabel}
-                </button>
-              </form>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <span
-                className="hidden h-5 w-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] sm:block"
-                aria-hidden
               />
+            </div>
+            <div className="ml-auto">
               {!template.deleted_at ? (
                 <DeleteWaiverButton
                   id={template.id}
                   title={template.title}
                   submissionCount={submissionCount}
-                  variant="full"
+                  variant="quiet"
                 />
               ) : null}
             </div>
@@ -493,134 +603,295 @@ export default async function WaiverDetailPage({
         </p>
       ) : null}
 
+      {error === "horaires" ? (
+        <p
+          role="alert"
+          className="rounded-xl border border-[color-mix(in_srgb,#b45309_25%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-4 py-3 text-[13px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]"
+        >
+          Indiquez une heure d&apos;ouverture et de fermeture valides.
+        </p>
+      ) : null}
+
       {!canAcceptSignatures ? (
         <p
           role="status"
-          className="rounded-xl border border-[color-mix(in_srgb,#b45309_25%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-4 py-3 text-[13px] leading-relaxed text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]"
+          className="rounded-xl border border-[color-mix(in_srgb,#b45309_25%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-3.5 py-2.5 text-[13px] leading-relaxed text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]"
         >
           {displayStatus === "archived"
-            ? "Cette décharge est archivée : elle n’apparaît plus dans le tableau de bord et n’accepte plus de signatures. Les signatures existantes sont conservées. Utilisez Restaurer pour la réactiver."
+            ? "Cette décharge est archivée : elle n’accepte plus de signatures. Retrouvez-la dans Archivées sur le tableau de bord. Les signatures existantes sont conservées — utilisez Restaurer pour la réactiver."
             : displayStatus === "expired"
               ? "Cette décharge est expirée : le lien public n’accepte plus de nouvelles signatures. Ajustez l’expiration ou réouvrez-la."
               : "Cette décharge est désactivée : le lien public n’accepte plus de nouvelles signatures."}
         </p>
       ) : null}
 
+      {outsideHours ? (
+        <div
+          role="status"
+          className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 py-2.5 shadow-[var(--elev-1)] sm:px-4"
+        >
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-2)] text-[var(--color-foreground)]/65">
+              <CalendarClock size={14} strokeWidth={1.85} aria-hidden />
+            </span>
+            <div className="min-w-0 pt-px">
+              <p className="text-[13.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                {nextOpenHint
+                  ? `Hors horaires · rouvre ${nextOpenHint}`
+                  : "Hors horaires · signatures temporairement fermées"}
+              </p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--color-muted)]">
+                La décharge reste ouverte de votre côté
+                {hoursSummary ? ` · ${hoursSummary}` : ""}.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Partage — always visible */}
       <section className={`${cardFeatured} animate-fade-up-delay`}>
         <SectionHeader
-          icon={<Share2 size={17} strokeWidth={1.85} />}
+          icon={<Share2 size={16} strokeWidth={1.85} />}
           title="Partage"
-          description="Diffusez le lien ou affichez le QR code à l’accueil."
+          description="Lien ou QR code pour faire signer."
         />
 
-        <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-7">
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="mt-5 flex flex-col gap-5">
+          <div className="flex min-w-0 flex-col gap-2">
             <span className={labelCaps}>Lien public</span>
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <a
                 href={publicUrl}
                 target="_blank"
                 rel="noreferrer"
-                className={`min-w-0 flex-1 truncate rounded-xl border border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_88%,var(--color-surface-2))] px-4 py-3 font-mono text-[13px] text-[var(--color-brand)] shadow-[var(--elev-1)] transition-[border-color,background-color,box-shadow] ${motion} hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+                className={`min-w-0 flex-1 truncate rounded-xl border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_72%,var(--color-surface-2))] px-3.5 py-2.5 font-mono text-[13px] text-[var(--color-brand)] shadow-[var(--elev-1)] transition-[border-color,background-color,box-shadow] ${motion} hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
               >
                 {publicUrl}
               </a>
               <CopyLinkButton url={publicUrl} />
             </div>
-            <p className={textCaption}>
-              Vos participants ouvrent ce lien et signent depuis leur téléphone.
-            </p>
           </div>
 
-          <div
-            className={`flex w-full flex-col gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_62%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-surface-2)_50%,var(--color-background))] p-4 shadow-[var(--elev-2)] sm:mx-auto sm:w-auto lg:mx-0 lg:w-[12.5rem] lg:shrink-0 dark:bg-[color-mix(in_srgb,var(--color-surface-2)_65%,var(--color-background))]`}
-          >
-            <span className={labelCaps}>QR code</span>
-            <div className="mx-auto overflow-hidden rounded-xl border border-black/[0.06] bg-white p-3 shadow-[var(--elev-2)] dark:border-white/[0.08]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrDataUrl}
-                alt="QR code de la décharge"
-                className="h-[8.5rem] w-[8.5rem]"
+          <div className="grid items-stretch gap-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-5">
+            <div className={`flex w-full flex-col gap-2.5 justify-self-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-surface-2))] p-3.5 shadow-[var(--elev-1)] transition-[border-color,box-shadow,transform] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] hover:shadow-[var(--elev-2)] sm:justify-self-start`}>
+              <span className={labelCaps}>QR code</span>
+              <QrPreview
+                templateId={template.id}
+                dataUrl={qrDataUrl}
+                filename={`qr-${template.public_slug}.png`}
+                downloadClassName={`${btnSecondary} h-9 w-full justify-center text-[13px]`}
               />
             </div>
-            <a
-              href={qrDataUrl}
-              download={`qr-${template.public_slug}.png`}
-              className={`${btnSecondary} w-full justify-center`}
-            >
-              <Download size={15} strokeWidth={1.85} aria-hidden />
-              Télécharger
-            </a>
+
+            <div className="flex min-w-0 flex-col gap-3.5">
+              <div>
+                <p className={`${labelCaps} mb-2.5`}>Activité</p>
+                <ActivityInsights
+                  activity={activity}
+                  currentVersionCreatedAt={currentVersion?.created_at ?? null}
+                  className="grid gap-2 sm:grid-cols-3"
+                />
+              </div>
+
+              <a
+                href="#disponibilite"
+                className={`group flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-background))] px-3.5 py-2.5 transition-[border-color,background-color,box-shadow,transform] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--color-muted)]">
+                    Horaires
+                  </span>
+                  <span className="mt-0.5 block text-[13px] font-medium tracking-tight text-[var(--color-foreground)]">
+                    {hoursGlance.primary}
+                    {hoursGlance.secondary ? (
+                      <span className="font-normal text-[var(--color-muted)]">
+                        {" "}
+                        · {hoursGlance.secondary}
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+                <span
+                  className="hidden h-8 w-px bg-[color-mix(in_srgb,var(--color-border)_60%,transparent)] sm:block"
+                  aria-hidden
+                />
+                <span className="min-w-0">
+                  <span className="block text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--color-muted)]">
+                    Expiration
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-[13px] font-medium tracking-tight ${
+                      expirationGlance.tone === "warning"
+                        ? "text-[color-mix(in_srgb,#b45309_88%,var(--color-foreground))]"
+                        : "text-[var(--color-foreground)]"
+                    }`}
+                  >
+                    {expirationGlance.primary}
+                  </span>
+                </span>
+                <span className="ml-auto text-[12px] font-medium text-[var(--color-brand)] opacity-80 transition-opacity duration-[180ms] group-hover:opacity-100">
+                  Ajuster →
+                </span>
+              </a>
+            </div>
           </div>
+
+          {!template.deleted_at ? (
+            <div className="border-t border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] pt-5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] text-[var(--color-brand)]">
+                  <Users size={14} strokeWidth={1.85} aria-hidden />
+                </span>
+                <span className={labelCaps}>Mode groupe</span>
+              </div>
+              <p className={`mt-2 max-w-xl ${textSecondary}`}>
+                Un groupe permet d&apos;utiliser cette décharge pour plusieurs
+                participants. Chacun retrouve automatiquement sa fiche lors de
+                la signature.
+              </p>
+
+              {groupsForTemplate.length > 0 ? (
+                <ul className="mt-3 flex flex-col gap-1.5">
+                  {groupsForTemplate.slice(0, 4).map((g) => (
+                    <li key={g.id}>
+                      <Link
+                        href={`/dashboard/groupes/${g.id}`}
+                        className={`flex items-center justify-between gap-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-background))] px-3.5 py-2.5 text-[13px] transition-[border-color,background-color,box-shadow,transform] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+                      >
+                        <span className="min-w-0 truncate font-medium text-[var(--color-foreground)]">
+                          {g.name}
+                        </span>
+                        <span className="shrink-0 text-[12px] text-[var(--color-muted)]">
+                          {g.status === "open" ? "Ouvert" : "Fermé"}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="mt-3.5 flex flex-col gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/dashboard/groupes/new?template=${template.id}`}
+                    className={btnSecondary}
+                  >
+                    {groupsForTemplate.length > 0
+                      ? "Nouveau groupe"
+                      : "Créer un groupe"}
+                  </Link>
+                  {groupsForTemplate.length > 4 ? (
+                    <Link
+                      href="/dashboard/groupes"
+                      className="text-[13px] font-medium text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
+                    >
+                      Voir tous les groupes
+                    </Link>
+                  ) : null}
+                </div>
+                <Link
+                  href={`/dashboard/groupes/express?template=${template.id}`}
+                  className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-foreground)]/75 underline-offset-2 transition-colors hover:text-[var(--color-brand)] hover:underline"
+                >
+                  Groupe express
+                  <span className="font-normal text-[var(--color-muted)]">
+                    · sans liste
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
+      <AvailabilitySection
+        templateId={template.id}
+        hoursConfig={hoursConfig}
+        expirationMode={expirationMode}
+        expirationDays={template.expiration_days}
+        expiresAt={template.expires_at}
+        expiresLabel={expiresLabel}
+        isExpired={displayStatus === "expired"}
+        initiallyOpen={availabilityInitiallyOpen}
+      />
+
       <WaiverDetailTabs
         templateId={template.id}
-        active={activeTab}
+        initialTab={activeTab}
         counts={{
           signatures: submissionCount,
           versions: versions.length,
-          historique: auditEvents?.length ?? 0,
+          historique: (auditEvents ?? []).filter((e) =>
+            isTimelineStoryEvent(e.event_type),
+          ).length,
         }}
-      />
-
-      {activeTab === "signatures" ? (
+        panels={{
+          signatures: (
         <section className={card}>
           <SectionHeader
-            icon={<PenLine size={17} strokeWidth={1.85} />}
-            title="Signatures collectées"
+            icon={<PenLine size={16} strokeWidth={1.85} />}
+            title="Signatures"
             description={
               submissionCount === 0
-                ? "Les signatures apparaîtront ici dès qu’un participant aura signé."
-                : `${submissionCount} signature${submissionCount === 1 ? "" : "s"} enregistrée${submissionCount === 1 ? "" : "s"}.`
+                ? isParentalContext
+                  ? "Aucune autorisation pour le moment."
+                  : "Aucune signature pour le moment."
+                : `${submissionCount} signature${submissionCount === 1 ? "" : "s"}${
+                    lastSignedAt
+                      ? ` · dernière ${formatRelativeActivityFr(lastSignedAt) ?? ""}`
+                      : ""
+                  }${
+                    isParentalContext ? " · recherche possible par enfant" : ""
+                  }`
             }
             action={
               submissionCount > 0 ? (
                 <ExportCsvButton
                   href={`/dashboard/waivers/${template.id}/submissions/export`}
-                  className={btnSecondary}
+                  label="Exporter"
+                  className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_9%,var(--color-surface))] px-3.5 text-[13px] font-medium tracking-tight text-[color-mix(in_srgb,var(--color-brand)_92%,var(--color-foreground))] shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color,color] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_14%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-65`}
                 />
               ) : null
             }
           />
 
-          {submissionCount > 0 ? (
-            <p
-              role="note"
-              className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_35%,var(--color-background))] px-4 py-3 text-[12px] leading-relaxed text-[var(--color-muted)]"
-            >
-              Les signatures et preuves restent conservées même si vous archivez
-              cette décharge. Exportez le CSV ou téléchargez les PDF pour vos
-              dossiers.
-            </p>
-          ) : null}
-
           <div className="mt-5">
             <SubmissionsList
               templateId={template.id}
+              fields={fields.map((f) => ({
+                key: f.key,
+                label: f.label,
+                type: f.type,
+              }))}
+              groups={groupsForTemplate.map((g) => ({ id: g.id, name: g.name }))}
               submissions={submissions ?? []}
+              emptyContext={{
+                createdAt: template.created_at,
+                publicUrl,
+                lastLinkViewedAt: activity.lastLinkViewedAt,
+                linkViewCount: activity.linkViews,
+              }}
             />
           </div>
         </section>
-      ) : null}
-
-      {activeTab === "contenu" ? (
+          ),
+          contenu: (
         <div className="flex flex-col gap-5">
           <section className={card}>
             <SectionHeader
-              icon={<ScrollText size={17} strokeWidth={1.85} />}
+              icon={<ScrollText size={16} strokeWidth={1.85} />}
               title="Texte juridique"
-              description="Le contenu lu et accepté par vos participants."
+              description="Texte lu et accepté à la signature."
               action={
-                <Link
-                  href={`/dashboard/waivers/${template.id}/edit`}
-                  className={btnSecondary}
-                >
-                  Modifier
-                </Link>
+                !template.deleted_at ? (
+                  <Link
+                    href={`/dashboard/waivers/${template.id}/edit`}
+                    className={btnSecondary}
+                  >
+                    Modifier
+                  </Link>
+                ) : null
               }
             />
             <div className="mt-5 max-h-[22rem] overflow-y-auto rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_62%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_60%,var(--color-surface-2))] px-5 py-5 sm:px-6 dark:bg-[color-mix(in_srgb,var(--color-background)_40%,var(--color-surface-2))]">
@@ -632,9 +903,9 @@ export default async function WaiverDetailPage({
 
           <section className={card}>
             <SectionHeader
-              icon={<ListChecks size={17} strokeWidth={1.85} />}
+              icon={<ListChecks size={16} strokeWidth={1.85} />}
               title="Champs demandés"
-              description="Informations collectées lors de la signature."
+              description="Informations collectées sur le formulaire."
             />
             <ul className="mt-5 flex flex-col gap-2">
               {[...builtInFields, ...fields].map((f) => {
@@ -685,57 +956,29 @@ export default async function WaiverDetailPage({
             </ul>
           </section>
         </div>
-      ) : null}
-
-      {activeTab === "expiration" ? (
+          ),
+          historique: (
         <section className={card}>
           <SectionHeader
-            icon={<Timer size={17} strokeWidth={1.85} />}
-            title="Expiration"
-            description="Contrôlez jusqu’à quand de nouvelles signatures sont acceptées."
-          />
-          {expiresLabel ? (
-            <p className={`mt-5 ${textSecondary}`}>
-              Expiration effective :{" "}
-              <span className="font-medium text-[var(--color-foreground)]">
-                {expiresLabel}
-              </span>
-            </p>
-          ) : (
-            <p className={`mt-5 ${textSecondary}`}>
-              Aucune date d&apos;expiration définie.
-            </p>
-          )}
-          <ExpirationSettings
-            templateId={template.id}
-            initialMode={expirationMode}
-            initialDays={template.expiration_days}
-            initialExpiresAt={template.expires_at}
-          />
-        </section>
-      ) : null}
-
-      {activeTab === "versions" ? (
-        <section className={card}>
-          <SectionHeader
-            icon={<GitBranch size={17} strokeWidth={1.85} />}
-            title="Versions"
-            description="Chaque signature reste liée à la version exacte acceptée."
-          />
-          <VersionHistory versions={versions} />
-        </section>
-      ) : null}
-
-      {activeTab === "historique" ? (
-        <section className={card}>
-          <SectionHeader
-            icon={<History size={17} strokeWidth={1.85} />}
+            icon={<History size={16} strokeWidth={1.85} />}
             title="Historique"
-            description="Journal des événements liés à cette décharge."
+            description="Actions importantes sur cette décharge."
           />
           <AuditTimeline events={auditEvents ?? []} />
         </section>
-      ) : null}
+          ),
+          versions: (
+        <section className={card}>
+          <SectionHeader
+            icon={<GitBranch size={16} strokeWidth={1.85} />}
+            title="Versions"
+            description="Chaque signature reste liée à la version acceptée."
+          />
+          <VersionHistory versions={versions} />
+        </section>
+          ),
+        }}
+      />
     </main>
   );
 }

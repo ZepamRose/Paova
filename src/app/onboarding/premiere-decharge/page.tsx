@@ -2,8 +2,37 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/server";
-import { WAIVER_PRESETS } from "@/lib/waiver-presets";
+import {
+  getPrimaryPacks,
+  getSecondaryPacks,
+} from "@/lib/waiver-packs";
 import { createFromPreset } from "@/app/dashboard/waivers/actions";
+
+function PackSubmitButton({
+  packId,
+  label,
+  description,
+}: {
+  packId: string;
+  label: string;
+  description: string;
+}) {
+  return (
+    <form action={createFromPreset}>
+      <input type="hidden" name="preset_id" value={packId} />
+      <button
+        type="submit"
+        className="flex w-full flex-col gap-1 rounded-xl border border-[var(--color-border)] p-5 text-left transition-colors hover:border-[var(--color-brand)] hover:bg-[var(--color-surface-2)]"
+      >
+        <span className="font-semibold tracking-tight">{label}</span>
+        <span className="text-sm text-[var(--color-muted)]">{description}</span>
+        <span className="mt-2 text-sm font-medium text-[var(--color-brand)]">
+          Utiliser ce contexte →
+        </span>
+      </button>
+    </form>
+  );
+}
 
 export default async function FirstWaiverOnboardingPage({
   searchParams,
@@ -40,6 +69,9 @@ export default async function FirstWaiverOnboardingPage({
     redirect("/dashboard");
   }
 
+  const primaryPacks = getPrimaryPacks();
+  const secondaryPacks = getSecondaryPacks();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-12">
       <BrandLogo href="/dashboard" />
@@ -52,40 +84,52 @@ export default async function FirstWaiverOnboardingPage({
           Créez votre première décharge
         </h1>
         <p className="max-w-lg text-sm text-[var(--color-muted)]">
-          Choisissez un modèle prêt à l&apos;emploi. Vous pourrez le modifier
-          ensuite — un clic suffit pour démarrer.
+          Choisissez le contexte qui correspond à votre activité. Vous pourrez
+          tout modifier ensuite.
         </p>
       </div>
 
       {error === "preset" && (
         <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm">
-          Modèle introuvable. Réessayez ou créez une décharge manuellement.
+          Contexte introuvable. Réessayez ou créez une décharge manuellement.
         </p>
       )}
 
       <ul className="flex flex-col gap-3">
-        {WAIVER_PRESETS.map((preset) => (
-          <li key={preset.id}>
-            <form action={createFromPreset}>
-              <input type="hidden" name="preset_id" value={preset.id} />
-              <button
-                type="submit"
-                className="flex w-full flex-col gap-1 rounded-xl border border-[var(--color-border)] p-5 text-left transition-colors hover:border-[var(--color-brand)] hover:bg-[var(--color-surface-2)]"
-              >
-                <span className="font-semibold tracking-tight">
-                  {preset.label}
-                </span>
-                <span className="text-sm text-[var(--color-muted)]">
-                  {preset.description}
-                </span>
-                <span className="mt-2 text-sm font-medium text-[var(--color-brand)]">
-                  Utiliser ce modèle →
-                </span>
-              </button>
-            </form>
+        {primaryPacks.map((pack) => (
+          <li key={pack.id}>
+            <PackSubmitButton
+              packId={pack.id}
+              label={pack.label}
+              description={pack.description}
+            />
           </li>
         ))}
       </ul>
+
+      {secondaryPacks.length > 0 ? (
+        <details className="group rounded-xl border border-[var(--color-border)]">
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)] [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between gap-3">
+              Voir plus de contextes
+              <span className="text-[var(--color-muted)] transition-transform group-open:rotate-45">
+                +
+              </span>
+            </span>
+          </summary>
+          <ul className="flex flex-col gap-3 border-t border-[var(--color-border)] p-3">
+            {secondaryPacks.map((pack) => (
+              <li key={pack.id}>
+                <PackSubmitButton
+                  packId={pack.id}
+                  label={pack.label}
+                  description={pack.description}
+                />
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-6 text-sm">
         <Link
@@ -98,7 +142,7 @@ export default async function FirstWaiverOnboardingPage({
           href="/dashboard"
           className="text-[var(--color-muted)] hover:underline"
         >
-          Passer et aller au tableau de bord
+          Passer pour l&apos;instant
         </Link>
       </div>
     </main>

@@ -4,9 +4,11 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { recordAuditEvent } from "@/lib/audit";
 import type { AuditEventType } from "@/lib/audit";
 import {
+  configFromTemplateRow,
   ensureTemplateNotStale,
   isExpirationMode,
   isTemplateStatus,
+  isWithinSignatureHours,
   type ExpirationMode,
 } from "@/lib/templates";
 
@@ -43,7 +45,7 @@ export async function POST(
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
-      "id, business_id, title, status, expiration_mode, expiration_days, expires_at, deleted_at",
+      "id, business_id, title, status, expiration_mode, expiration_days, expires_at, deleted_at, signature_hours_enabled, signature_timezone, signature_hours_start, signature_hours_end, signature_hours_days",
     )
     .eq("public_slug", slug)
     .maybeSingle();
@@ -72,6 +74,11 @@ export async function POST(
     expires_at: template.expires_at,
   });
   if (!lifecycle.acceptsSignatures) {
+    return NextResponse.json({ ok: false }, { status: 404 });
+  }
+
+  const hoursConfig = configFromTemplateRow(template);
+  if (!isWithinSignatureHours(hoursConfig)) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 

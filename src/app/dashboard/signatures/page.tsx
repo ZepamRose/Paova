@@ -1,30 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FileDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { searchSubmissions } from "@/lib/search";
-
-const inputClass =
-  "h-10 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-sm shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow] focus:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))]";
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function buildExportHref(params: Record<string, string | undefined>) {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value) qs.set(key, value);
-  }
-  const s = qs.toString();
-  return `/dashboard/signatures/export${s ? `?${s}` : ""}`;
-}
+import { enrichSearchRows, searchSubmissions } from "@/lib/search";
+import { SignaturesLiveSearch } from "./signatures-live-search";
 
 export default async function SignaturesSearchPage({
   searchParams,
@@ -32,9 +10,13 @@ export default async function SignaturesSearchPage({
   searchParams: Promise<{
     q?: string;
     template?: string;
+    group?: string;
     from?: string;
     to?: string;
     status?: string;
+    sort?: string;
+    page?: string;
+    scope?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -56,231 +38,131 @@ export default async function SignaturesSearchPage({
     redirect("/onboarding");
   }
 
-  const { data: templates } = await supabase
-    .from("waiver_template")
-    .select("id, title")
-    .eq("business_id", business.id)
-    .is("deleted_at", null)
-    .order("title", { ascending: true });
+  const [
+    { data: templates },
+    { data: groups },
+    { count: totalSignatures },
+    { data: latest },
+  ] = await Promise.all([
+    supabase
+      .from("waiver_template")
+      .select("id, title")
+      .eq("business_id", business.id)
+      .is("deleted_at", null)
+      .order("title", { ascending: true }),
+    supabase
+      .from("signing_group")
+      .select("id, name, template_id, status")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("submission_search")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business.id),
+    supabase
+      .from("submission_search")
+      .select("signed_at")
+      .eq("business_id", business.id)
+      .order("signed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const groupOptions = (groups ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    templateId: g.template_id,
+    status: g.status,
+  }));
+
+  const overview = {
+    totalSignatures: totalSignatures ?? 0,
+    totalTemplates: (templates ?? []).length,
+    totalGroups: groupOptions.length,
+    lastSignedAt: latest?.signed_at ?? null,
+  };
 
   const q = sp.q?.trim() || "";
   const templateId = sp.template?.trim() || "";
+  const groupId = sp.group?.trim() || "";
   const from = sp.from?.trim() || "";
   const to = sp.to?.trim() || "";
   const status = sp.status?.trim() || "signed";
+  const sortRaw = sp.sort?.trim() || "date_desc";
+  const initialSort =
+    sortRaw === "date_asc" ||
+    sortRaw === "name_asc" ||
+    sortRaw === "name_desc" ||
+    sortRaw === "date_desc"
+      ? sortRaw
+      : "date_desc";
+  const pageParsed = Number.parseInt(sp.page?.trim() || "1", 10);
+  const initialPage =
+    Number.isFinite(pageParsed) && pageParsed > 0 ? pageParsed : 1;
+  const scopeRaw = sp.scope?.trim() || "all";
+  const initialScope =
+    scopeRaw === "today" || scopeRaw === "week" ? scopeRaw : "all";
 
-  let rows: Awaited<ReturnType<typeof searchSubmissions>> = [];
-  let searchError: string | null = null;
+  let initialRows: Awaited<ReturnType<typeof enrichSearchRows>> = [];
+  let initialError: string | null = null;
   try {
-    rows = await searchSubmissions(supabase, {
+    const rows = await searchSubmissions(supabase, {
       q,
       templateId: templateId || null,
+      groupId: groupId || null,
       from: from || null,
       to: to || null,
       status: status || null,
-      limit: 100,
+      limit: 200,
       offset: 0,
     });
+    initialRows = await enrichSearchRows(supabase, rows);
   } catch {
-    searchError =
+    initialError =
       "La recherche est indisponible. Vérifiez que la migration 0010 a été appliquée.";
   }
 
-  const exportHref = buildExportHref({
-    q: q || undefined,
-    template: templateId || undefined,
-    from: from || undefined,
-    to: to || undefined,
-    status: status || undefined,
-  });
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-5 py-10 sm:gap-9 sm:px-6 sm:py-12">
-      <header className="flex flex-col gap-4">
-        <Link
-          href="/dashboard"
-          className="w-fit text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
+    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-2.5 px-5 py-5 sm:gap-3 sm:px-6 sm:py-6">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent_72%)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-48 bg-[radial-gradient(ellipse_at_bottom,color-mix(in_srgb,var(--color-foreground)_4%,transparent),transparent_75%)]"
+        aria-hidden
+      />
+      <Link
+        href="/dashboard"
+        className="group inline-flex w-fit items-center gap-1.5 text-[13px] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)]"
+      >
+        <span
+          className="transition-transform duration-150 group-hover:-translate-x-0.5"
+          aria-hidden
         >
-          ← Retour au tableau de bord
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-[1.75rem] font-semibold tracking-tight sm:text-[2rem]">
-              Signatures
-            </h1>
-            <p className="mt-1.5 text-[15px] text-[var(--color-muted)]">
-              Recherchez par nom, email, téléphone, référence ou empreinte.
-            </p>
-          </div>
-          <a
-            href={exportHref}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-4 text-sm font-medium shadow-[var(--elev-1)] transition-[transform,box-shadow,background-color] hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)]"
-          >
-            <FileDown size={15} strokeWidth={1.85} aria-hidden />
-            Exporter CSV
-          </a>
-        </div>
-      </header>
+          ←
+        </span>
+        Tableau de bord
+      </Link>
 
-      <section className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] bg-[var(--color-surface)] p-5 shadow-[var(--elev-2)] sm:p-6">
-        <form
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-          method="get"
-        >
-          <div className="relative sm:col-span-2 lg:col-span-3">
-            <Search
-              size={15}
-              strokeWidth={1.85}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)]"
-              aria-hidden
-            />
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder="Nom, email, téléphone, PV-…, SHA-256…"
-              className={`${inputClass} pl-10`}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="template" className="text-[12px] font-medium text-[var(--color-muted)]">
-              Décharge
-            </label>
-            <select
-              id="template"
-              name="template"
-              defaultValue={templateId}
-              className={inputClass}
-            >
-              <option value="">Toutes</option>
-              {(templates ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="from" className="text-[12px] font-medium text-[var(--color-muted)]">
-              Du
-            </label>
-            <input
-              id="from"
-              type="date"
-              name="from"
-              defaultValue={from}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="to" className="text-[12px] font-medium text-[var(--color-muted)]">
-              Au
-            </label>
-            <input
-              id="to"
-              type="date"
-              name="to"
-              defaultValue={to}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="status" className="text-[12px] font-medium text-[var(--color-muted)]">
-              Statut
-            </label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={status}
-              className={inputClass}
-            >
-              <option value="signed">Signées</option>
-              <option value="all">Tous</option>
-            </select>
-          </div>
-
-          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-2">
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--color-brand)] px-4 text-sm font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[filter,transform] hover:-translate-y-px hover:brightness-[1.04]"
-            >
-              Rechercher
-            </button>
-            <Link
-              href="/dashboard/signatures"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] px-4 text-sm font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
-            >
-              Réinitialiser
-            </Link>
-          </div>
-        </form>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <p className="text-[13px] text-[var(--color-muted)]">
-          {searchError
-            ? searchError
-            : `${rows.length} résultat${rows.length === 1 ? "" : "s"}${
-                rows.length >= 100 ? " (limité à 100)" : ""
-              }`}
-        </p>
-
-        {!searchError && rows.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] px-6 py-10 text-center text-sm text-[var(--color-muted)]">
-            Aucune signature ne correspond à ces filtres.
-          </div>
-        ) : null}
-
-        {!searchError && rows.length > 0 ? (
-          <ul className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-1)] divide-y divide-[color-mix(in_srgb,var(--color-border)_48%,transparent)]">
-            {rows.map((row) => (
-              <li
-                key={row.submission_id}
-                className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold tracking-tight">
-                    {row.signer_name}
-                  </p>
-                  <p className="truncate text-[12px] text-[var(--color-muted)]">
-                    {row.signer_email || "Sans email"}
-                    {row.phone ? ` · ${row.phone}` : ""}
-                  </p>
-                  <p className="mt-1 truncate text-[12px] text-[var(--color-muted)]">
-                    {row.template_title}
-                    {row.proof_reference ? ` · ${row.proof_reference}` : ""}
-                    {row.template_version != null
-                      ? ` · v${row.template_version}`
-                      : ""}
-                  </p>
-                  <p className="mt-0.5 text-[12px] tabular-nums text-[var(--color-muted)]">
-                    {formatDateTime(row.signed_at)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Link
-                    href={`/dashboard/waivers/${row.template_id}`}
-                    className="inline-flex h-9 items-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] px-3 text-[13px] font-medium transition-colors hover:bg-[var(--color-surface-2)]"
-                  >
-                    Décharge
-                  </Link>
-                  <a
-                    href={`/dashboard/waivers/${row.template_id}/submissions/${row.submission_id}/pdf`}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,#c45c5c_18%,var(--color-border))] bg-[color-mix(in_srgb,#c45c5c_5%,var(--color-surface))] px-3 text-[13px] font-medium text-[#a84848] dark:text-[#e8b4b4]"
-                  >
-                    <FileDown size={14} strokeWidth={1.85} aria-hidden />
-                    PDF
-                  </a>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
+      <SignaturesLiveSearch
+        templates={templates ?? []}
+        groups={groupOptions}
+        overview={overview}
+        initialFilters={{
+          q,
+          template: templateId,
+          group: groupId,
+          from,
+          to,
+          status,
+        }}
+        initialSort={initialSort}
+        initialPage={initialPage}
+        initialScope={initialScope}
+        initialRows={initialRows}
+        initialError={initialError}
+      />
     </main>
   );
 }

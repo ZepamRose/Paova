@@ -1,12 +1,50 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Archive } from "lucide-react";
 import { deleteTemplate } from "./waivers/actions";
+import { PendingSubmitButton } from "./pending-submit-button";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+function ArchiveSubmitButton() {
+  return (
+    <PendingSubmitButton
+      pendingLabel="Archivage…"
+      idle={
+        <>
+          <Archive size={14} strokeWidth={1.9} aria-hidden />
+          <span className="whitespace-nowrap">Archiver</span>
+        </>
+      }
+      className="inline-flex h-11 min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-foreground)] px-4 text-sm font-medium text-[var(--color-background)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter,opacity] duration-200 ease-out hover:-translate-y-px hover:brightness-[1.06] hover:shadow-[var(--elev-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-foreground)_28%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-75 sm:h-10 sm:min-h-10"
+    />
+  );
+}
+
+function ArchiveCancelButton({
+  onClose,
+  cancelRef,
+}: {
+  onClose: () => void;
+  cancelRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      ref={cancelRef}
+      type="button"
+      onClick={onClose}
+      disabled={pending}
+      className="inline-flex h-11 min-h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-medium text-[var(--color-foreground)] transition-[background-color,border-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-foreground)_22%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] active:scale-[0.985] disabled:pointer-events-none disabled:opacity-60 sm:h-10 sm:min-h-10"
+    >
+      Annuler
+    </button>
+  );
+}
 
 export function DeleteWaiverDialog({
   open,
@@ -82,14 +120,14 @@ export function DeleteWaiverDialog({
             className="relative z-10 w-full max-w-[420px] overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)] will-change-transform"
           >
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(120%_80%_at_50%_-20%,color-mix(in_srgb,#dc2626_14%,transparent),transparent)]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(120%_80%_at_50%_-20%,color-mix(in_srgb,var(--color-foreground)_7%,transparent),transparent)]"
               aria-hidden
             />
 
             <div className="relative px-5 pb-5 pt-6 sm:px-6 sm:pb-6 sm:pt-7">
               <div className="flex items-start gap-3.5">
-                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,#dc2626_10%,var(--color-surface))] text-red-600 ring-1 ring-[color-mix(in_srgb,#dc2626_16%,transparent)] dark:text-red-400">
-                  <Trash2 size={18} strokeWidth={1.9} aria-hidden />
+                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-surface-2)] text-[var(--color-foreground)]/75 ring-1 ring-[color-mix(in_srgb,var(--color-border)_80%,transparent)]">
+                  <Archive size={18} strokeWidth={1.75} aria-hidden />
                 </span>
                 <div className="min-w-0 pt-0.5">
                   <h2
@@ -110,8 +148,12 @@ export function DeleteWaiverDialog({
                       »
                     </p>
                     <p>
-                      Elle disparaîtra de votre tableau de bord et n&apos;acceptera
-                      plus de nouvelles signatures.
+                      Elle passera dans{" "}
+                      <span className="font-medium text-[var(--color-foreground)]/80">
+                        Archivées
+                      </span>{" "}
+                      sur le tableau de bord et n&apos;acceptera plus de nouvelles
+                      signatures.
                     </p>
                     <p>
                       Les signatures et preuves numériques déjà collectées seront
@@ -146,28 +188,15 @@ export function DeleteWaiverDialog({
               >
                 <input type="hidden" name="id" value={id} />
                 <p className="mb-3.5 text-[12.5px] leading-relaxed text-[var(--color-muted)] sm:text-right">
-                  Vous pourrez la restaurer plus tard depuis sa page détail.
+                  Retrouvez-la ensuite dans{" "}
+                  <span className="font-medium text-[var(--color-foreground)]/80">
+                    Archivées
+                  </span>{" "}
+                  sur le tableau de bord.
                 </p>
                 <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end sm:gap-2">
-                  <button
-                    ref={cancelRef}
-                    type="button"
-                    onClick={onClose}
-                    className="inline-flex h-11 min-h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-medium text-[var(--color-foreground)] transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out hover:bg-[var(--color-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-foreground)_22%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] active:scale-[0.985] sm:h-10 sm:min-h-10"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    className="inline-flex h-11 min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium text-white shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_18px_-8px_rgba(220,38,38,0.55),0_2px_4px_-2px_rgba(127,29,29,0.25)] transition-[transform,box-shadow,filter] duration-200 ease-out hover:-translate-y-px hover:shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_12px_22px_-8px_rgba(220,38,38,0.62),0_3px_6px_-2px_rgba(127,29,29,0.28)] hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] active:translate-y-0 active:scale-[0.985] active:brightness-[0.98] sm:h-10 sm:min-h-10 dark:shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_10px_22px_-10px_rgba(248,113,113,0.35)]"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(to bottom, #ef4444, #dc2626)",
-                    }}
-                  >
-                    <Trash2 size={14} strokeWidth={2} aria-hidden />
-                    <span className="whitespace-nowrap">Archiver</span>
-                  </button>
+                  <ArchiveCancelButton onClose={onClose} cancelRef={cancelRef} />
+                  <ArchiveSubmitButton />
                 </div>
               </form>
             </div>

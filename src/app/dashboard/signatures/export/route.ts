@@ -3,13 +3,31 @@ import { createClient } from "@/lib/supabase/server";
 import { recordAuditEvent } from "@/lib/audit";
 import { buildSearchIndexCsv, searchSubmissions } from "@/lib/search";
 
+// Mirrors the client-side "Filtrer par période" quick filter so an export
+// always contains exactly the rows the user currently sees on screen.
+function filterByPeriod<T extends { signed_at: string }>(
+  rows: T[],
+  scope: string | null,
+): T[] {
+  if (scope !== "today" && scope !== "week") return rows;
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekOffset = (now.getDay() + 6) % 7;
+  const startWeek = new Date(startToday);
+  startWeek.setDate(startWeek.getDate() - weekOffset);
+  const since = scope === "today" ? startToday : startWeek;
+  return rows.filter((row) => new Date(row.signed_at) >= since);
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q");
   const templateId = url.searchParams.get("template");
+  const groupId = url.searchParams.get("group");
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
   const status = url.searchParams.get("status");
+  const scope = url.searchParams.get("scope");
 
   const supabase = await createClient();
   const {
@@ -33,6 +51,7 @@ export async function GET(request: Request) {
     rows = await searchSubmissions(supabase, {
       q,
       templateId,
+      groupId,
       from,
       to,
       status: status === "all" ? null : status || "signed",
@@ -44,6 +63,8 @@ export async function GET(request: Request) {
     return new NextResponse(message, { status: 500 });
   }
 
+  const scopedRows = filterByPeriod(rows, scope);
+
   await recordAuditEvent(supabase, {
     businessId: business.id,
     actorUserId: user.id,
@@ -53,17 +74,19 @@ export async function GET(request: Request) {
     templateId: templateId || null,
     eventType: "export.csv_generated",
     payload: {
-      row_count: rows.length,
+      row_count: scopedRows.length,
       scope: "search",
       q: q || null,
       template_id: templateId || null,
+      group_id: groupId || null,
+      period_scope: scope || "all",
       from: from || null,
       to: to || null,
       status: status || "signed",
     },
   });
 
-  const body = buildSearchIndexCsv(rows);
+  const body = buildSearchIndexCsv(scopedRows);
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(body, {

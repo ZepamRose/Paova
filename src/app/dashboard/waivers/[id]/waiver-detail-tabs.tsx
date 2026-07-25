@@ -1,79 +1,95 @@
-import Link from "next/link";
+"use client";
 
-export type WaiverDetailTabId =
-  | "signatures"
-  | "contenu"
-  | "expiration"
-  | "versions"
-  | "historique";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  WAIVER_DETAIL_TABS,
+  waiverDetailTabHref,
+  type WaiverDetailTabId,
+} from "./waiver-detail-tab-ids";
 
-const TABS: { id: WaiverDetailTabId; label: string }[] = [
-  { id: "signatures", label: "Signatures" },
-  { id: "contenu", label: "Contenu" },
-  { id: "expiration", label: "Expiration" },
-  { id: "versions", label: "Versions" },
-  { id: "historique", label: "Historique" },
-];
-
-export function isWaiverDetailTab(value: unknown): value is WaiverDetailTabId {
-  return (
-    typeof value === "string" &&
-    TABS.some((tab) => tab.id === value)
-  );
-}
+export type { WaiverDetailTabId } from "./waiver-detail-tab-ids";
+export { isWaiverDetailTab } from "./waiver-detail-tab-ids";
 
 export function WaiverDetailTabs({
   templateId,
-  active,
+  initialTab,
   counts,
+  panels,
 }: {
   templateId: string;
-  active: WaiverDetailTabId;
+  initialTab: WaiverDetailTabId;
   counts?: Partial<Record<WaiverDetailTabId, number>>;
+  panels: Record<WaiverDetailTabId, ReactNode>;
 }) {
-  return (
-    <nav
-      aria-label="Sections de la décharge"
-      className="-mx-1 overflow-x-auto px-1"
-    >
-      <ul className="flex min-w-max gap-1 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_40%,var(--color-background))] p-1">
-        {TABS.map((tab) => {
-          const selected = tab.id === active;
-          const count = counts?.[tab.id];
-          const href =
-            tab.id === "signatures"
-              ? `/dashboard/waivers/${templateId}`
-              : `/dashboard/waivers/${templateId}?tab=${tab.id}`;
+  const [active, setActive] = useState<WaiverDetailTabId>(initialTab);
 
-          return (
-            <li key={tab.id}>
-              <Link
-                href={href}
-                scroll={false}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[13px] font-medium tracking-tight transition-[background-color,color,box-shadow] duration-200 ${
-                  selected
-                    ? "bg-[var(--color-surface)] text-[var(--color-foreground)] shadow-[var(--elev-1)]"
-                    : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
-                }`}
-                aria-current={selected ? "page" : undefined}
-              >
-                {tab.label}
-                {typeof count === "number" ? (
-                  <span
-                    className={`tabular-nums text-[11px] ${
-                      selected
-                        ? "text-[var(--color-brand)]"
-                        : "text-[var(--color-muted)]"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                ) : null}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+  useEffect(() => {
+    setActive(initialTab);
+  }, [initialTab]);
+
+  function switchTab(next: WaiverDetailTabId) {
+    if (next === active) return;
+    setActive(next);
+    window.history.replaceState(null, "", waiverDetailTabHref(templateId, next));
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <nav
+        aria-label="Sections de la décharge"
+        className="-mx-1 overflow-x-auto px-1"
+      >
+        <ul
+          role="tablist"
+          className="flex min-w-max gap-1 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface-2)] p-0.5 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]"
+        >
+          {WAIVER_DETAIL_TABS.map((tab) => {
+            const selected = tab.id === active;
+            const count = counts?.[tab.id];
+
+            return (
+              <li key={tab.id} role="presentation">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  id={`waiver-tab-${tab.id}`}
+                  aria-controls={`waiver-panel-${tab.id}`}
+                  onClick={() => switchTab(tab.id)}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] tracking-tight transition-[background-color,color,box-shadow,transform] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    selected
+                      ? "bg-[var(--color-surface)] font-semibold text-[var(--color-foreground)] shadow-[0_1px_3px_rgba(15,23,42,0.1),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)]"
+                      : "font-medium text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-surface)_55%,transparent)] hover:text-[var(--color-foreground)]"
+                  }`}
+                >
+                  {tab.label}
+                  {typeof count === "number" ? (
+                    <span
+                      className={`tabular-nums text-[11px] ${
+                        selected
+                          ? "text-[var(--color-brand)]"
+                          : "opacity-70"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div
+        key={active}
+        id={`waiver-panel-${active}`}
+        role="tabpanel"
+        aria-labelledby={`waiver-tab-${active}`}
+        className="animate-tab-panel"
+      >
+        {panels[active]}
+      </div>
+    </div>
   );
 }

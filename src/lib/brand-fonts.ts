@@ -19,6 +19,8 @@ export type BrandFontId = (typeof BRAND_FONT_IDS)[number];
 export type BrandFont = {
   id: BrandFontId;
   label: string;
+  /** Short vibe label for the settings picker */
+  blurb: string;
   /** CSS font-family value */
   family: string;
   /** Google Fonts CSS2 family query (weights 400–700) */
@@ -31,6 +33,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "inter",
     label: "Inter",
+    blurb: "Moderne",
     family: "Inter, ui-sans-serif, system-ui, sans-serif",
     google: "Inter:wght@400;500;600;700",
     pdfFile: "Inter-Regular.ttf",
@@ -38,6 +41,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "plus-jakarta-sans",
     label: "Plus Jakarta Sans",
+    blurb: "Élégant",
     family: '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif',
     google: "Plus+Jakarta+Sans:wght@400;500;600;700",
     pdfFile: "PlusJakartaSans-Regular.ttf",
@@ -45,6 +49,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "manrope",
     label: "Manrope",
+    blurb: "Premium",
     family: "Manrope, ui-sans-serif, system-ui, sans-serif",
     google: "Manrope:wght@400;500;600;700",
     pdfFile: "Manrope-Regular.ttf",
@@ -52,6 +57,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "dm-sans",
     label: "DM Sans",
+    blurb: "Minimaliste",
     family: '"DM Sans", ui-sans-serif, system-ui, sans-serif',
     google: "DM+Sans:wght@400;500;600;700",
     pdfFile: "DMSans-Regular.ttf",
@@ -59,6 +65,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "instrument-sans",
     label: "Instrument Sans",
+    blurb: "Expressif",
     family: '"Instrument Sans", ui-sans-serif, system-ui, sans-serif',
     google: "Instrument+Sans:wght@400;500;600;700",
     pdfFile: "InstrumentSans-Regular.ttf",
@@ -66,6 +73,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "source-sans-3",
     label: "Source Sans 3",
+    blurb: "Très lisible",
     family: '"Source Sans 3", ui-sans-serif, system-ui, sans-serif',
     google: "Source+Sans+3:wght@400;500;600;700",
     pdfFile: "SourceSans3-Regular.ttf",
@@ -73,6 +81,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "ibm-plex-sans",
     label: "IBM Plex Sans",
+    blurb: "Technique",
     family: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif',
     google: "IBM+Plex+Sans:wght@400;500;600;700",
     pdfFile: "IBMPlexSans-Regular.ttf",
@@ -80,6 +89,7 @@ export const BRAND_FONTS: readonly BrandFont[] = [
   {
     id: "nunito-sans",
     label: "Nunito Sans",
+    blurb: "Amical",
     family: '"Nunito Sans", ui-sans-serif, system-ui, sans-serif',
     google: "Nunito+Sans:wght@400;500;600;700",
     pdfFile: "Inter-Regular.ttf", // Nunito TTF unavailable locally — Inter fallback for PDF
