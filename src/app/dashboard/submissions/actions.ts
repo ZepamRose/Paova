@@ -2,9 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { isActiveMember } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { requireActionCapability } from "@/lib/auth/session";
 import { recordAuditEvent } from "@/lib/audit";
 import { logError, logInfo } from "@/lib/observability/log";
 import { deleteSignatureObject } from "@/lib/signatures/storage";
@@ -26,13 +25,9 @@ export async function eraseSubmission(formData: FormData) {
     redirect("/dashboard/signatures?error=invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  // Auth + claim invites; capability is re-checked on the submission tenant below.
+  const { supabase, user, membership: sessionMembership } =
+    await requireActionCapability("delete_submission");
 
   const { data: submission } = await supabase
     .from("submission")
@@ -44,14 +39,13 @@ export async function eraseSubmission(formData: FormData) {
     redirect("/dashboard/signatures?error=invalid");
   }
 
-  const membership = await isActiveMember(
-    supabase,
-    user.id,
-    submission.business_id,
-  );
-  if (!membership || !hasCapability(membership.role, "delete_submission")) {
-    redirect("/dashboard/signatures?error=forbidden");
-  }
+  const { membership } =
+    submission.business_id === sessionMembership.businessId
+      ? { membership: sessionMembership }
+      : await requireActionCapability(
+          "delete_submission",
+          submission.business_id,
+        );
 
   // Record before deleting: afterwards the signer name is gone for good.
   await recordAuditEvent(supabase, {

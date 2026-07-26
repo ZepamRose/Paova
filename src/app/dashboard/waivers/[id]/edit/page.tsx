@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardCapability } from "@/lib/auth/session";
 import { WaiverForm } from "../../waiver-form";
 
 type FieldType = "text" | "date" | "checkbox";
@@ -21,14 +21,7 @@ export default async function EditWaiverPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase } = await requireDashboardCapability("manage_waivers");
 
   const { data: template } = await supabase
     .from("waiver_template")

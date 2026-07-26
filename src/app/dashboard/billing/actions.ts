@@ -1,9 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
-import { requireCapability } from "@/lib/auth/permissions";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { requireActionCapability } from "@/lib/auth/session";
 import { getStripe } from "@/lib/stripe/server";
 import { openSubscriptionCheckoutUrl } from "@/lib/stripe/open-checkout";
 import { customerHasLiveSubscription } from "@/lib/stripe/sync-business-plan";
@@ -12,21 +11,12 @@ import { env } from "@/lib/env";
 /**
  * Resolve the tenant whose subscription the caller may manage.
  * Billing lives on `business` (migration 0031) and is owner-only.
+ * Uses requireActionCapability so pending invites are claimed first and the
+ * role always comes from business_member — never from the UI.
  */
 async function getBillableBusiness() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) {
-    redirect("/onboarding");
-  }
-  await requireCapability(supabase, membership.businessId, "manage_billing");
+  const { supabase, user, membership } =
+    await requireActionCapability("manage_billing");
 
   const { data: business } = await supabase
     .from("business")

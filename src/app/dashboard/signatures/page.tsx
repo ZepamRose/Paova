@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { getDashboardSession } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/auth/permissions";
 import { enrichSearchRows, searchSubmissions } from "@/lib/search";
 import { SignaturesLiveSearch } from "./signatures-live-search";
@@ -22,19 +21,7 @@ export default async function SignaturesSearchPage({
   }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) {
-    redirect("/onboarding");
-  }
+  const { supabase, membership } = await getDashboardSession();
   const { data: business } = await supabase
     .from("business")
     .select("id")

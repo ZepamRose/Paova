@@ -1,14 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
-import {
-  FREE_MONTHLY_LIMIT,
-  PRO_PRICE_EUR,
-  isPro,
-  currentMonthStartISO,
-} from "@/lib/plan";
+import { requireDashboardCapability } from "@/lib/auth/session";
+import { isPro, FREE_MONTHLY_LIMIT, PRO_PRICE_EUR, currentMonthStartISO } from "@/lib/plan";
 import { createCheckoutSession, createPortalSession } from "./actions";
 import { BillingFaq } from "./billing-faq";
 
@@ -63,22 +56,8 @@ export default async function BillingPage({
   searchParams: Promise<{ success?: string; canceled?: string }>;
 }) {
   const { success, canceled } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) {
-    redirect("/onboarding");
-  }
-  if (!hasCapability(membership.role, "manage_billing")) {
-    redirect("/dashboard");
-  }
+  const { supabase, membership } =
+    await requireDashboardCapability("manage_billing");
 
   const { data: business } = await supabase
     .from("business")

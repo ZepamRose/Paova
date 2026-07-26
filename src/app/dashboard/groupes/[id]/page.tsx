@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { Share2, Users, Settings2, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { getActiveMembership, resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import { CopyLinkButton } from "@/app/dashboard/copy-link-button";
@@ -63,9 +63,11 @@ export default async function GroupeDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  await resolveBusinessContext(supabase, user.id, user);
   const membership = await getActiveMembership(supabase, user.id);
   if (!membership) redirect("/onboarding");
   const canExport = hasCapability(membership.role, "export_data");
+  const canManageGroups = hasCapability(membership.role, "manage_groups");
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -219,7 +221,8 @@ export default async function GroupeDetailPage({
           </div>
 
           <div className="flex shrink-0 items-center gap-2.5">
-            {status === "archived" ? (
+            {canManageGroups ? (
+              status === "archived" ? (
               <form action={unarchiveGroup}>
                 <input type="hidden" name="group_id" value={group.id} />
                 <PendingSubmitButton
@@ -252,7 +255,8 @@ export default async function GroupeDetailPage({
                   />
                 </form>
               </>
-            )}
+            )
+            ) : null}
           </div>
         </div>
 
@@ -376,7 +380,7 @@ export default async function GroupeDetailPage({
           </div>
         </div>
 
-        {!isExpress ? (
+        {!isExpress && canManageGroups ? (
           <div className="mt-3.5">
             <AddParticipantForm groupId={group.id} />
           </div>
@@ -396,14 +400,14 @@ export default async function GroupeDetailPage({
                   key={m.id}
                   groupId={group.id}
                   member={m}
-                  canRemind={!isExpress && accepting}
+                  canRemind={!isExpress && accepting && canManageGroups}
                 />
               ),
             )}
           </ul>
         )}
 
-        {!isExpress ? (
+        {!isExpress && canManageGroups ? (
           <details className="group mt-3.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_40%,var(--color-surface))]">
             <summary className="cursor-pointer list-none px-3.5 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
@@ -428,6 +432,7 @@ export default async function GroupeDetailPage({
       {/* Secondary tools — quieter, collapsed by default */}
       <section className={cardSoft} id="outils">
         <div className="flex flex-col gap-2.5">
+          {canManageGroups ? (
           <details className="group rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)]">
             <summary className="cursor-pointer list-none px-3.5 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
@@ -459,6 +464,7 @@ export default async function GroupeDetailPage({
               />
             </div>
           </details>
+          ) : null}
 
           {canExport ? (
             <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] px-3.5 py-3">

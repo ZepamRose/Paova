@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { requireActionCapability } from "@/lib/auth/session";
 import { recordAuditEvent } from "@/lib/audit";
 import { slugify, shortId } from "@/lib/slug";
 import {
@@ -22,6 +21,8 @@ import {
   type SignatureHoursConfig,
   type TemplateStatus,
 } from "@/lib/templates";
+import { getPackById, resolveStarterPackId } from "@/lib/waiver-packs";
+import type { Json } from "@/types/database.types";
 
 export type UpdateSignatureHoursResult =
   | { ok: true; config: SignatureHoursConfig }
@@ -37,8 +38,10 @@ export type UpdateExpirationResult =
       isExpired: boolean;
     }
   | { ok: false; code: "invalid_expiration" | "save_failed"; message: string };
-import { getPackById, resolveStarterPackId } from "@/lib/waiver-packs";
-import type { Json } from "@/types/database.types";
+
+async function requireWaiverManager() {
+  return requireActionCapability("manage_waivers");
+}
 
 type FieldType =
   | "text"
@@ -148,18 +151,7 @@ export async function createTemplate(formData: FormData) {
 
   const fields = normalizeFields(fieldsRaw);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) {
-    redirect("/onboarding");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -239,18 +231,7 @@ export async function createFromPreset(formData: FormData) {
     redirect("/onboarding/premiere-decharge?error=preset");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) {
-    redirect("/onboarding");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -332,19 +313,14 @@ export async function updateTemplate(formData: FormData) {
 
   const fields = normalizeFields(fieldsRaw);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
 
-  // RLS ("template_all_own") ensures only the owner's template can be updated.
+  // RLS ensures tenant isolation; capability gate already ran above.
   const { data: existing } = await supabase
     .from("waiver_template")
     .select("version, business_id, title, legal_text, fields, signer_name_label")
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .maybeSingle();
 
   if (!existing) {
@@ -432,18 +408,13 @@ export async function deleteTemplate(formData: FormData) {
     redirect("/dashboard");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
 
   const { data: existing } = await supabase
     .from("waiver_template")
     .select("business_id, title, deleted_at")
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .maybeSingle();
 
   if (!existing) {
@@ -491,13 +462,7 @@ export async function toggleTemplateActive(formData: FormData) {
     redirect("/dashboard");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
 
   const { data: template } = await supabase
     .from("waiver_template")
@@ -505,6 +470,7 @@ export async function toggleTemplateActive(formData: FormData) {
       "status, deleted_at, business_id, title, expiration_mode, expiration_days, expires_at",
     )
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .maybeSingle();
   if (!template || !isTemplateStatus(template.status)) {
     redirect("/dashboard");
@@ -592,18 +558,13 @@ export async function updateTemplateExpiration(
       ? Math.max(1, Math.min(3650, Math.floor(Number(daysRaw))))
       : null;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
 
   const { data: template } = await supabase
     .from("waiver_template")
     .select("business_id, title, status, expires_at")
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .maybeSingle();
 
   if (!template || !isTemplateStatus(template.status)) {
@@ -741,18 +702,13 @@ export async function updateTemplateSignatureHours(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user, membership } = await requireWaiverManager();
 
   const { data: template } = await supabase
     .from("waiver_template")
     .select("id, business_id, title")
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .maybeSingle();
   if (!template) {
     redirect("/dashboard");
@@ -809,34 +765,34 @@ export async function updateTemplateSignatureHours(
   return { ok: true, config };
 }
 
-/** Best-effort audit when the owner downloads the QR PNG. */
+/** Best-effort audit when a manager downloads the QR PNG. */
 export async function recordQrDownload(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  try {
+    const { supabase, user, membership } = await requireWaiverManager();
+    const { data: template } = await supabase
+      .from("waiver_template")
+      .select("id, business_id, title, public_slug")
+      .eq("id", id)
+      .eq("business_id", membership.businessId)
+      .maybeSingle();
+    if (!template) return;
 
-  const { data: template } = await supabase
-    .from("waiver_template")
-    .select("id, business_id, title, public_slug")
-    .eq("id", id)
-    .maybeSingle();
-  if (!template) return;
+    await recordAuditEvent(supabase, {
+      businessId: template.business_id,
+      actorUserId: user.id,
+      actorKind: membership.role,
+      entityType: "template",
+      entityId: id,
+      templateId: id,
+      eventType: "template.qr_downloaded",
+      payload: { title: template.title, slug: template.public_slug },
+    });
 
-  await recordAuditEvent(supabase, {
-    businessId: template.business_id,
-    actorUserId: user.id,
-    actorKind: "owner",
-    entityType: "template",
-    entityId: id,
-    templateId: id,
-    eventType: "template.qr_downloaded",
-    payload: { title: template.title, slug: template.public_slug },
-  });
-
-  revalidatePath(`/dashboard/waivers/${id}`);
+    revalidatePath(`/dashboard/waivers/${id}`);
+  } catch {
+    /* ignore — download still works */
+  }
 }

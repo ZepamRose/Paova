@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { resolveBusinessContext } from "@/lib/auth/membership";
+import { getDashboardSession } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/auth/permissions";
 import { getAppUrl } from "@/lib/app-url";
 import { DashboardEntrance } from "../../dashboard-entrance";
@@ -39,23 +38,15 @@ export default async function MembersPage({
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
   const { success, error } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await resolveBusinessContext(supabase, user.id, user);
-  if (!membership) {
-    redirect("/onboarding");
-  }
+  const { supabase, user, membership } = await getDashboardSession();
 
   const canView =
     hasCapability(membership.role, "invite_employees") ||
     hasCapability(membership.role, "manage_members");
+  if (!canView) {
+    redirect("/dashboard");
+  }
+
   const canManage = hasCapability(membership.role, "manage_members");
   const canInviteAdmin = membership.role === "owner";
   const canAssignAdmin = membership.role === "owner";
@@ -66,13 +57,11 @@ export default async function MembersPage({
     .eq("id", membership.businessId)
     .maybeSingle();
 
-  const { data: rows } = canView
-    ? await supabase
-        .from("business_member")
-        .select("id, role, status, invited_email, user_id, created_at")
-        .eq("business_id", membership.businessId)
-        .order("created_at", { ascending: true })
-    : { data: null };
+  const { data: rows } = await supabase
+    .from("business_member")
+    .select("id, role, status, invited_email, user_id, created_at")
+    .eq("business_id", membership.businessId)
+    .order("created_at", { ascending: true });
 
   const userIds = (rows ?? [])
     .map((r) => r.user_id)

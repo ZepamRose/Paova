@@ -2,22 +2,14 @@ import type { User, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isBusinessRole, type BusinessContext } from "./permissions";
+import {
+  emailsForAuthUser,
+  pickPreferredMembership,
+} from "./membership-select";
+
+export { emailsForAuthUser, pickPreferredMembership } from "./membership-select";
 
 type DbClient = SupabaseClient<Database>;
-
-/** Normalize and collect every email address attached to the auth user. */
-export function emailsForAuthUser(user: Pick<User, "email" | "identities">): string[] {
-  const emails = new Set<string>();
-  const primary = user.email?.trim().toLowerCase();
-  if (primary) emails.add(primary);
-  for (const identity of user.identities ?? []) {
-    const raw = identity.identity_data?.email;
-    if (typeof raw === "string" && raw.trim()) {
-      emails.add(raw.trim().toLowerCase());
-    }
-  }
-  return [...emails];
-}
 
 /** Find the current user's active membership, if any (no invite claim). */
 export async function getActiveMembership(
@@ -31,18 +23,7 @@ export async function getActiveMembership(
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  const rows = data ?? [];
-  if (rows.length === 0) return null;
-
-  const owned = rows.find((row) => row.role === "owner");
-  const collaborator = rows.find(
-    (row) => row.role === "admin" || row.role === "employee",
-  );
-
-  // Prefer collaborator seat over an accidental solo owner space.
-  const picked = collaborator ?? owned ?? rows[0];
-  if (!picked || !isBusinessRole(picked.role)) return null;
-  return { businessId: picked.business_id, role: picked.role };
+  return pickPreferredMembership(data ?? []);
 }
 
 /**
@@ -87,11 +68,13 @@ export async function claimPendingInvite(
   if (emails.length === 0) return 0;
 
   const admin = createServiceRoleClient();
+  // Include rows already linked to this user but still stuck on `invited`
+  // (partial claim), plus classic open invites (user_id IS NULL).
   const { data: pending, error: listError } = await admin
     .from("business_member")
-    .select("id, invited_email")
+    .select("id, invited_email, user_id")
     .eq("status", "invited")
-    .is("user_id", null);
+    .or(`user_id.is.null,user_id.eq.${userId}`);
 
   if (listError) {
     console.error("claimPendingInvite list failed:", listError.message);
@@ -111,6 +94,7 @@ export async function claimPendingInvite(
     .from("business_member")
     .update({ user_id: userId, status: "active" })
     .in("id", ids)
+    .eq("status", "invited")
     .select("id");
 
   if (error) {

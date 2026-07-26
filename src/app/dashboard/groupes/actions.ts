@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import {
   createGroupPublicToken,
   defaultExpressGroupName,
@@ -14,28 +13,26 @@ import {
 } from "@/lib/groups/lifecycle";
 import { sendGroupReminder } from "@/lib/email";
 import { env } from "@/lib/env";
-import { getActiveMembership } from "@/lib/auth/membership";
+// membership resolved via requireBusiness → session helpers
 
 const REMINDER_COOLDOWN_MS = 30 * 60 * 1000;
 
-async function requireBusiness() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+async function requireBusiness(capability?: "manage_groups") {
+  const { requireActionCapability, getDashboardSession } = await import(
+    "@/lib/auth/session"
+  );
+  const session = capability
+    ? await requireActionCapability(capability)
+    : await getDashboardSession();
 
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) redirect("/onboarding");
-
-  const { data: business } = await supabase
+  const { data: business } = await session.supabase
     .from("business")
     .select("id, name, brand_color, email_from_name")
-    .eq("id", membership.businessId)
+    .eq("id", session.membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 
-  return { supabase, business };
+  return { supabase: session.supabase, business, membership: session.membership };
 }
 
 function normalizeEmail(raw: string | null | undefined): string | null {
@@ -45,7 +42,7 @@ function normalizeEmail(raw: string | null | undefined): string | null {
 }
 
 export async function createSigningGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const name = String(formData.get("name") ?? "").trim();
   const templateId = String(formData.get("template_id") ?? "").trim();
   const rosterRaw = String(formData.get("roster") ?? "");
@@ -123,7 +120,7 @@ export async function createSigningGroup(formData: FormData) {
  * each arrival enters their name and signs.
  */
 export async function createExpressGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const templateId = String(formData.get("template_id") ?? "").trim();
   const nameRaw = String(formData.get("name") ?? "").trim();
   const name = (nameRaw || defaultExpressGroupName()).slice(0, 120);
@@ -193,7 +190,7 @@ export async function addGroupMembers(
   _prevState: AddMembersState,
   formData: FormData,
 ): Promise<AddMembersState> {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const rosterRaw = String(formData.get("roster") ?? "");
   const singleName = String(formData.get("full_name") ?? "").trim();
@@ -247,7 +244,7 @@ export async function addGroupMembers(
 }
 
 export async function updateGroupSettings(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const nextCloses = parseClosesOn(String(formData.get("closes_on") ?? ""));
@@ -301,7 +298,7 @@ export async function updateGroupMember(
   _prev: UpdateMemberState,
   formData: FormData,
 ): Promise<UpdateMemberState> {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
@@ -359,7 +356,7 @@ export async function sendGroupReminders(
   _prev: RemindState,
   formData: FormData,
 ): Promise<RemindState> {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
   const force = String(formData.get("force") ?? "") === "1";
@@ -463,7 +460,7 @@ export async function sendGroupReminders(
 }
 
 export async function setGroupStatus(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   if (status !== "open" && status !== "closed") {
@@ -502,7 +499,7 @@ export async function setGroupStatus(formData: FormData) {
 
 /** Archive a group — hides it from active lists, keeps history/signatures intact. */
 export async function archiveGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
 
   await supabase
@@ -518,7 +515,7 @@ export async function archiveGroup(formData: FormData) {
 
 /** Restore an archived group back to "closed" so it reappears in the active list. */
 export async function unarchiveGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const returnTo = String(formData.get("return_to") ?? "").trim();
 
@@ -537,7 +534,7 @@ export async function unarchiveGroup(formData: FormData) {
 }
 
 export async function deleteGroupMember(formData: FormData) {
-  const { supabase, business } = await requireBusiness();
+  const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
 

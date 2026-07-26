@@ -14,11 +14,19 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export function DashboardCreateControl({
   className = "",
   canCreateGroup = true,
+  canManageWaivers = true,
+  canManageGroups = true,
 }: {
   className?: string;
   /** False when the business has no active waiver yet. */
   canCreateGroup?: boolean;
+  /** From business_member role — never invent on the client. */
+  canManageWaivers?: boolean;
+  canManageGroups?: boolean;
 }) {
+  if (!canManageWaivers && !canManageGroups) {
+    return null;
+  }
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -89,6 +97,7 @@ export function DashboardCreateControl({
             transition={{ duration: 0.15, ease: EASE }}
             className="absolute right-0 z-50 mt-1.5 min-w-[17.5rem] origin-top-right overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] py-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.18),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
           >
+            {canManageWaivers ? (
             <Link
               role="menuitem"
               href="/dashboard/waivers/new"
@@ -121,8 +130,10 @@ export function DashboardCreateControl({
                 </span>
               </span>
             </Link>
+            ) : null}
 
-            {canCreateGroup ? (
+            {canManageGroups ? (
+              canCreateGroup ? (
               <Link
                 role="menuitem"
                 href="/dashboard/groupes/new"
@@ -159,7 +170,8 @@ export function DashboardCreateControl({
                   </span>
                 </span>
               </div>
-            )}
+            )
+            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>

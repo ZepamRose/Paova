@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import {
@@ -28,7 +28,7 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const membership = await getActiveMembership(supabase, user.id);
+  const membership = await resolveBusinessContext(supabase, user.id, user);
   if (!membership) {
     return new NextResponse("Not found", { status: 404 });
   }

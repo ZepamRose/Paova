@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { getDashboardSession } from "@/lib/auth/session";
+import { hasCapability } from "@/lib/auth/permissions";
 import { GroupIcon } from "@/components/groups/group-icon";
 import {
   GroupProgressBar,
@@ -16,14 +16,8 @@ export default async function GroupesPage({
 }) {
   const sp = await searchParams;
   const showArchived = sp.view === "archived";
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) redirect("/onboarding");
+  const { supabase, membership } = await getDashboardSession();
+  const canManageGroups = hasCapability(membership.role, "manage_groups");
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -104,7 +98,7 @@ export default async function GroupesPage({
               : "Une même décharge pour plusieurs participants. Suivez les signatures en un coup d'œil."}
           </p>
         </div>
-        {!showArchived ? (
+        {!showArchived && canManageGroups ? (
           <Link
             href="/dashboard/groupes/new"
             className={`inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}
@@ -127,7 +121,7 @@ export default async function GroupesPage({
               ? "Les groupes que vous archivez apparaîtront ici."
               : "Créez un groupe pour envoyer une même décharge à plusieurs participants."}
           </p>
-          {!showArchived ? (
+          {!showArchived && canManageGroups ? (
             <Link
               href="/dashboard/groupes/new"
               className={`mt-6 inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}

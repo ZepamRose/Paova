@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { requireDashboardCapability } from "@/lib/auth/session";
 import { GroupIcon } from "@/components/groups/group-icon";
 import { detectRosterMode } from "@/lib/groups";
 import { NewGroupForm } from "../new-group-form";
@@ -14,14 +13,8 @@ export default async function NewGroupePage({
   const sp = await searchParams;
   const preselectedTemplateId = String(sp.template ?? "").trim();
   const initialName = String(sp.name ?? "").trim();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) redirect("/onboarding");
+  const { supabase, membership } =
+    await requireDashboardCapability("manage_groups");
   const { data: business } = await supabase
     .from("business")
     .select("id")

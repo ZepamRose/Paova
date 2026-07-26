@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isActiveMember } from "@/lib/auth/membership";
+import { isActiveMember, resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import { csvCell } from "@/lib/search";
@@ -43,6 +43,9 @@ export async function GET(
   if (!template) {
     return new NextResponse("Not found", { status: 404 });
   }
+
+  // Claim invites first, then pin capability to the template's business.
+  await resolveBusinessContext(supabase, user.id, user);
 
   // Bulk PII extraction — owner/admin only, never employees.
   const membership = await isActiveMember(supabase, user.id, template.business_id);

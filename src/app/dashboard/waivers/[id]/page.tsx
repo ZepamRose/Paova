@@ -14,7 +14,7 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { isActiveMember } from "@/lib/auth/membership";
+import { isActiveMember, resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import {
@@ -270,6 +270,9 @@ export default async function WaiverDetailPage({
     redirect("/login");
   }
 
+  // Claim pending invites before role checks (avoids owner-of-solo-space races).
+  await resolveBusinessContext(supabase, user.id, user);
+
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
@@ -287,6 +290,7 @@ export default async function WaiverDetailPage({
     notFound();
   }
   const canExport = hasCapability(membership.role, "export_data");
+  const canManageWaivers = hasCapability(membership.role, "manage_waivers");
 
   const expirationMode: ExpirationMode = isExpirationMode(
     template.expiration_mode,
@@ -604,6 +608,8 @@ export default async function WaiverDetailPage({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-5">
+            {canManageWaivers ? (
+              <>
             <div className="flex flex-wrap items-center gap-2">
               {!template.deleted_at ? (
                 <Link
@@ -630,6 +636,8 @@ export default async function WaiverDetailPage({
                 />
               ) : null}
             </div>
+              </>
+            ) : null}
           </div>
         </div>
       </header>
@@ -845,6 +853,7 @@ export default async function WaiverDetailPage({
         </div>
       </section>
 
+      {canManageWaivers ? (
       <AvailabilitySection
         templateId={template.id}
         hoursConfig={hoursConfig}
@@ -855,7 +864,7 @@ export default async function WaiverDetailPage({
         isExpired={displayStatus === "expired"}
         initiallyOpen={availabilityInitiallyOpen}
       />
-
+      ) : null}
       <WaiverDetailTabs
         templateId={template.id}
         initialTab={activeTab}
@@ -928,7 +937,7 @@ export default async function WaiverDetailPage({
               title="Texte juridique"
               description="Texte lu et accepté à la signature."
               action={
-                !template.deleted_at ? (
+                canManageWaivers && !template.deleted_at ? (
                   <Link
                     href={`/dashboard/waivers/${template.id}/edit`}
                     className={btnSecondary}

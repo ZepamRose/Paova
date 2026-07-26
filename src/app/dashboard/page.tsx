@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CreditCard, Settings, Users } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { isPro, currentMonthStartISO } from "@/lib/plan";
-import { resolveBusinessContext } from "@/lib/auth/membership";
+import { getDashboardSession } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/auth/permissions";
 import { formatRelativeFr } from "@/lib/dates";
 import { BrandLogo } from "@/components/brand-logo";
@@ -30,20 +29,9 @@ export default async function DashboardPage({
   const { view } = await searchParams;
   const initialView = view === "archived" ? "archived" : "active";
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await resolveBusinessContext(supabase, user.id, user);
-  if (!membership) {
-    redirect("/onboarding");
-  }
+  const { supabase, membership } = await getDashboardSession();
+  const canManageWaivers = hasCapability(membership.role, "manage_waivers");
+  const canManageGroups = hasCapability(membership.role, "manage_groups");
 
   const { data: business } = await supabase
     .from("business")
@@ -407,9 +395,15 @@ export default async function DashboardPage({
             aria-hidden
           />
 
-          <DashboardCreateControl
-            canCreateGroup={activeTemplatesList.length > 0}
-          />
+          {canManageWaivers || canManageGroups ? (
+            <DashboardCreateControl
+              canManageWaivers={canManageWaivers}
+              canManageGroups={canManageGroups}
+              canCreateGroup={
+                canManageGroups && activeTemplatesList.length > 0
+              }
+            />
+          ) : null}
 
           <form action="/auth/signout" method="post">
             <button

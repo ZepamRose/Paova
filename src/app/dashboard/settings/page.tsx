@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import { resolveBusinessContext } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { requireDashboardCapability } from "@/lib/auth/session";
 import { isPro } from "@/lib/plan";
 import { SettingsForm } from "./settings-form";
 import { SettingsSavedBanner } from "./settings-saved-banner";
@@ -14,23 +12,8 @@ export default async function SettingsPage({
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
   const { success, error } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await resolveBusinessContext(supabase, user.id, user);
-  if (!membership) {
-    redirect("/onboarding");
-  }
-  // Branding / business identity is owner-only (edit_business_info).
-  if (!hasCapability(membership.role, "edit_business_info")) {
-    redirect("/dashboard");
-  }
+  const { supabase, membership } =
+    await requireDashboardCapability("edit_business_info");
 
   const { data: planRow } = await supabase
     .from("business")

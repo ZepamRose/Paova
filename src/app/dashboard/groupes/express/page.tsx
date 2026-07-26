@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Zap } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
+import { requireDashboardCapability } from "@/lib/auth/session";
 import { ExpressGroupForm } from "../express-group-form";
 
 export default async function ExpressGroupePage({
@@ -12,14 +11,8 @@ export default async function ExpressGroupePage({
 }) {
   const sp = await searchParams;
   const preselectedTemplateId = String(sp.template ?? "").trim();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const membership = await getActiveMembership(supabase, user.id);
-  if (!membership) redirect("/onboarding");
+  const { supabase, membership } =
+    await requireDashboardCapability("manage_groups");
   const { data: business } = await supabase
     .from("business")
     .select("id")

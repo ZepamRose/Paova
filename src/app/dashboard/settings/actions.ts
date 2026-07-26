@@ -3,8 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveMembership } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { requireActionCapability } from "@/lib/auth/session";
 import { isPro } from "@/lib/plan";
 import {
   clampText,
@@ -25,18 +24,13 @@ import {
  * silently updated zero rows for admins; this fails loudly instead and keeps
  * the single source of truth in the capability matrix.
  */
-async function requireEditableBusinessId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<string> {
-  const membership = await getActiveMembership(supabase, userId);
-  if (!membership) {
-    redirect("/onboarding");
-  }
-  if (!hasCapability(membership.role, "edit_business_info")) {
-    redirect("/dashboard/settings?error=forbidden");
-  }
-  return membership.businessId;
+async function requireEditableBusinessId(): Promise<{
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  businessId: string;
+}> {
+  const { supabase, membership } =
+    await requireActionCapability("edit_business_info");
+  return { supabase, businessId: membership.businessId };
 }
 
 /** Subscription tier of the tenant (billing lives on `business`, see 0031). */
@@ -117,15 +111,7 @@ export async function updateBusiness(formData: FormData) {
     redirect("/dashboard/settings?error=name");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const businessId = await requireEditableBusinessId(supabase, user.id);
+  const { supabase, businessId } = await requireEditableBusinessId();
   const pro = await businessIsPro(supabase, businessId);
 
   // Identity (name, contact, tagline) stays free — a usable PDF must not
@@ -184,20 +170,12 @@ export async function updateBusiness(formData: FormData) {
 
 /** Save the public URL of an uploaded logo to the owner's business. */
 export async function updateLogo(logoUrl: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
   const safeLogoUrl = sanitizeLogoUrl(logoUrl);
   if (!safeLogoUrl) {
     redirect("/dashboard/settings?error=logo");
   }
 
-  const businessId = await requireEditableBusinessId(supabase, user.id);
+  const { supabase, businessId } = await requireEditableBusinessId();
   if (!(await businessIsPro(supabase, businessId))) {
     redirect("/dashboard/settings?error=pro_required");
   }
@@ -216,15 +194,7 @@ export async function updateLogo(logoUrl: string) {
 
 /** Remove the logo reference from the owner's business. */
 export async function removeLogo() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const businessId = await requireEditableBusinessId(supabase, user.id);
+  const { supabase, businessId } = await requireEditableBusinessId();
 
   const { error } = await supabase
     .from("business")

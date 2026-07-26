@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardCapability } from "@/lib/auth/session";
 import { WaiverForm } from "../waiver-form";
 
 export default async function NewWaiverPage({
@@ -9,14 +9,7 @@ export default async function NewWaiverPage({
   searchParams: Promise<{ error?: string; return_to?: string; name?: string }>;
 }) {
   const { error, return_to, name } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  await requireDashboardCapability("manage_waivers");
 
   // Only ever hop back to a same-origin, known internal flow (never an
   // arbitrary redirect target coming from the query string).

@@ -262,12 +262,23 @@ export default function AuthConfirmClient() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
+          try {
+            await fetch("/api/auth/claim-invites", { method: "POST" });
+          } catch {
+            /* claim also runs on dashboard resolve */
+          }
           await holdForFeel(started, reducedMotion);
           await go(next);
           return;
         }
         if (!abandoned) setPhase("error");
         return;
+      }
+
+      try {
+        await fetch("/api/auth/claim-invites", { method: "POST" });
+      } catch {
+        /* claim also runs on dashboard resolve */
       }
 
       await holdForFeel(started, reducedMotion);

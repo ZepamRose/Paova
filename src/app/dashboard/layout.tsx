@@ -1,7 +1,15 @@
-export default function DashboardLayout({
+import { getDashboardSession } from "@/lib/auth/session";
+
+/**
+ * Ensures every dashboard request claims pending invites and resolves a
+ * membership before rendering children. Pages still call
+ * requireDashboardCapability for sensitive routes.
+ */
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await getDashboardSession();
   return children;
 }
