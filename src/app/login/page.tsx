@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAuthConfirmUrl } from "@/lib/app-url";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
 import { createClient } from "@/lib/supabase/client";
 import { MagicLinkSent } from "./magic-link-sent";
 import {
@@ -287,6 +288,10 @@ export default function LoginPage() {
         "Le lien de connexion a expiré ou n'a pas pu être validé. Demandez un nouveau lien et ouvrez-le dans le même navigateur.",
       );
     }
+    const prefill = params.get("email")?.trim() ?? "";
+    if (prefill) {
+      setEmail(prefill);
+    }
   }, []);
 
   useEffect(() => {
@@ -311,12 +316,21 @@ export default function LoginPage() {
 
   async function sendMagicLink(targetEmail: string) {
     const supabase = createClient();
+    const nextRaw =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("next")
+        : null;
+    const next = safeNextPath(nextRaw, "");
+    const confirmBase = getAuthConfirmUrl();
+    const emailRedirectTo = next
+      ? `${confirmBase}?next=${encodeURIComponent(next)}`
+      : confirmBase;
+
     const { error: otpError } = await withTimeout(
       supabase.auth.signInWithOtp({
         email: targetEmail.trim(),
         options: {
-          // Lands on /auth/confirm for an automatic verify + short secure UX.
-          emailRedirectTo: getAuthConfirmUrl(),
+          emailRedirectTo,
         },
       }),
       20000,

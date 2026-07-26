@@ -203,7 +203,7 @@ export default async function MembersPage({
                       isSelf={m.user_id === user.id}
                       canManage={canManage}
                       canAssignAdmin={canAssignAdmin}
-                      loginUrl={`${getAppUrl()}/login`}
+                      loginUrl={`${getAppUrl()}/login?email=${encodeURIComponent(m.invited_email ?? "")}&next=${encodeURIComponent("/dashboard")}`}
                       isLast={index === members.length - 1}
                     />
                   ))}

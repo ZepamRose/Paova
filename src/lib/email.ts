@@ -280,8 +280,10 @@ export async function sendMemberInvite(input: {
         </a>
       </p>
       <p style="font-size: 13px; line-height: 1.6; color: #6b7280;">
-        Connectez-vous avec cette adresse email (${escapeHtml(input.to)}) — un lien de
-        connexion sécurisé vous sera envoyé, sans mot de passe à retenir.
+        Ce lien vous connecte automatiquement avec
+        ${escapeHtml(input.to)} — aucun mot de passe à retenir.
+        S'il a expiré, allez sur paova.app/login et demandez un nouveau lien
+        avec la même adresse email.
       </p>
       <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">
         Envoyé via Paova.

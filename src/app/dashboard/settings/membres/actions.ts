@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireCapability } from "@/lib/auth/permissions";
 import { sendMemberInvite } from "@/lib/email";
-import { getAppUrl } from "@/lib/app-url";
+import { buildMemberInviteLoginUrl } from "@/lib/auth/invite-link";
 
 function isInvitableRole(value: string): value is "admin" | "employee" {
   return value === "admin" || value === "employee";
@@ -72,7 +72,7 @@ export async function inviteMember(formData: FormData) {
     to: email,
     businessName: business?.name ?? null,
     role,
-    loginUrl: `${getAppUrl()}/login`,
+    loginUrl: await buildMemberInviteLoginUrl(email),
   });
 
   redirect(
@@ -255,7 +255,7 @@ export async function resendInvite(formData: FormData) {
     to: target.invited_email,
     businessName: business?.name ?? null,
     role: target.role,
-    loginUrl: `${getAppUrl()}/login`,
+    loginUrl: await buildMemberInviteLoginUrl(target.invited_email),
   });
 
   redirect(

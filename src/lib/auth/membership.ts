@@ -50,18 +50,17 @@ export async function isActiveMember(
 }
 
 /**
- * Attach a pending invite (matched by email) to the now-authenticated user.
- * Safe to call on every login: a no-op once the invite is already claimed
- * or when there was never one for this email. RLS (business_member_claim_own_invite)
- * is the real boundary — this only sets user_id to the caller's own id.
+ * Attach every pending invite for this email to the authenticated user.
+ * Safe to call on every login. RLS (business_member_claim_own_invite) is the
+ * real boundary — this only sets user_id to the caller's own id.
  */
 export async function claimPendingInvite(
   supabase: DbClient,
   userId: string,
   email: string | null | undefined,
-): Promise<BusinessContext | null> {
+): Promise<number> {
   const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) return null;
+  if (!normalizedEmail) return 0;
 
   const { data, error } = await supabase
     .from("business_member")
@@ -69,28 +68,27 @@ export async function claimPendingInvite(
     .eq("invited_email", normalizedEmail)
     .eq("status", "invited")
     .is("user_id", null)
-    .select("business_id, role")
-    .maybeSingle();
+    .select("id");
 
   if (error) {
     console.error("claimPendingInvite failed:", error.message);
-    return null;
+    return 0;
   }
-  if (!data || !isBusinessRole(data.role)) return null;
-  return { businessId: data.business_id, role: data.role };
+  return data?.length ?? 0;
 }
 
 /**
- * Resolve which business the current user should land on: their active
- * membership if they have one, otherwise a pending invite claimed on the
- * spot. Null means this is a genuinely new user with no business yet.
+ * Resolve which business the current user should land on: claim any pending
+ * invites first, then pick an active membership. Null means a genuinely new
+ * user with no business yet.
  */
 export async function resolveBusinessContext(
   supabase: DbClient,
   userId: string,
   email: string | null | undefined,
 ): Promise<BusinessContext | null> {
-  const active = await getActiveMembership(supabase, userId);
-  if (active) return active;
-  return claimPendingInvite(supabase, userId, email);
+  // Always claim first — otherwise an existing owner membership would skip a
+  // pending invite to a second business forever.
+  await claimPendingInvite(supabase, userId, email);
+  return getActiveMembership(supabase, userId);
 }
