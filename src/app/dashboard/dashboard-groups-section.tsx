@@ -25,6 +25,7 @@ export function DashboardGroupsSection({
   searchActive = false,
   appUrl,
   canCreateGroup = true,
+  canManageGroups = true,
 }: {
   groups: DashboardGroupRow[];
   archivedGroups: DashboardGroupRow[];
@@ -33,6 +34,7 @@ export function DashboardGroupsSection({
   appUrl: string;
   /** False when no active waiver exists — group creation is blocked. */
   canCreateGroup?: boolean;
+  canManageGroups?: boolean;
 }) {
   const [page, setPage] = useState(1);
   const reduced = useReducedMotion() ?? false;
@@ -99,7 +101,7 @@ export function DashboardGroupsSection({
                 : "Suivez la progression collective, signature après signature."}
           </p>
         </div>
-        {!showArchived && canCreateGroup ? (
+        {!showArchived && canManageGroups && canCreateGroup ? (
           <Link
             href="/dashboard/groupes/new"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
@@ -163,7 +165,7 @@ export function DashboardGroupsSection({
                 </p>
               ) : null}
             </div>
-            {!showArchived && !searchActive && canCreateGroup ? (
+            {!showArchived && !searchActive && canManageGroups && canCreateGroup ? (
               <Link
                 href="/dashboard/groupes/new"
                 className={`inline-flex min-h-10 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}

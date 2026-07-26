@@ -57,6 +57,7 @@ export function DashboardHome({
   appUrl,
   signatureCountByTemplate,
   lastSignedByTemplate,
+  canManageGroups,
 }: {
   attentionItems: DashboardAttentionItem[];
   active: DashboardWaiverRow[];
@@ -67,6 +68,7 @@ export function DashboardHome({
   appUrl: string;
   signatureCountByTemplate: Record<string, number>;
   lastSignedByTemplate: Record<string, string>;
+  canManageGroups: boolean;
 }) {
   const [listView, setListView] = useState<DashboardListView>(initialView);
   const [query, setQuery] = useState("");
@@ -208,6 +210,7 @@ export function DashboardHome({
           searchActive={Boolean(q)}
           appUrl={appUrl}
           canCreateGroup={canCreateGroup}
+          canManageGroups={canManageGroups}
         />
       </DashboardEntrance>
     </div>

@@ -462,6 +462,7 @@ export default async function DashboardPage({
         appUrl={appUrl}
         signatureCountByTemplate={signatureCountRecord}
         lastSignedByTemplate={lastSignedRecord}
+        canManageGroups={canManageGroups}
       />
     </main>
   );

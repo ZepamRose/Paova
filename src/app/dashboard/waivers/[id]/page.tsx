@@ -291,6 +291,7 @@ export default async function WaiverDetailPage({
   }
   const canExport = hasCapability(membership.role, "export_data");
   const canManageWaivers = hasCapability(membership.role, "manage_waivers");
+  const canManageGroups = hasCapability(membership.role, "manage_groups");
 
   const expirationMode: ExpirationMode = isExpirationMode(
     template.expiration_mode,
@@ -819,7 +820,8 @@ export default async function WaiverDetailPage({
                 </ul>
               ) : null}
 
-              <div className="mt-3.5 flex flex-col gap-2.5">
+              {canManageGroups ? (
+                <div className="mt-3.5 flex flex-col gap-2.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/dashboard/groupes/new?template=${template.id}`}
@@ -847,7 +849,8 @@ export default async function WaiverDetailPage({
                     · sans liste
                   </span>
                 </Link>
-              </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
