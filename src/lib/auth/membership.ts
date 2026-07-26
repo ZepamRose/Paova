@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isBusinessRole, type BusinessContext } from "./permissions";
 
 type DbClient = SupabaseClient<Database>;
@@ -9,9 +10,6 @@ export async function getActiveMembership(
   supabase: DbClient,
   userId: string,
 ): Promise<BusinessContext | null> {
-  // A user can belong to more than one business. Until a real switcher exists,
-  // prefer an owned business (most recently created), else the newest membership.
-  // Picking an arbitrary "latest" row used to route owners into a guest tenant.
   const { data } = await supabase
     .from("business_member")
     .select("business_id, role, created_at")
@@ -20,8 +18,18 @@ export async function getActiveMembership(
     .order("created_at", { ascending: false });
 
   const rows = data ?? [];
+  if (rows.length === 0) return null;
+
   const owned = rows.find((row) => row.role === "owner");
-  const picked = owned ?? rows[0];
+  const collaborator = rows.find(
+    (row) => row.role === "admin" || row.role === "employee",
+  );
+
+  // If someone was invited as collaborator but also created their own space
+  // (common when invite claim failed once), prefer the collaborator seat so
+  // they land in the team that invited them — not as a solo owner.
+  // A real business switcher can replace this later.
+  const picked = collaborator ?? owned ?? rows[0];
   if (!picked || !isBusinessRole(picked.role)) return null;
   return { businessId: picked.business_id, role: picked.role };
 }
@@ -51,18 +59,20 @@ export async function isActiveMember(
 
 /**
  * Attach every pending invite for this email to the authenticated user.
- * Safe to call on every login. RLS (business_member_claim_own_invite) is the
- * real boundary — this only sets user_id to the caller's own id.
+ * Uses the service role so claim cannot fail silently under RLS (invite rows
+ * are often invisible to SELECT before user_id is set). Only rows whose
+ * invited_email matches the caller's email are updated.
  */
 export async function claimPendingInvite(
-  supabase: DbClient,
+  _supabase: DbClient,
   userId: string,
   email: string | null | undefined,
 ): Promise<number> {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) return 0;
 
-  const { data, error } = await supabase
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
     .from("business_member")
     .update({ user_id: userId, status: "active" })
     .eq("invited_email", normalizedEmail)
@@ -87,8 +97,6 @@ export async function resolveBusinessContext(
   userId: string,
   email: string | null | undefined,
 ): Promise<BusinessContext | null> {
-  // Always claim first — otherwise an existing owner membership would skip a
-  // pending invite to a second business forever.
   await claimPendingInvite(supabase, userId, email);
   return getActiveMembership(supabase, userId);
 }

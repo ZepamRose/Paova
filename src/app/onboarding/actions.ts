@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveBusinessContext } from "@/lib/auth/membership";
 
 export async function createBusiness(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -16,6 +17,12 @@ export async function createBusiness(formData: FormData) {
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Invitees must not create a parallel "owner" space — claim first.
+  const existing = await resolveBusinessContext(supabase, user.id, user.email);
+  if (existing) {
+    redirect("/dashboard");
   }
 
   const { error } = await supabase
