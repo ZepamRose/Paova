@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
+import { isPro } from "@/lib/plan";
 import {
   clampText,
   formFlag,
@@ -12,9 +15,42 @@ import {
   resolvePublicTheme,
   sanitizeCustomDomain,
   sanitizeHttpUrl,
+  sanitizeLogoUrl,
   SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "@/lib/branding";
+
+/**
+ * Resolve the business the caller may edit. Filtering on `owner_id` alone
+ * silently updated zero rows for admins; this fails loudly instead and keeps
+ * the single source of truth in the capability matrix.
+ */
+async function requireEditableBusinessId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<string> {
+  const membership = await getActiveMembership(supabase, userId);
+  if (!membership) {
+    redirect("/onboarding");
+  }
+  if (!hasCapability(membership.role, "edit_business_info")) {
+    redirect("/dashboard/settings?error=forbidden");
+  }
+  return membership.businessId;
+}
+
+/** Subscription tier of the tenant (billing lives on `business`, see 0031). */
+async function businessIsPro(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("business")
+    .select("plan, subscription_status")
+    .eq("id", businessId)
+    .maybeSingle();
+  return isPro(data);
+}
 
 function parseEnabledLocales(raw: string): SupportedLocale[] {
   const fromCsv = raw
@@ -89,42 +125,55 @@ export async function updateBusiness(formData: FormData) {
     redirect("/login");
   }
 
+  const businessId = await requireEditableBusinessId(supabase, user.id);
+  const pro = await businessIsPro(supabase, businessId);
+
+  // Identity (name, contact, tagline) stays free — a usable PDF must not
+  // require a subscription. Visual branding and custom copy are the Pro
+  // differentiator advertised on the billing page, so free plans keep their
+  // existing values instead of having the submitted ones applied.
+  const brandingFields = pro
+    ? {
+        brand_color: brandColor,
+        brand_accent: brandAccent,
+        public_theme: publicTheme,
+        public_header_style: publicHeaderStyle,
+        thank_you_title: thankYouTitle,
+        thank_you_message: thankYouMessage,
+        thank_you_button_label: thankYouButtonLabel,
+        thank_you_button_url: thankYouButtonUrl,
+        custom_domain: customDomain,
+        pdf_show_logo: formFlag(formData.get("pdf_show_logo"), true),
+        pdf_show_name: formFlag(formData.get("pdf_show_name"), true),
+        pdf_show_contact: formFlag(formData.get("pdf_show_contact"), true),
+        pdf_show_website: formFlag(formData.get("pdf_show_website"), false),
+        pdf_show_phone: formFlag(formData.get("pdf_show_phone"), true),
+        pdf_show_footer: formFlag(formData.get("pdf_show_footer"), true),
+        email_from_name: emailFromName,
+        email_subject_template: emailSubjectTemplate,
+        email_signature: emailSignature,
+        email_footer: emailFooter,
+        email_show_logo: formFlag(formData.get("email_show_logo"), true),
+      }
+    : {};
+
   const { error } = await supabase
     .from("business")
     .update({
       name,
-      brand_color: brandColor,
-      brand_accent: brandAccent,
-      public_theme: publicTheme,
       tagline,
       contact_address: contactAddress,
       contact_phone: contactPhone,
       contact_email: contactEmail,
       website_url: websiteUrl,
-      thank_you_title: thankYouTitle,
-      thank_you_message: thankYouMessage,
-      thank_you_button_label: thankYouButtonLabel,
-      thank_you_button_url: thankYouButtonUrl,
-      custom_domain: customDomain,
-      public_header_style: publicHeaderStyle,
       public_show_logo: formFlag(formData.get("public_show_logo"), true),
       public_show_name: formFlag(formData.get("public_show_name"), true),
       public_show_tagline: formFlag(formData.get("public_show_tagline"), true),
       public_show_contact: formFlag(formData.get("public_show_contact"), true),
-      pdf_show_logo: formFlag(formData.get("pdf_show_logo"), true),
-      pdf_show_name: formFlag(formData.get("pdf_show_name"), true),
-      pdf_show_contact: formFlag(formData.get("pdf_show_contact"), true),
-      pdf_show_website: formFlag(formData.get("pdf_show_website"), false),
-      pdf_show_phone: formFlag(formData.get("pdf_show_phone"), true),
-      pdf_show_footer: formFlag(formData.get("pdf_show_footer"), true),
-      email_from_name: emailFromName,
-      email_subject_template: emailSubjectTemplate,
-      email_signature: emailSignature,
-      email_footer: emailFooter,
-      email_show_logo: formFlag(formData.get("email_show_logo"), true),
       enabled_locales: locales,
+      ...brandingFields,
     })
-    .eq("owner_id", user.id);
+    .eq("id", businessId);
 
   if (error) {
     throw new Error(error.message);
@@ -143,10 +192,20 @@ export async function updateLogo(logoUrl: string) {
     redirect("/login");
   }
 
+  const safeLogoUrl = sanitizeLogoUrl(logoUrl);
+  if (!safeLogoUrl) {
+    redirect("/dashboard/settings?error=logo");
+  }
+
+  const businessId = await requireEditableBusinessId(supabase, user.id);
+  if (!(await businessIsPro(supabase, businessId))) {
+    redirect("/dashboard/settings?error=pro_required");
+  }
+
   const { error } = await supabase
     .from("business")
-    .update({ logo_url: logoUrl })
-    .eq("owner_id", user.id);
+    .update({ logo_url: safeLogoUrl })
+    .eq("id", businessId);
 
   if (error) {
     throw new Error(error.message);
@@ -165,10 +224,12 @@ export async function removeLogo() {
     redirect("/login");
   }
 
+  const businessId = await requireEditableBusinessId(supabase, user.id);
+
   const { error } = await supabase
     .from("business")
     .update({ logo_url: null })
-    .eq("owner_id", user.id);
+    .eq("id", businessId);
 
   if (error) {
     throw new Error(error.message);

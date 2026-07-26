@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { logError } from "@/lib/observability/log";
 import { extractPhone, flattenAnswersText } from "./extract";
 
 type DbClient = SupabaseClient<Database>;
@@ -53,9 +54,20 @@ export async function upsertSubmissionSearch(
     );
 
     if (error) {
-      console.error("submission_search upsert failed:", error.message);
+      // A signature that never reaches the index exists but is unfindable in
+      // search — the classic "ma signature a disparu" support ticket. Log it
+      // with ids so it can be alerted on and re-indexed, not just swallowed.
+      logError("search.index_failed", error.message, {
+        submissionId: input.submissionId,
+        businessId: input.businessId,
+        templateId: input.templateId,
+      });
     }
   } catch (err) {
-    console.error("submission_search upsert failed:", err);
+    logError("search.index_failed", err, {
+      submissionId: input.submissionId,
+      businessId: input.businessId,
+      templateId: input.templateId,
+    });
   }
 }

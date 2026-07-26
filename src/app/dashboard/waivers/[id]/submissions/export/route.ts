@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isActiveMember } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import { csvCell } from "@/lib/search";
 import {
@@ -42,6 +44,12 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
+  // Bulk PII extraction — owner/admin only, never employees.
+  const membership = await isActiveMember(supabase, user.id, template.business_id);
+  if (!membership || !hasCapability(membership.role, "export_data")) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const fields = (Array.isArray(template.fields)
     ? template.fields
     : []) as unknown as WaiverField[];
@@ -66,7 +74,9 @@ export async function GET(
     .from("submission")
     .select("id, signer_name, signer_email, answers, ip_address, signed_at")
     .eq("template_id", id)
-    .order("signed_at", { ascending: false });
+    .order("signed_at", { ascending: false })
+    // Cap export size so a busy venue cannot blow the serverless payload.
+    .limit(2000);
 
   if (from) {
     submissionsQuery = submissionsQuery.gte(
@@ -173,7 +183,10 @@ export async function GET(
   return new NextResponse(body, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
+      // First 2000 rows only when the waiver has more signatures.
       "Content-Disposition": `attachment; filename="signatures-${safeTitle}.csv"`,
+      "X-Export-Limit": "2000",
+      "X-Export-Row-Count": String((submissions ?? []).length),
     },
   });
 }

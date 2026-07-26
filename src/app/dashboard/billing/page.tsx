@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import {
   FREE_MONTHLY_LIMIT,
   PRO_PRICE_EUR,
@@ -70,22 +72,24 @@ export default async function BillingPage({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan, subscription_status")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const pro = isPro(profile);
-  const status = profile?.subscription_status ?? null;
-  const renewing =
-    pro && (!status || status === "active" || status === "trialing");
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    redirect("/onboarding");
+  }
+  if (!hasCapability(membership.role, "manage_billing")) {
+    redirect("/dashboard");
+  }
 
   const { data: business } = await supabase
     .from("business")
-    .select("id")
-    .eq("owner_id", user.id)
+    .select("id, plan, subscription_status")
+    .eq("id", membership.businessId)
     .maybeSingle();
+
+  const pro = isPro(business);
+  const status = business?.subscription_status ?? null;
+  const renewing =
+    pro && (!status || status === "active" || status === "trialing");
 
   let usedThisMonth = 0;
   if (business) {

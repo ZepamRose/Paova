@@ -17,6 +17,11 @@ import {
   isWithinSignatureHours,
   type TemplateStatus,
 } from "@/lib/templates";
+import {
+  formatLongDateFr,
+  formatRelativeFr,
+  formatShortDateFr,
+} from "@/lib/dates";
 import { CopyLinkButton } from "./copy-link-button";
 import {
   DASHBOARD_PAGE_SIZE,
@@ -52,38 +57,7 @@ function MetaSep() {
   );
 }
 
-function formatRelativeFr(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
 
-  const diffMs = Date.now() - date.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "à l'instant";
-  if (mins < 60) return `il y a ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "hier";
-  if (days < 7) return `il y a ${days} j`;
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatLongDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function statusForRow(
   row: DashboardWaiverRow,
@@ -145,8 +119,6 @@ export function DashboardWaiversSection({
     "border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04]";
   const cardHover = `transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_18%,var(--color-border))] hover:shadow-[var(--elev-hover)]`;
   const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
-  /** Quiet utilities on the card (copy, overflow). */
-  const quietAction = `inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,background-color,transform] ${motionCls} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
   /** Primary card action — open the waiver. */
   const viewAction = `inline-flex h-8 items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
   const restoreBtn = `inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[13px] font-medium text-[var(--color-on-brand)] ${primaryBtn}`;
@@ -264,11 +236,11 @@ export function DashboardWaiversSection({
                 const lastSignedLabel = formatLastSignedMeta(lastSignedIso, {
                   ready: nowReady,
                   formatRelative: formatRelativeFr,
-                  formatShort: formatShortDate,
+                  formatShort: formatShortDateFr,
                 });
-                const created = formatShortDate(t.created_at);
+                const created = formatShortDateFr(t.created_at);
                 const archivedAt = t.deleted_at
-                  ? formatLongDate(t.deleted_at)
+                  ? formatLongDateFr(t.deleted_at)
                   : null;
                 const rowStatus = statusForRow(t, showArchived);
                 const hoursConfig = configFromTemplateRow(t);

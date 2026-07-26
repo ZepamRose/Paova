@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
+import { sanitizeLogoUrl } from "@/lib/branding";
 
 export type WaiverField = {
   key: string;
@@ -39,6 +40,11 @@ export type GenerateWaiverPdfInput = {
   brandAccent?: string | null;
   brandFont?: string | null;
   logoUrl: string | null;
+  /**
+   * Pre-fetched logo bytes. Batch callers (group ZIP export) resolve the logo
+   * once and pass it here instead of re-fetching the same URL per document.
+   */
+  logoBytes?: Uint8Array | null;
   tagline?: string | null;
   contactAddress?: string | null;
   contactPhone?: string | null;
@@ -53,6 +59,37 @@ export type GenerateWaiverPdfInput = {
   /** Digital evidence dossier — rendered as "Preuves de signature". */
   proof?: WaiverPdfProof | null;
 };
+
+/**
+ * Fetch a business logo once. Exported so batch callers (group ZIP export)
+ * resolve it a single time and hand the bytes to every document instead of
+ * issuing one identical HTTP request per PDF.
+ *
+ * Only Storage logos URLs are fetched — arbitrary logo_url values used to be
+ * a server-side request forge (SSRF).
+ */
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+export async function fetchLogoBytes(
+  logoUrl: string | null | undefined,
+): Promise<Uint8Array | null> {
+  const safeUrl = sanitizeLogoUrl(logoUrl);
+  if (!safeUrl) return null;
+  try {
+    const res = await fetch(safeUrl, {
+      signal: AbortSignal.timeout(4_000),
+      redirect: "error",
+    });
+    if (!res.ok) return null;
+    const lengthHeader = res.headers.get("content-length");
+    if (lengthHeader && Number(lengthHeader) > MAX_LOGO_BYTES) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength > MAX_LOGO_BYTES) return null;
+    return buf;
+  } catch {
+    return null;
+  }
+}
 
 function formatTimezoneOffset(minutes: number | null): string | null {
   if (minutes == null || !Number.isFinite(minutes)) return null;
@@ -690,13 +727,12 @@ export async function generateWaiverPdf(
 
   // ── Logo (business, or Paova wordmark as fallback) ────────────────
   let drewBusinessLogo = false;
-  if (showLogo && input.logoUrl) {
+  if (showLogo && (input.logoBytes || input.logoUrl)) {
     try {
-      const res = await fetch(input.logoUrl, {
-        signal: AbortSignal.timeout(4_000),
-      });
-      if (res.ok) {
-        const buf = new Uint8Array(await res.arrayBuffer());
+      // Reuse pre-fetched bytes when the caller already resolved the logo.
+      const buf =
+        input.logoBytes ?? (await fetchLogoBytes(input.logoUrl));
+      if (buf) {
         const isPng = buf[0] === 0x89 && buf[1] === 0x50;
         const isJpg = buf[0] === 0xff && buf[1] === 0xd8;
         if (isPng || isJpg) {

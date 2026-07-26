@@ -5,6 +5,8 @@ import {
   resolveAccentColor,
   resolveButtonRadius,
   resolvePublicTheme,
+  sanitizeHttpUrl,
+  sanitizeLogoUrl,
 } from "@/lib/branding";
 import {
   buildThankYouPdfHref,
@@ -23,10 +25,10 @@ export default async function ThankYouPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ sid?: string; t?: string; borne?: string }>;
+  searchParams: Promise<{ sid?: string; t?: string; borne?: string; email?: string }>;
 }) {
   const { slug } = await params;
-  const { sid, t, borne } = await searchParams;
+  const { sid, t, borne, email } = await searchParams;
   const supabase = createServiceRoleClient();
 
   const { data: template } = await supabase
@@ -67,7 +69,8 @@ export default async function ThankYouPage({
       .eq("id", template.business_id)
       .maybeSingle();
     businessName = business?.name ?? null;
-    logoUrl = business?.logo_url ?? null;
+    logoUrl = sanitizeLogoUrl(business?.logo_url);
+    thankYouButtonUrl = sanitizeHttpUrl(business?.thank_you_button_url);
     brandColor = business?.brand_color || brandColor;
     brandAccent = resolveAccentColor(
       business?.brand_color,
@@ -79,7 +82,6 @@ export default async function ThankYouPage({
     thankYouTitle = business?.thank_you_title ?? null;
     thankYouMessage = business?.thank_you_message ?? null;
     thankYouButtonLabel = business?.thank_you_button_label ?? null;
-    thankYouButtonUrl = business?.thank_you_button_url ?? null;
 
     if (sid) {
       const { data: submission } = await supabase
@@ -132,6 +134,7 @@ export default async function ThankYouPage({
           pdfHref={pdfHref}
           borne={borne === "1"}
           isLegalRep={isLegalRep}
+          emailFailed={email === "0"}
         />
       </div>
     </>

@@ -70,11 +70,35 @@ export default async function PublicGroupPage({
     .eq("id", group.business_id)
     .maybeSingle();
 
-  const { data: members } = await supabase
-    .from("signing_group_member")
-    .select("id, full_name, dob, note, signed_submission_id")
-    .eq("group_id", group.id)
-    .order("full_name", { ascending: true });
+  // Express groups never need the roster on this page (walk-in creates members
+  // at submit time). Roster mode only loads unsigned members, capped.
+  const ROSTER_UNSIGNED_LIMIT = 300;
+  let unsigned: {
+    id: string;
+    full_name: string;
+    dob: string | null;
+    note: string | null;
+  }[] = [];
+  let rosterTruncated = false;
+
+  if (!isExpress) {
+    const { count: unsignedCount } = await supabase
+      .from("signing_group_member")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", group.id)
+      .is("signed_submission_id", null);
+
+    const { data: members } = await supabase
+      .from("signing_group_member")
+      .select("id, full_name, dob, note")
+      .eq("group_id", group.id)
+      .is("signed_submission_id", null)
+      .order("full_name", { ascending: true })
+      .limit(ROSTER_UNSIGNED_LIMIT);
+
+    unsigned = members ?? [];
+    rosterTruncated = (unsignedCount ?? 0) > ROSTER_UNSIGNED_LIMIT;
+  }
 
   const fields = (
     Array.isArray(template.fields) ? template.fields : []
@@ -97,8 +121,6 @@ export default async function PublicGroupPage({
   const askDob = isLegalRep && rosterMode === "minors";
   const participantLabel =
     intent.subjects === "minors" ? "Nom de l’enfant" : "Nom du participant";
-
-  const unsigned = (members ?? []).filter((m) => !m.signed_submission_id);
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 py-8 sm:px-6">
@@ -155,22 +177,30 @@ export default async function PublicGroupPage({
           Tous les participants de ce groupe ont déjà signé. Merci !
         </div>
       ) : (
-        <GroupSignFlow
-          groupToken={group.public_token}
-          groupId={group.id}
-          slug={template.public_slug}
-          legalText={template.legal_text}
-          fields={fields}
-          signerNameLabel={signerNameLabel}
-          brandColor={business?.brand_color || "#6b8f71"}
-          isLegalRep={isLegalRep}
-          members={unsigned.map((m) => ({
-            id: m.id,
-            full_name: m.full_name,
-            dob: m.dob,
-            note: m.note,
-          }))}
-        />
+        <>
+          {rosterTruncated ? (
+            <p className="mb-4 rounded-xl border border-[color-mix(in_srgb,#b45309_35%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-surface))] px-4 py-3 text-[13px] text-[var(--color-foreground)]">
+              La liste affiche les {ROSTER_UNSIGNED_LIMIT} premiers participants
+              en attente. Contactez l’organisateur si votre nom n’apparaît pas.
+            </p>
+          ) : null}
+          <GroupSignFlow
+            groupToken={group.public_token}
+            groupId={group.id}
+            slug={template.public_slug}
+            legalText={template.legal_text}
+            fields={fields}
+            signerNameLabel={signerNameLabel}
+            brandColor={business?.brand_color || "#6b8f71"}
+            isLegalRep={isLegalRep}
+            members={unsigned.map((m) => ({
+              id: m.id,
+              full_name: m.full_name,
+              dob: m.dob,
+              note: m.note,
+            }))}
+          />
+        </>
       )}
     </main>
   );

@@ -8,6 +8,7 @@ import {
   resolveAccentColor,
   resolveButtonRadius,
   resolvePublicTheme,
+  sanitizeLogoUrl,
 } from "@/lib/branding";
 import {
   configFromTemplateRow,
@@ -139,10 +140,12 @@ export default async function PublicWaiverPage({
   const { data: business } = await supabase
     .from("business")
     .select(
-      "name, brand_color, brand_font, logo_url, owner_id, tagline, brand_accent, brand_button_radius, public_theme, contact_address, contact_phone, contact_email, public_show_logo, public_show_name, public_show_tagline, public_show_contact",
+      "name, brand_color, brand_font, logo_url, owner_id, plan, subscription_status, tagline, brand_accent, brand_button_radius, public_theme, contact_address, contact_phone, contact_email, public_show_logo, public_show_name, public_show_tagline, public_show_contact",
     )
     .eq("id", template.business_id)
     .maybeSingle();
+
+  const logoUrl = sanitizeLogoUrl(business?.logo_url);
 
   const fields = (Array.isArray(template.fields)
     ? template.fields
@@ -178,13 +181,7 @@ export default async function PublicWaiverPage({
     : [];
   let limitReached = false;
   if (business && !closed) {
-    const { data: ownerProfile } = await supabase
-      .from("profiles")
-      .select("plan, subscription_status")
-      .eq("id", business.owner_id)
-      .maybeSingle();
-
-    if (!isPro(ownerProfile)) {
+    if (!isPro(business)) {
       const { count } = await supabase
         .from("submission")
         .select("id", { count: "exact", head: true })
@@ -273,11 +270,11 @@ export default async function PublicWaiverPage({
                 }`}
               >
                 {showLogo ? (
-                  business?.logo_url ? (
+                  logoUrl ? (
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.05rem] border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] p-2 shadow-[var(--elev-1)] sm:h-14 sm:w-14">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={business.logo_url}
+                        src={logoUrl}
                         alt={business?.name ?? "Logo"}
                         className="h-full w-full object-contain"
                       />

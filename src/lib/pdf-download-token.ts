@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-/** Thank-you page PDF links remain valid long enough to reopen a closed tab. */
-const TTL_SECONDS = 60 * 60 * 24 * 7;
+/** Thank-you PDF links: long enough to reopen a tab, short enough to limit share leaks. */
+const TTL_SECONDS = 60 * 60 * 24;
 
 type TokenPayload = {
   sid: string;

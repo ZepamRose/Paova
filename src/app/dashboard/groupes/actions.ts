@@ -14,6 +14,7 @@ import {
 } from "@/lib/groups/lifecycle";
 import { sendGroupReminder } from "@/lib/email";
 import { env } from "@/lib/env";
+import { getActiveMembership } from "@/lib/auth/membership";
 
 const REMINDER_COOLDOWN_MS = 30 * 60 * 1000;
 
@@ -24,10 +25,13 @@ async function requireBusiness() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) redirect("/onboarding");
+
   const { data: business } = await supabase
     .from("business")
     .select("id, name, brand_color, email_from_name")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 
@@ -99,7 +103,12 @@ export async function createSigningGroup(formData: FormData) {
       })),
     );
     if (memErr) {
+      // Do not leave an empty "success" group — operators would share a dead QR.
       console.error("group members insert failed:", memErr);
+      await supabase.from("signing_group").delete().eq("id", group.id);
+      redirect(
+        `/dashboard/groupes/new?error=members&template=${templateId}`,
+      );
     }
   }
 

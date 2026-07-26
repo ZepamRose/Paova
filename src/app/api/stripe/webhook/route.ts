@@ -3,12 +3,18 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import {
+  claimStripeWebhookEvent,
+  releaseStripeWebhookEvent,
+  syncBusinessBillingFromStripe,
+} from "@/lib/stripe/sync-business-plan";
 
 /**
  * Stripe webhook endpoint.
  *
- * Verifies the signature and syncs subscription state to the `profiles` table
- * using the service role client (no user session in a webhook request).
+ * Verifies the signature, claims event.id for at-most-once handling, then
+ * reconciles `business.plan` from Stripe's live subscription list (never from
+ * the event payload alone).
  */
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -32,63 +38,80 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.client_reference_id;
-      const customerId =
-        typeof session.customer === "string" ? session.customer : null;
+  const claim = await claimStripeWebhookEvent(supabase, event);
+  if (claim === "duplicate") {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+  if (typeof claim === "object") {
+    return NextResponse.json({ error: claim.error }, { status: 500 });
+  }
 
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({
-            plan: "pro",
-            subscription_status: "active",
-            ...(customerId ? { stripe_customer_id: customerId } : {}),
-          })
-          .eq("id", userId);
-      } else if (customerId) {
-        await supabase
-          .from("profiles")
-          .update({ plan: "pro", subscription_status: "active" })
-          .eq("stripe_customer_id", customerId);
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const businessId = session.client_reference_id;
+        const customerId =
+          typeof session.customer === "string" ? session.customer : null;
+
+        if (!customerId) {
+          await releaseStripeWebhookEvent(supabase, event.id);
+          return NextResponse.json(
+            { error: "checkout_missing_customer" },
+            { status: 500 },
+          );
+        }
+
+        const result = await syncBusinessBillingFromStripe(supabase, {
+          customerId,
+          businessId: businessId || null,
+          setCustomerId: true,
+        });
+        if (!result.ok) {
+          await releaseStripeWebhookEvent(supabase, event.id);
+          return NextResponse.json(
+            { error: result.reason },
+            { status: 500 },
+          );
+        }
+        break;
       }
-      break;
-    }
 
-    case "customer.subscription.updated": {
-      const sub = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof sub.customer === "string" ? sub.customer : null;
-      const active = sub.status === "active" || sub.status === "trialing";
-      if (customerId) {
-        await supabase
-          .from("profiles")
-          .update({
-            plan: active ? "pro" : "free",
-            subscription_status: sub.status,
-          })
-          .eq("stripe_customer_id", customerId);
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId =
+          typeof sub.customer === "string" ? sub.customer : null;
+        if (!customerId) {
+          await releaseStripeWebhookEvent(supabase, event.id);
+          return NextResponse.json(
+            { error: "subscription_missing_customer" },
+            { status: 500 },
+          );
+        }
+
+        const result = await syncBusinessBillingFromStripe(supabase, {
+          customerId,
+        });
+        if (!result.ok) {
+          await releaseStripeWebhookEvent(supabase, event.id);
+          return NextResponse.json(
+            { error: result.reason },
+            { status: 500 },
+          );
+        }
+        break;
       }
-      break;
-    }
 
-    case "customer.subscription.deleted": {
-      const sub = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof sub.customer === "string" ? sub.customer : null;
-      if (customerId) {
-        await supabase
-          .from("profiles")
-          .update({ plan: "free", subscription_status: "canceled" })
-          .eq("stripe_customer_id", customerId);
-      }
-      break;
+      default:
+        // Unhandled types are still claimed so Stripe stops retrying them.
+        break;
     }
-
-    default:
-      break;
+  } catch (err) {
+    await releaseStripeWebhookEvent(supabase, event.id);
+    const message =
+      err instanceof Error ? err.message : "webhook_handler_failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

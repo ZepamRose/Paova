@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
 import { GroupIcon } from "@/components/groups/group-icon";
 import { detectRosterMode } from "@/lib/groups";
 import { NewGroupForm } from "../new-group-form";
@@ -19,10 +20,12 @@ export default async function NewGroupePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) redirect("/onboarding");
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 
@@ -65,7 +68,9 @@ export default async function NewGroupePage({
         ? "Décharge introuvable."
         : sp.error === "create"
           ? "Création impossible. Réessayez."
-          : null;
+          : sp.error === "members"
+            ? "Le groupe n'a pas pu être créé : l'import de la liste a échoué. Vérifiez le fichier et réessayez."
+            : null;
 
   const backHref = fromWaiver
     ? `/dashboard/waivers/${preselected!.id}`

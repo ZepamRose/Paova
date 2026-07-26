@@ -25,6 +25,7 @@ export function BusinessAvatar({
 }) {
   if (logoUrl) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- arbitrary business-uploaded URL, not a next/image domain
       <img
         src={logoUrl}
         alt=""

@@ -2,6 +2,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
 import type { Database } from "@/types/database.types";
 
 /**
@@ -17,15 +18,12 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
 
-  let next = searchParams.get("next") ?? "/dashboard";
-  if (!next.startsWith("/")) {
-    next = "/dashboard";
-  }
+  const next = safeNextPath(searchParams.get("next"));
 
-  const forwardedHost = request.headers.get("x-forwarded-host");
+  // Prefer the configured app URL in production so a forged x-forwarded-host
+  // cannot send the post-login redirect (and cookies context) off-origin.
   const isLocal = process.env.NODE_ENV === "development";
-  const baseUrl =
-    !isLocal && forwardedHost ? `https://${forwardedHost}` : origin;
+  const baseUrl = isLocal ? origin : env.appUrl;
 
   const successUrl = `${baseUrl}${next}`;
   const errorUrl = `${baseUrl}/login?error=auth`;

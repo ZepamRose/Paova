@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
 import { GroupIcon } from "@/components/groups/group-icon";
 import {
   GroupProgressBar,
@@ -21,10 +22,12 @@ export default async function GroupesPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) redirect("/onboarding");
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 
@@ -43,26 +46,19 @@ export default async function GroupesPage({
   const groups = showArchived ? archivedGroups : activeGroups;
 
   const groupIds = (allGroups ?? []).map((g) => g.id);
-  const { data: members } =
+  const { data: groupStatsRows } =
     groupIds.length > 0
-      ? await supabase
-          .from("signing_group_member")
-          .select("id, group_id, signed_submission_id")
-          .in("group_id", groupIds)
-      : {
-          data: [] as {
-            id: string;
-            group_id: string;
-            signed_submission_id: string | null;
-          }[],
-        };
+      ? await supabase.rpc("dashboard_group_stats", {
+          p_business_id: business.id,
+        })
+      : { data: [] as { group_id: string; total: number; signed: number }[] };
 
   const stats = new Map<string, { total: number; signed: number }>();
-  for (const m of members ?? []) {
-    const cur = stats.get(m.group_id) ?? { total: 0, signed: 0 };
-    cur.total += 1;
-    if (m.signed_submission_id) cur.signed += 1;
-    stats.set(m.group_id, cur);
+  for (const row of groupStatsRows ?? []) {
+    stats.set(row.group_id, {
+      total: Number(row.total),
+      signed: Number(row.signed),
+    });
   }
 
   const templateIds = [...new Set((allGroups ?? []).map((g) => g.template_id))];

@@ -49,10 +49,14 @@ export default async function FirstWaiverOnboardingPage({
     redirect("/login");
   }
 
+  // .limit(1) before .maybeSingle(): a user can own more than one business —
+  // without it, .maybeSingle() errors on >1 rows instead of picking one.
   const { data: business } = await supabase
     .from("business")
     .select("id, name")
     .eq("owner_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (!business) {

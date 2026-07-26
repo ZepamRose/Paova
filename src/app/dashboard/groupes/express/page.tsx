@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
 import { ExpressGroupForm } from "../express-group-form";
 
 export default async function ExpressGroupePage({
@@ -17,10 +18,12 @@ export default async function ExpressGroupePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) redirect("/onboarding");
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 

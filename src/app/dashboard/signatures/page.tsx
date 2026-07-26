@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { enrichSearchRows, searchSubmissions } from "@/lib/search";
 import { SignaturesLiveSearch } from "./signatures-live-search";
 
@@ -29,10 +31,14 @@ export default async function SignaturesSearchPage({
     redirect("/login");
   }
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    redirect("/onboarding");
+  }
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) {
     redirect("/onboarding");
@@ -162,6 +168,8 @@ export default async function SignaturesSearchPage({
         initialScope={initialScope}
         initialRows={initialRows}
         initialError={initialError}
+        allowExport={hasCapability(membership.role, "export_data")}
+        allowErase={hasCapability(membership.role, "delete_submission")}
       />
     </main>
   );

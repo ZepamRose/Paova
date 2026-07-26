@@ -61,6 +61,14 @@ export default function PrivacyPage() {
           puis archivées ou supprimées conformément aux obligations légales de
           l&apos;établissement : [durée à compléter].
         </p>
+        <p>
+          L&apos;établissement peut à tout moment effacer une signature depuis
+          son espace. Cet effacement est définitif et irréversible : il supprime
+          la signature, les réponses au formulaire, le dossier de preuve
+          (horodatage, empreinte, adresse IP) et l&apos;entrée d&apos;index
+          associée. Seule une trace anonyme de l&apos;opération est conservée
+          dans le journal, sans les données effacées.
+        </p>
 
         <h2 className="text-lg font-semibold">6. Hébergement</h2>
         <p>

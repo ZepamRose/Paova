@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Eye, X } from "lucide-react";
@@ -13,6 +20,7 @@ import {
   type DisplayField,
 } from "@/lib/submissions/display";
 import { PdfDownloadButton } from "./pdf-download-button";
+import { EraseSubmissionButton } from "./erase-submission-button";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const MOTION = "duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
@@ -63,20 +71,28 @@ export function SubmissionDetailDialog({
   triggerClassName,
   open: openProp,
   onOpenChange,
+  canErase = false,
+  eraseReturnTo,
 }: {
   submission: SubmissionDetailData;
   triggerClassName?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Owner/admin only — GDPR erasure is destructive and irreversible. */
+  canErase?: boolean;
+  eraseReturnTo?: "waiver" | "signatures";
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : uncontrolledOpen;
 
-  function setOpen(next: boolean) {
-    if (!isControlled) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-  }
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setUncontrolledOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   const [mounted, setMounted] = useState(false);
   const titleId = useId();
@@ -120,7 +136,7 @@ export function SubmissionDetailDialog({
       window.clearTimeout(t);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   return (
     <>
@@ -281,6 +297,13 @@ export function SubmissionDetailDialog({
                       <p className="mr-auto text-[12px] leading-relaxed text-[var(--color-muted)]">
                         Preuve légale en PDF
                       </p>
+                      {canErase ? (
+                        <EraseSubmissionButton
+                          submissionId={submission.id}
+                          signerName={submission.signerName}
+                          returnTo={eraseReturnTo}
+                        />
+                      ) : null}
                       <PdfDownloadButton
                         href={pdfHref}
                         label="Télécharger"

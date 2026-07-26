@@ -182,6 +182,7 @@ export function MerciView({
   pdfHref = null,
   borne,
   isLegalRep = false,
+  emailFailed = false,
 }: {
   slug: string;
   businessName: string | null;
@@ -198,6 +199,7 @@ export function MerciView({
   pdfHref?: string | null;
   borne: boolean;
   isLegalRep?: boolean;
+  emailFailed?: boolean;
 }) {
   const reduced = useReducedMotion() ?? false;
   const showKioskCta = useShowKioskCta(borne);
@@ -311,6 +313,17 @@ export function MerciView({
               <p className="mt-2.5 max-w-[22rem] whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--color-muted)]">
                 {message}
               </p>
+              {emailFailed ? (
+                <p
+                  role="status"
+                  className="mt-3 max-w-[22rem] rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_55%,var(--color-background))] px-3 py-2.5 text-[13px] leading-relaxed text-[var(--color-foreground)]/85"
+                >
+                  L&apos;e-mail de confirmation n&apos;a pas pu être envoyé.
+                  {pdfHref
+                    ? " Téléchargez votre PDF ci-dessous pour en conserver une copie."
+                    : " Conservez la référence ci-dessous."}
+                </p>
+              ) : null}
             </motion.div>
 
             {hasReceipt ? (
@@ -386,6 +399,8 @@ export function MerciView({
                 {externalCtaUrl && !showKioskCta ? (
                   <a
                     href={externalCtaUrl}
+                    rel="noopener noreferrer"
+                    referrerPolicy="no-referrer"
                     className={`inline-flex h-11 w-full items-center justify-center ${radiusClass} border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-5 text-sm font-medium text-[var(--color-foreground)]/80 shadow-[var(--elev-1)] transition-[transform,background-color,border-color,color,box-shadow] ${MOTION} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99]`}
                   >
                     {externalCtaLabel}

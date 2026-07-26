@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { Share2, Users, Settings2, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import { CopyLinkButton } from "@/app/dashboard/copy-link-button";
 import { GroupIcon } from "@/components/groups/group-icon";
@@ -61,10 +63,13 @@ export default async function GroupeDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) redirect("/onboarding");
+  const canExport = hasCapability(membership.role, "export_data");
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) redirect("/onboarding");
 
@@ -455,20 +460,22 @@ export default async function GroupeDetailPage({
             </div>
           </details>
 
-          <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] px-3.5 py-3">
-            <p className="text-[13px] font-medium text-[var(--color-foreground)]">
-              Export
-            </p>
-            <p className="mt-0.5 text-[12.5px] text-[var(--color-muted)]">
-              Liste CSV ou preuves PDF des signatures.
-            </p>
-            <GroupExportButtons
-              groupId={group.id}
-              signedCount={signed}
-              className={btnSecondary}
-              compact
-            />
-          </div>
+          {canExport ? (
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] px-3.5 py-3">
+              <p className="text-[13px] font-medium text-[var(--color-foreground)]">
+                Export
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-[var(--color-muted)]">
+                Liste CSV ou preuves PDF des signatures.
+              </p>
+              <GroupExportButtons
+                groupId={group.id}
+                signedCount={signed}
+                className={btnSecondary}
+                compact
+              />
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

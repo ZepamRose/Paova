@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { formatRelativeActivityFr } from "@/lib/audit";
@@ -47,21 +48,36 @@ export function SubmissionsList({
   submissions,
   groups = [],
   emptyContext,
+  canErase = false,
+  page = 1,
+  totalCount,
+  pageSize = 40,
 }: {
   templateId: string;
   fields: DisplayField[];
   submissions: Submission[];
   groups?: GroupOption[];
   emptyContext?: SignaturesEmptyContext;
+  /** Owner/admin only — GDPR erasure. */
+  canErase?: boolean;
+  page?: number;
+  totalCount?: number;
+  pageSize?: number;
 }) {
   const groupById = useMemo(
     () => new Map(groups.map((g) => [g.id, g])),
     [groups],
   );
-  useLiveSubmissionsRefresh({ templateId });
+  // Live refresh only on page 1 — older pages would jump when new rows arrive.
+  useLiveSubmissionsRefresh({
+    templateId,
+    enabled: page === 1,
+  });
 
   const [query, setQuery] = useState("");
   const hasAnySubjects = submissions.some((s) => Boolean(s.subjectsSummary));
+  const total = totalCount ?? submissions.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const subjectsColumnLabel = useMemo(() => {
     const labels = submissions
@@ -93,7 +109,7 @@ export function SubmissionsList({
     });
   }, [query, submissions]);
 
-  if (submissions.length === 0) {
+  if (submissions.length === 0 && total === 0) {
     const lastShare = formatRelativeActivityFr(
       emptyContext?.lastLinkViewedAt ?? null,
     );
@@ -149,6 +165,9 @@ export function SubmissionsList({
       </div>
     );
   }
+
+  const pageHref = (p: number) =>
+    `/dashboard/waivers/${templateId}?tab=signatures&page=${p}`;
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -312,6 +331,8 @@ export function SubmissionsList({
                         fields,
                         answers: s.answers,
                       }}
+                      canErase={canErase}
+                      eraseReturnTo="waiver"
                     />
                     <PdfDownloadButton href={pdfHref} variant="quiet" />
                   </div>
@@ -322,6 +343,43 @@ export function SubmissionsList({
           </ScrollablePanel>
         </div>
       )}
+
+      {totalPages > 1 ? (
+        <nav
+          aria-label="Pagination des signatures"
+          className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[13px] text-[var(--color-muted)]"
+        >
+          <p>
+            Page {page} / {totalPages}
+            <span className="text-[var(--color-muted)]/70">
+              {" "}
+              · {total} signature{total === 1 ? "" : "s"}
+            </span>
+          </p>
+          <div className="flex items-center gap-2">
+            {page > 1 ? (
+              <Link
+                href={pageHref(page - 1)}
+                className="rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3 py-1.5 font-medium text-[var(--color-foreground)]/85 transition-colors hover:bg-[var(--color-surface-2)]"
+              >
+                Précédent
+              </Link>
+            ) : (
+              <span className="rounded-lg px-3 py-1.5 opacity-40">Précédent</span>
+            )}
+            {page < totalPages ? (
+              <Link
+                href={pageHref(page + 1)}
+                className="rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3 py-1.5 font-medium text-[var(--color-foreground)]/85 transition-colors hover:bg-[var(--color-surface-2)]"
+              >
+                Suivant
+              </Link>
+            ) : (
+              <span className="rounded-lg px-3 py-1.5 opacity-40">Suivant</span>
+            )}
+          </div>
+        </nav>
+      ) : null}
     </div>
   );
 }

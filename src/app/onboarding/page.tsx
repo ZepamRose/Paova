@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/server";
+import { resolveBusinessContext } from "@/lib/auth/membership";
 import { createBusiness } from "./actions";
 
 export default async function OnboardingPage({
@@ -19,14 +20,10 @@ export default async function OnboardingPage({
     redirect("/login");
   }
 
-  // If the user already has a business, skip onboarding.
-  const { data: existing } = await supabase
-    .from("business")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (existing) {
+  // If the user already belongs to a business (owner, admin, or a newly
+  // claimed invite), skip onboarding entirely.
+  const membership = await resolveBusinessContext(supabase, user.id, user.email);
+  if (membership) {
     redirect("/dashboard");
   }
 

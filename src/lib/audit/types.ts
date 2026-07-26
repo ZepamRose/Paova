@@ -14,12 +14,18 @@ export type AuditEventType =
   | "template.qr_downloaded"
   | "submission.started"
   | "submission.signed"
+  | "submission.erased"
   | "pdf.generated"
   | "pdf.downloaded"
   | "export.csv_generated"
   | "export.zip_generated";
 
-export type AuditActorKind = "owner" | "signer" | "system";
+export type AuditActorKind =
+  | "owner"
+  | "admin"
+  | "employee"
+  | "signer"
+  | "system";
 
 export type AuditEntityType = "template" | "submission" | "proof" | "export";
 
@@ -66,6 +72,7 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   "template.qr_downloaded": "QR téléchargé",
   "submission.started": "Formulaire ouvert",
   "submission.signed": "Signature validée",
+  "submission.erased": "Signature effacée (RGPD)",
   "pdf.generated": "PDF envoyé",
   "pdf.downloaded": "PDF téléchargé",
   "export.csv_generated": "Signatures exportées",
@@ -84,6 +91,7 @@ export const TIMELINE_STORY_EVENTS = new Set<AuditEventType>([
   "template.archived",
   "template.qr_downloaded",
   "submission.signed",
+  "submission.erased",
   "pdf.generated",
   "pdf.downloaded",
   "export.csv_generated",

@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { sanitizeLogoUrl } from "@/lib/branding";
 
 type Attachment = {
   filename: string;
@@ -24,6 +25,19 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
     return false;
   }
 
+  const isProd =
+    process.env.VERCEL_ENV === "production" ||
+    process.env.NODE_ENV === "production";
+  const from = input.from ?? env.resend.from;
+  // Resend's onboarding address only delivers to the account owner — treat it
+  // as misconfigured in production so we never pretend the signer got the PDF.
+  if (isProd && /@resend\.dev\b/i.test(from)) {
+    console.error(
+      "RESEND_FROM still uses resend.dev in production; refusing to send.",
+    );
+    return false;
+  }
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -32,12 +46,14 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: input.from ?? env.resend.from,
+        from,
         to: input.to,
         subject: input.subject,
         html: input.html,
         attachments: input.attachments,
       }),
+      // Don't leave UI / server actions hanging forever on a stalled Resend call.
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {
@@ -55,7 +71,9 @@ function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function formatFromAddress(fromName: string | null | undefined): string | undefined {
@@ -109,10 +127,11 @@ export async function sendSignerConfirmation(input: {
       )}</p>`
     : `<p style="font-size: 12px; color: #6b7280; margin-top: 24px;">Envoyé via Paova.</p>`;
 
+  const logoSafe = sanitizeLogoUrl(input.logoUrl);
   const logoBlock =
-    input.showLogo !== false && input.logoUrl
+    input.showLogo !== false && logoSafe
       ? `<div style="margin-bottom: 16px;"><img src="${escapeHtml(
-          input.logoUrl,
+          logoSafe,
         )}" alt="" width="48" height="48" style="display:block;border-radius:10px;object-fit:contain;" /></div>`
       : "";
 
@@ -217,6 +236,62 @@ export async function sendGroupReminder(input: {
     to: input.to,
     from: formatFromAddress(input.fromName ?? input.businessName),
     subject,
+    html,
+  });
+}
+
+const ROLE_LABEL: Record<"admin" | "employee", string> = {
+  admin: "Administrateur",
+  employee: "Collaborateur",
+};
+
+/** Invite a new team member to join a business on Paova. */
+export async function sendMemberInvite(input: {
+  to: string;
+  businessName: string | null;
+  role: "admin" | "employee";
+  loginUrl: string;
+  invitedByName?: string | null;
+  brandColor?: string;
+}): Promise<boolean> {
+  const business = input.businessName?.trim() || "l'établissement";
+  const color =
+    input.brandColor && /^#[0-9a-fA-F]{6}$/.test(input.brandColor)
+      ? input.brandColor
+      : "#111827";
+  const roleLabel = ROLE_LABEL[input.role];
+  const from = (input.invitedByName ?? "").trim();
+
+  const html = `
+    <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
+      <h1 style="font-size: 20px; color: ${color};">Vous êtes invité·e sur Paova</h1>
+      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
+        Bonjour,
+      </p>
+      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
+        ${from ? `${escapeHtml(from)} vous invite` : "Vous avez été invité·e"}
+        à rejoindre l'espace <strong>${escapeHtml(business)}</strong> sur Paova,
+        avec le rôle <strong>${escapeHtml(roleLabel)}</strong>.
+      </p>
+      <p style="margin: 24px 0;">
+        <a href="${escapeHtml(input.loginUrl)}"
+           style="display:inline-block;background:${color};color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;">
+          Accéder à l'espace
+        </a>
+      </p>
+      <p style="font-size: 13px; line-height: 1.6; color: #6b7280;">
+        Connectez-vous avec cette adresse email (${escapeHtml(input.to)}) — un lien de
+        connexion sécurisé vous sera envoyé, sans mot de passe à retenir.
+      </p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">
+        Envoyé via Paova.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: input.to,
+    subject: `Invitation à rejoindre ${business} sur Paova`,
     html,
   });
 }

@@ -46,7 +46,7 @@ export function useLiveSubmissionsRefresh(options?: {
             busy = false;
           }, 2_000);
         }
-      }, 320);
+      }, 1_200);
     };
 
     const channelName = templateId

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
 
 /**
  * Recovers sessions when Supabase redirects to Site URL (`/`) with tokens
@@ -18,7 +19,7 @@ export function AuthSessionRecovery() {
 
     const code = url.searchParams.get("code");
     if (code) {
-      const next = url.searchParams.get("next") ?? "/dashboard";
+      const next = safeNextPath(url.searchParams.get("next"));
       const params = new URLSearchParams({ code, next });
       window.location.replace(`/auth/callback?${params.toString()}`);
       return;

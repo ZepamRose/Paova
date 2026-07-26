@@ -1,4 +1,11 @@
-/** Free plan: number of signatures allowed per calendar month. */
+/**
+ * Free plan: number of signatures allowed per calendar month.
+ *
+ * KEEP IN SYNC with public.free_monthly_signature_limit() in
+ * supabase/migrations/0028_enforce_free_plan_limit.sql — the database trigger
+ * is the authoritative guard; this constant drives UI copy and the fast
+ * pre-check only.
+ */
 export const FREE_MONTHLY_LIMIT = 10;
 
 /** Pro plan display price (EUR / month). Keep in sync with Stripe. */

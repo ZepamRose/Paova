@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
 import { recordAuditEvent } from "@/lib/audit";
 import { slugify, shortId } from "@/lib/slug";
 import {
@@ -155,10 +156,14 @@ export async function createTemplate(formData: FormData) {
     redirect("/login");
   }
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    redirect("/onboarding");
+  }
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) {
     redirect("/onboarding");
@@ -242,10 +247,14 @@ export async function createFromPreset(formData: FormData) {
     redirect("/login");
   }
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    redirect("/onboarding");
+  }
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) {
     redirect("/onboarding");

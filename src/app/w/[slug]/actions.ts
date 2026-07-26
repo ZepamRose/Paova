@@ -3,6 +3,17 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { checkRateLimit, clientIpFrom, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  clampInput,
+  normalizeEmail,
+  parseParticipants,
+  parseSignatureDataUrl,
+  MAX_FIELD_CHARS,
+  MAX_NAME_CHARS,
+  MAX_PARTICIPANTS,
+} from "@/lib/public-input";
+import { logError, logInfo, logWarn } from "@/lib/observability/log";
 import { FREE_MONTHLY_LIMIT, isPro, currentMonthStartISO } from "@/lib/plan";
 import { generateWaiverPdf } from "@/lib/pdf";
 import { sendSignerConfirmation } from "@/lib/email";
@@ -23,6 +34,12 @@ import {
 import { upsertSubmissionSearch } from "@/lib/search";
 import { resolveTemplateVersionId } from "@/lib/versions";
 import { ensureGroupAccepting } from "@/lib/groups/lifecycle";
+import {
+  deleteSignatureObject,
+  pngBytesFromDataUrl,
+  sha256HexBytes,
+  uploadSignaturePng,
+} from "@/lib/signatures/storage";
 import type { Json } from "@/types/database.types";
 
 type WaiverField = {
@@ -43,14 +60,18 @@ type WaiverField = {
 
 type Participant = { name: string; dob: string; note: string };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function submitWaiver(formData: FormData) {
   const slug = String(formData.get("slug") ?? "");
-  const signature = String(formData.get("signature") ?? "");
-  const signerName = String(formData.get("signer_name") ?? "").trim();
-  const signerEmail = String(formData.get("signer_email") ?? "").trim();
+  // Every value below comes from an anonymous POST — bound before use.
+  const signature = parseSignatureDataUrl(formData.get("signature"));
+  const signerName = clampInput(formData.get("signer_name"), MAX_NAME_CHARS);
+  const signerEmail = normalizeEmail(formData.get("signer_email")) ?? "";
   const consent = formData.get("rgpd_consent");
   const consentGiven = consent === "on" || consent === "true";
-  const clientTimezone = String(formData.get("client_timezone") ?? "").trim() || null;
+  const clientTimezone = clampInput(formData.get("client_timezone"), 64) || null;
   const offsetRaw = String(formData.get("client_timezone_offset") ?? "").trim();
   const timezoneOffsetMinutes =
     offsetRaw !== "" && Number.isFinite(Number(offsetRaw))
@@ -62,6 +83,21 @@ export async function submitWaiver(formData: FormData) {
   }
 
   const supabase = createServiceRoleClient();
+
+  // Anonymous write endpoint: throttle per IP before doing any real work,
+  // otherwise anyone holding the QR link can burn the business's quota.
+  const requestHeaders = await headers();
+  const signerIp = clientIpFrom(requestHeaders);
+  const withinLimit = await checkRateLimit(supabase, {
+    bucket: `sign:${slug}`,
+    identifier: signerIp,
+    windowSeconds: RATE_LIMITS.sign.windowSeconds,
+    maxHits: RATE_LIMITS.sign.maxHits,
+  });
+  if (!withinLimit) {
+    logWarn("submission.rate_limited", { slug });
+    redirect(`/w/${slug}?error=rate`);
+  }
 
   const { data: template } = await supabase
     .from("waiver_template")
@@ -107,19 +143,13 @@ export async function submitWaiver(formData: FormData) {
   const { data: business } = await supabase
     .from("business")
     .select(
-      "owner_id, name, brand_color, brand_font, logo_url, brand_accent, tagline, contact_address, contact_phone, contact_email, website_url, pdf_show_logo, pdf_show_name, pdf_show_contact, pdf_show_website, pdf_show_phone, pdf_show_footer, email_from_name, email_subject_template, email_signature, email_footer, email_show_logo",
+      "owner_id, name, plan, subscription_status, brand_color, brand_font, logo_url, brand_accent, tagline, contact_address, contact_phone, contact_email, website_url, pdf_show_logo, pdf_show_name, pdf_show_contact, pdf_show_website, pdf_show_phone, pdf_show_footer, email_from_name, email_subject_template, email_signature, email_footer, email_show_logo",
     )
     .eq("id", template.business_id)
     .maybeSingle();
 
   if (business) {
-    const { data: ownerProfile } = await supabase
-      .from("profiles")
-      .select("plan, subscription_status")
-      .eq("id", business.owner_id)
-      .maybeSingle();
-
-    if (!isPro(ownerProfile)) {
+    if (!isPro(business)) {
       const { count } = await supabase
         .from("submission")
         .select("id", { count: "exact", head: true })
@@ -157,7 +187,15 @@ export async function submitWaiver(formData: FormData) {
   try {
     const parsed = JSON.parse(String(formData.get("group_member_ids") ?? "[]"));
     if (Array.isArray(parsed)) {
-      groupMemberIds = [...new Set(parsed.map((id) => String(id)).filter(Boolean))];
+      // Bounded and shape-checked: these ids go straight into a SQL `IN`.
+      groupMemberIds = [
+        ...new Set(
+          parsed
+            .map((id) => String(id))
+            .filter((id) => UUID_RE.test(id))
+            .slice(0, MAX_PARTICIPANTS),
+        ),
+      ];
     }
   } catch {
     groupMemberIds = [];
@@ -167,6 +205,10 @@ export async function submitWaiver(formData: FormData) {
   let verifiedGroupId: string | null = null;
   let groupParticipants: Participant[] = [];
   const expressWalkIn = String(formData.get("express_walk_in") ?? "") === "1";
+  // Defer express member INSERT until after field validation + right before
+  // the submission row — otherwise a failed required field / later error leaves
+  // unsigned orphan roster rows.
+  let pendingExpressWalkIn: Participant[] | null = null;
 
   if (groupToken && (groupMemberIds.length > 0 || expressWalkIn)) {
     const { data: group } = await supabase
@@ -191,52 +233,17 @@ export async function submitWaiver(formData: FormData) {
         redirect(`/g/${groupToken}?error=closed`);
       }
 
-      let walkIn: Participant[] = [];
-      try {
-        const parsed = JSON.parse(
-          String(formData.get("express_participants") ?? "[]"),
-        );
-        if (Array.isArray(parsed)) {
-          walkIn = parsed
-            .map((p) => ({
-              name: String((p as Participant)?.name ?? "").trim(),
-              dob: String((p as Participant)?.dob ?? "").trim(),
-              note: String((p as Participant)?.note ?? "").trim(),
-            }))
-            .filter((p) => p.name.length > 0);
-        }
-      } catch {
-        walkIn = [];
-      }
+      // Bounded parse: an anonymous walk-in must not be able to insert an
+      // unlimited number of roster rows in a single request.
+      const walkIn = parseParticipants(formData.get("express_participants"));
 
       if (walkIn.length === 0) {
         redirect(`/g/${groupToken}?error=required`);
       }
 
-      const { data: inserted, error: insertErr } = await supabase
-        .from("signing_group_member")
-        .insert(
-          walkIn.map((p) => ({
-            group_id: group.id,
-            full_name: p.name.slice(0, 160),
-            dob: p.dob || null,
-            note: p.note || null,
-          })),
-        )
-        .select("id, full_name, dob, note");
-
-      if (insertErr || !inserted?.length) {
-        console.error("express walk-in member insert failed:", insertErr);
-        redirect(`/g/${groupToken}?error=members`);
-      }
-
       verifiedGroupId = group.id;
-      groupMemberIds = inserted.map((m) => m.id);
-      groupParticipants = inserted.map((m) => ({
-        name: m.full_name,
-        dob: m.dob ?? "",
-        note: m.note ?? "",
-      }));
+      groupParticipants = walkIn;
+      pendingExpressWalkIn = walkIn;
     } else {
       const { data: roster } = await supabase
         .from("signing_group_member")
@@ -260,7 +267,9 @@ export async function submitWaiver(formData: FormData) {
 
     answers.__group_token = groupToken;
     answers.__group_id = verifiedGroupId;
-    answers.__group_member_ids = groupMemberIds;
+    if (!pendingExpressWalkIn) {
+      answers.__group_member_ids = groupMemberIds;
+    }
     if (expressWalkIn) answers.__group_express = true;
   }
 
@@ -273,21 +282,7 @@ export async function submitWaiver(formData: FormData) {
       }
       answers[field.key] = checked;
     } else if (field.type === "participants") {
-      let list: { name: string; dob: string; note: string }[] = [];
-      try {
-        const parsed = JSON.parse(String(raw ?? "[]"));
-        if (Array.isArray(parsed)) {
-          list = parsed
-            .map((p) => ({
-              name: String((p as Participant)?.name ?? "").trim(),
-              dob: String((p as Participant)?.dob ?? "").trim(),
-              note: String((p as Participant)?.note ?? "").trim(),
-            }))
-            .filter((p) => p.name.length > 0);
-        }
-      } catch {
-        list = [];
-      }
+      let list = parseParticipants(raw);
       // Prefer verified roster when signing via a group link.
       if (groupParticipants.length > 0) {
         list = groupParticipants;
@@ -297,7 +292,7 @@ export async function submitWaiver(formData: FormData) {
       }
       answers[field.key] = list;
     } else {
-      const value = String(raw ?? "").trim();
+      const value = clampInput(raw, MAX_FIELD_CHARS);
       if (field.required && !value) {
         redirect(`/w/${slug}?error=required`);
       }
@@ -310,33 +305,165 @@ export async function submitWaiver(formData: FormData) {
     answers.__group_participants = groupParticipants;
   }
 
-  const headerList = await headers();
-  const ip =
-    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    headerList.get("x-real-ip") ??
-    null;
-  const userAgent = headerList.get("user-agent");
+  // Persist express walk-in roster rows only once validation succeeded.
+  if (pendingExpressWalkIn && verifiedGroupId) {
+    const { data: walkInRows, error: insertErr } = await supabase
+      .from("signing_group_member")
+      .insert(
+        pendingExpressWalkIn.map((p) => ({
+          group_id: verifiedGroupId,
+          full_name: p.name,
+          dob: p.dob || null,
+          note: p.note || null,
+        })),
+      )
+      .select("id, full_name, dob, note");
+
+    if (insertErr || !walkInRows?.length) {
+      logError("express.walk_in_insert_failed", insertErr?.message ?? "empty", {
+        groupId: verifiedGroupId,
+      });
+      redirect(`/g/${groupToken}?error=members`);
+    }
+
+    groupMemberIds = walkInRows.map((m) => m.id);
+    groupParticipants = walkInRows.map((m) => ({
+      name: m.full_name,
+      dob: m.dob ?? "",
+      note: m.note ?? "",
+    }));
+    answers.__group_member_ids = groupMemberIds;
+    if (answers.__group_participants) {
+      answers.__group_participants = groupParticipants;
+    }
+  }
+
+  // Same resolved IP as the rate limiter above — one value, one trust model.
+  // This is the address recorded in the proof dossier, so it must never be a
+  // client-supplied header (see lib/client-ip.ts).
+  const ip = signerIp;
+  const userAgent = requestHeaders.get("user-agent");
+
+  // Pre-generate the submission id so Storage path and the row share one UUID.
+  const submissionId = crypto.randomUUID();
+  const pngBytes = pngBytesFromDataUrl(signature);
+  const signatureSha256 = pngBytes ? sha256HexBytes(pngBytes) : null;
+
+  let signatureUrl: string = signature;
+  let storedSignaturePath: string | null = null;
+
+  if (pngBytes) {
+    const uploaded = await uploadSignaturePng(supabase, {
+      businessId: template.business_id,
+      submissionId,
+      bytes: pngBytes,
+    });
+    if (uploaded) {
+      signatureUrl = uploaded.path;
+      storedSignaturePath = uploaded.path;
+    } else {
+      // Keep the data URL so signing never breaks when Storage is unavailable.
+      logWarn("signature.storage_fallback", {
+        businessId: template.business_id,
+        submissionId,
+      });
+    }
+  }
 
   const { data: inserted, error } = await supabase
     .from("submission")
     .insert({
+      id: submissionId,
       template_id: template.id,
       business_id: template.business_id,
       signer_name: signerName,
       signer_email: signerEmail || null,
       answers: answers as unknown as Json,
-      signature_url: signature,
+      signature_url: signatureUrl,
       ip_address: ip,
     })
     .select("id, signed_at")
     .single();
 
   if (error) {
+    if (storedSignaturePath) {
+      await deleteSignatureObject(supabase, storedSignaturePath);
+    }
+    // Walk-in rows were created just above — remove them so a failed submit
+    // does not litter the express roster with unsigned ghosts.
+    if (pendingExpressWalkIn && verifiedGroupId && groupMemberIds.length > 0) {
+      await supabase
+        .from("signing_group_member")
+        .delete()
+        .eq("group_id", verifiedGroupId)
+        .in("id", groupMemberIds)
+        .is("signed_submission_id", null);
+    }
+    // The DB trigger is the authoritative free-plan guard (see migration 0028).
+    // Losing the race is a normal outcome, not a crash — show the same page as
+    // the optimistic pre-check above.
+    if (error.message.includes("FREE_PLAN_LIMIT_REACHED")) {
+      logWarn("submission.blocked_free_limit", {
+        businessId: template.business_id,
+        templateId: template.id,
+      });
+      redirect(`/w/${slug}?error=limit`);
+    }
+    logError("submission.insert_failed", error.message, {
+      businessId: template.business_id,
+      templateId: template.id,
+    });
     throw new Error(error.message);
   }
 
   const signedAt = inserted?.signed_at ?? new Date().toISOString();
   const templateVersion = template.version ?? 1;
+
+  // Claim the roster members immediately after the insert, before any proof /
+  // audit / search rows exist.
+  //
+  // The `.is(null)` filter makes this UPDATE the point of mutual exclusion:
+  // whoever flips the row first owns that participant's signature. Claiming
+  // fewer rows than requested means a concurrent signer won the race, so we
+  // roll the submission back instead of leaving an orphaned row that counts
+  // against the monthly quota and appears nowhere in the group's progress.
+  if (verifiedGroupId && groupMemberIds.length > 0) {
+    const { data: claimed, error: claimError } = await supabase
+      .from("signing_group_member")
+      .update({
+        signed_submission_id: inserted.id,
+        signed_at: signedAt,
+      })
+      .eq("group_id", verifiedGroupId)
+      .in("id", groupMemberIds)
+      .is("signed_submission_id", null)
+      .select("id");
+
+    if (claimError || (claimed?.length ?? 0) !== groupMemberIds.length) {
+      await supabase.from("submission").delete().eq("id", inserted.id);
+      if (storedSignaturePath) {
+        await deleteSignatureObject(supabase, storedSignaturePath);
+      }
+      // Express walk-ins only exist for this attempt — drop unsigned leftovers.
+      if (pendingExpressWalkIn) {
+        await supabase
+          .from("signing_group_member")
+          .delete()
+          .eq("group_id", verifiedGroupId)
+          .in("id", groupMemberIds)
+          .is("signed_submission_id", null);
+      }
+      logWarn("group.claim_conflict", {
+        groupId: verifiedGroupId,
+        requested: groupMemberIds.length,
+        claimed: claimed?.length ?? 0,
+        error: claimError?.message,
+      });
+      redirect(`/g/${groupToken}?error=members`);
+    }
+  }
+
+  const useStorageProof = Boolean(storedSignaturePath && signatureSha256);
 
   const proofInput = {
     submissionId: inserted.id,
@@ -356,7 +483,10 @@ export async function submitWaiver(formData: FormData) {
     signerName,
     signerEmail: signerEmail || null,
     answers,
-    signatureDataUrl: signature,
+    signatureDataUrl: useStorageProof ? "" : signature,
+    ...(useStorageProof && signatureSha256
+      ? { signatureSha256 }
+      : {}),
   };
 
   const snapshot = buildContentSnapshot(proofInput);
@@ -388,10 +518,18 @@ export async function submitWaiver(formData: FormData) {
       evidence: proof.evidence as unknown as Json,
     });
     if (proofError) {
-      console.error("signature_proof insert failed:", proofError);
+      // A submission without its proof dossier is a legal gap, not a detail:
+      // surface it loudly enough to be alertable.
+      logError("proof.insert_failed", proofError.message, {
+        submissionId: inserted.id,
+        businessId: template.business_id,
+      });
     }
   } catch (proofErr) {
-    console.error("signature_proof insert failed:", proofErr);
+    logError("proof.insert_failed", proofErr, {
+      submissionId: inserted.id,
+      businessId: template.business_id,
+    });
   }
 
   await recordAuditEvent(supabase, {
@@ -427,24 +565,9 @@ export async function submitWaiver(formData: FormData) {
     status: "signed",
   });
 
-  // Mark group roster members as signed (service role).
-  if (verifiedGroupId && groupMemberIds.length > 0) {
-    try {
-      await supabase
-        .from("signing_group_member")
-        .update({
-          signed_submission_id: inserted.id,
-          signed_at: signedAt,
-        })
-        .eq("group_id", verifiedGroupId)
-        .in("id", groupMemberIds)
-        .is("signed_submission_id", null);
-    } catch (groupErr) {
-      console.error("group member mark signed failed:", groupErr);
-    }
-  }
 
   // Best-effort: email the signer their signed PDF. Never block the flow.
+  let emailSent: boolean | null = null;
   if (signerEmail) {
     try {
       const pdfBytes = await generateWaiverPdf({
@@ -488,7 +611,7 @@ export async function submitWaiver(formData: FormData) {
         },
       });
 
-      await sendSignerConfirmation({
+      emailSent = await sendSignerConfirmation({
         to: signerEmail,
         signerName,
         businessName: business?.name ?? null,
@@ -503,20 +626,41 @@ export async function submitWaiver(formData: FormData) {
         pdfBytes,
       });
 
-      await recordAuditEvent(supabase, {
-        businessId: template.business_id,
-        actorKind: "system",
-        entityType: "submission",
-        entityId: inserted.id,
-        templateId: template.id,
-        submissionId: inserted.id,
-        eventType: "pdf.generated",
-        payload: { channel: "email_confirmation", reference: proof.reference },
-      });
+      if (emailSent) {
+        await recordAuditEvent(supabase, {
+          businessId: template.business_id,
+          actorKind: "system",
+          entityType: "submission",
+          entityId: inserted.id,
+          templateId: template.id,
+          submissionId: inserted.id,
+          eventType: "pdf.generated",
+          payload: {
+            channel: "email_confirmation",
+            reference: proof.reference,
+          },
+        });
+      } else {
+        logWarn("email.signer_confirmation_skipped", {
+          submissionId: inserted.id,
+          businessId: template.business_id,
+        });
+      }
     } catch (emailError) {
-      console.error("Signer confirmation email failed:", emailError);
+      emailSent = false;
+      logError("email.signer_confirmation_failed", emailError, {
+        submissionId: inserted.id,
+        businessId: template.business_id,
+      });
     }
   }
+
+  logInfo("submission.signed", {
+    submissionId: inserted.id,
+    businessId: template.business_id,
+    templateId: template.id,
+    templateVersion,
+  });
 
   const { mintPdfDownloadToken } = await import("@/lib/pdf-download-token");
   const pdfToken = mintPdfDownloadToken({
@@ -529,6 +673,9 @@ export async function submitWaiver(formData: FormData) {
   });
   if (String(formData.get("borne") ?? "") === "1") {
     merciParams.set("borne", "1");
+  }
+  if (signerEmail && emailSent === false) {
+    merciParams.set("email", "0");
   }
   redirect(`/w/${slug}/merci?${merciParams.toString()}`);
 }

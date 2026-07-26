@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CreditCard, Settings } from "lucide-react";
+import { CreditCard, Settings, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { isPro, currentMonthStartISO } from "@/lib/plan";
+import { resolveBusinessContext } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
+import { formatRelativeFr } from "@/lib/dates";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -18,25 +21,6 @@ import { DashboardHome } from "./dashboard-home";
 import { DashboardBusinessHero } from "./dashboard-business-hero";
 import { DashboardCreateControl } from "./dashboard-create-control";
 
-function formatRelativeFr(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const diffMs = Date.now() - date.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "à l'instant";
-  if (mins < 60) return `il y a ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "hier";
-  if (days < 7) return `il y a ${days} j`;
-  return date.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-  });
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -56,10 +40,15 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
+  const membership = await resolveBusinessContext(supabase, user.id, user.email);
+  if (!membership) {
+    redirect("/onboarding");
+  }
+
   const { data: business } = await supabase
     .from("business")
-    .select("id, name, brand_color")
-    .eq("owner_id", user.id)
+    .select("id, name, brand_color, plan, subscription_status")
+    .eq("id", membership.businessId)
     .maybeSingle();
 
   if (!business) {
@@ -72,9 +61,6 @@ export default async function DashboardPage({
   const fourteenDaysAgo = new Date(
     Date.now() - 14 * 24 * 60 * 60 * 1000,
   ).toISOString();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayStartMs = todayStart.getTime();
   const { data: allTemplates } = await supabase
     .from("waiver_template")
     .select(
@@ -90,25 +76,19 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false });
 
   const groupIds = (signingGroups ?? []).map((g) => g.id);
-  const { data: groupMembers } =
+  const { data: groupStatsRows } =
     groupIds.length > 0
-      ? await supabase
-          .from("signing_group_member")
-          .select("group_id, signed_submission_id")
-          .in("group_id", groupIds)
-      : {
-          data: [] as {
-            group_id: string;
-            signed_submission_id: string | null;
-          }[],
-        };
+      ? await supabase.rpc("dashboard_group_stats", {
+          p_business_id: business.id,
+        })
+      : { data: [] as { group_id: string; total: number; signed: number }[] };
 
   const groupStats = new Map<string, { total: number; signed: number }>();
-  for (const m of groupMembers ?? []) {
-    const cur = groupStats.get(m.group_id) ?? { total: 0, signed: 0 };
-    cur.total += 1;
-    if (m.signed_submission_id) cur.signed += 1;
-    groupStats.set(m.group_id, cur);
+  for (const row of groupStatsRows ?? []) {
+    groupStats.set(row.group_id, {
+      total: Number(row.total),
+      signed: Number(row.signed),
+    });
   }
 
   const groupTemplateIds = [
@@ -152,20 +132,16 @@ export default async function DashboardPage({
     allTemplates?.filter((t) => Boolean(t.deleted_at)) ?? [];
   const activeForStats = activeTemplatesList;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan, subscription_status")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const pro = isPro(profile);
+  // Plan is per tenant (migration 0031), so every member sees the real tier.
+  const pro = isPro(business);
   const monthStart = currentMonthStartISO();
 
   const [
     { count: usedThisMonth },
     { count: last7Days },
     { count: prev7Days },
-    { data: submissions },
+    { data: templateStats },
+    { data: signatureDays },
   ] = await Promise.all([
     supabase
       .from("submission")
@@ -183,45 +159,49 @@ export default async function DashboardPage({
       .eq("business_id", business.id)
       .gte("signed_at", fourteenDaysAgo)
       .lt("signed_at", sevenDaysAgo),
-    // TODO(scale): once a business accumulates thousands of signatures,
-    // per-template counts/last-signed-at should move to a SQL aggregate
-    // (GROUP BY template_id) instead of pulling rows client-side. The cap
-    // below is a stopgap so this never grows unbounded in the meantime.
-    supabase
-      .from("submission")
-      .select("template_id, signed_at")
-      .eq("business_id", business.id)
-      .order("signed_at", { ascending: false })
-      .limit(3000),
+    // Per-template totals aggregated in SQL (migration 0032): constant payload
+    // regardless of how many signatures the business has accumulated.
+    supabase.rpc("dashboard_template_stats", { p_business_id: business.id }),
+    // Daily buckets in UTC (migration 0035) — feeds the week sparkline.
+    supabase.rpc("dashboard_signature_days", {
+      p_business_id: business.id,
+      p_from: sevenDaysAgo,
+    }),
   ]);
 
   const signatureCountByTemplate = new Map<string, number>();
   const lastSignedByTemplate = new Map<string, string>();
+  for (const row of templateStats ?? []) {
+    signatureCountByTemplate.set(row.template_id, Number(row.signature_count));
+    if (row.last_signed_at) {
+      lastSignedByTemplate.set(row.template_id, row.last_signed_at);
+    }
+  }
+
   let signaturesToday = 0;
   // 7 daily buckets, oldest → today — feeds the week sparkline in the hero.
+  // Days from the RPC are UTC calendar dates (see dashboard_signature_days).
   const weekSeries = [0, 0, 0, 0, 0, 0, 0];
   const dayMs = 24 * 60 * 60 * 1000;
+  const todayUtc = new Date();
+  todayUtc.setUTCHours(0, 0, 0, 0);
+  const todayUtcMs = todayUtc.getTime();
+  const todayUtcYmd = todayUtc.toISOString().slice(0, 10);
 
-  for (const s of submissions ?? []) {
-    signatureCountByTemplate.set(
-      s.template_id,
-      (signatureCountByTemplate.get(s.template_id) ?? 0) + 1,
-    );
-    if (!lastSignedByTemplate.has(s.template_id)) {
-      lastSignedByTemplate.set(s.template_id, s.signed_at);
+  for (const row of signatureDays ?? []) {
+    const cnt = Number(row.cnt);
+    const dayStr =
+      typeof row.day === "string"
+        ? row.day.slice(0, 10)
+        : new Date(row.day).toISOString().slice(0, 10);
+    if (dayStr === todayUtcYmd) {
+      signaturesToday += cnt;
     }
-    const signedMs = new Date(s.signed_at).getTime();
-    if (signedMs >= todayStartMs) {
-      signaturesToday += 1;
-    }
-    const signedDay = new Date(s.signed_at);
-    signedDay.setHours(0, 0, 0, 0);
-    const daysAgo = Math.round(
-      (todayStartMs - signedDay.getTime()) / dayMs,
-    );
-    // daysAgo 0 = today → index 6; daysAgo 6 → index 0
+    const dayMsValue = Date.parse(`${dayStr}T00:00:00.000Z`);
+    if (Number.isNaN(dayMsValue)) continue;
+    const daysAgo = Math.round((todayUtcMs - dayMsValue) / dayMs);
     if (daysAgo >= 0 && daysAgo < 7) {
-      weekSeries[6 - daysAgo] += 1;
+      weekSeries[6 - daysAgo] += cnt;
     }
   }
 
@@ -283,7 +263,13 @@ export default async function DashboardPage({
   attentionItems.push(...completeGroups, ...nearCompleteGroups);
   const visibleAttentionItems = attentionItems.slice(0, 6);
 
-  const latestSignature = submissions?.[0] ?? null;
+  // Most recent signature across all templates, from the SQL aggregate.
+  const latestSignedAt =
+    (templateStats ?? [])
+      .map((row) => row.last_signed_at)
+      .filter((v): v is string => Boolean(v))
+      .sort()
+      .at(-1) ?? null;
   const latestTemplate = allTemplates?.[0] ?? null;
 
   // One primary pulse; secondary only adds decision-useful context.
@@ -339,7 +325,7 @@ export default async function DashboardPage({
 
   const planLabel = pro ? "Plan Pro" : "Plan Gratuit";
   const lastActivityIso = (() => {
-    const times = [latestSignature?.signed_at, latestTemplate?.created_at]
+    const times = [latestSignedAt, latestTemplate?.created_at]
       .filter((v): v is string => Boolean(v))
       .map((v) => new Date(v).getTime())
       .filter((n) => !Number.isNaN(n));
@@ -368,32 +354,51 @@ export default async function DashboardPage({
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <nav aria-label="Compte" className="flex items-center gap-1">
-            <Link
-              href="/dashboard/settings"
-              className={utilityItem}
-              aria-label="Réglages"
-            >
-              <Settings
-                size={14}
-                strokeWidth={1.85}
-                className="text-[var(--color-muted)]"
-                aria-hidden
-              />
-              <span className="hidden sm:inline">Réglages</span>
-            </Link>
-            <Link
-              href="/dashboard/billing"
-              className={utilityItem}
-              aria-label="Facturation"
-            >
-              <CreditCard
-                size={14}
-                strokeWidth={1.85}
-                className="text-[var(--color-muted)]"
-                aria-hidden
-              />
-              <span className="hidden sm:inline">Facturation</span>
-            </Link>
+            {hasCapability(membership.role, "manage_members") ? (
+              <Link
+                href="/dashboard/settings/membres"
+                className={utilityItem}
+                aria-label="Équipe"
+              >
+                <Users
+                  size={14}
+                  strokeWidth={1.85}
+                  className="text-[var(--color-muted)]"
+                  aria-hidden
+                />
+                <span className="hidden sm:inline">Équipe</span>
+              </Link>
+            ) : null}
+            {hasCapability(membership.role, "edit_business_info") ? (
+              <Link
+                href="/dashboard/settings"
+                className={utilityItem}
+                aria-label="Réglages"
+              >
+                <Settings
+                  size={14}
+                  strokeWidth={1.85}
+                  className="text-[var(--color-muted)]"
+                  aria-hidden
+                />
+                <span className="hidden sm:inline">Réglages</span>
+              </Link>
+            ) : null}
+            {hasCapability(membership.role, "manage_billing") ? (
+              <Link
+                href="/dashboard/billing"
+                className={utilityItem}
+                aria-label="Facturation"
+              >
+                <CreditCard
+                  size={14}
+                  strokeWidth={1.85}
+                  className="text-[var(--color-muted)]"
+                  aria-hidden
+                />
+                <span className="hidden sm:inline">Facturation</span>
+              </Link>
+            ) : null}
             <ThemeToggle variant="ghost" />
           </nav>
 

@@ -14,11 +14,12 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { isActiveMember } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import {
   configFromTemplateRow,
   describeNextSignatureOpen,
-  effectiveTemplateStatus,
   ensureTemplateNotStale,
   formatExpiresAt,
   formatSignatureHoursSummary,
@@ -238,13 +239,22 @@ export default async function WaiverDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ welcome?: string; error?: string; tab?: string }>;
+  searchParams: Promise<{
+    welcome?: string;
+    error?: string;
+    tab?: string;
+    page?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { welcome, error, tab: tabParam } = await searchParams;
+  const { welcome, error, tab: tabParam, page: pageParam } = await searchParams;
   const activeTab: WaiverDetailTabId = isWaiverDetailTab(tabParam)
     ? tabParam
     : "signatures";
+  const PAGE_SIZE = 40;
+  const pageRaw = Number.parseInt(pageParam ?? "1", 10);
+  const page =
+    Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
   const availabilityInitiallyOpen =
     tabParam === "horaires" || error === "horaires"
       ? ("hours" as const)
@@ -271,6 +281,12 @@ export default async function WaiverDetailPage({
   if (!template || !isTemplateStatus(template.status)) {
     notFound();
   }
+
+  const membership = await isActiveMember(supabase, user.id, template.business_id);
+  if (!membership) {
+    notFound();
+  }
+  const canExport = hasCapability(membership.role, "export_data");
 
   const expirationMode: ExpirationMode = isExpirationMode(
     template.expiration_mode,
@@ -333,11 +349,39 @@ export default async function WaiverDetailPage({
     ? getPackById(template.starter_pack_id)
     : undefined;
 
+  const [
+    { count: submissionCountExact },
+    { data: proofVersionCounts },
+    { data: latestSubmission },
+  ] = await Promise.all([
+      supabase
+        .from("submission")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", template.id),
+      supabase.rpc("template_proof_version_counts", {
+        p_template_id: template.id,
+      }),
+      supabase
+        .from("submission")
+        .select("signed_at")
+        .eq("template_id", template.id)
+        .order("signed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  const submissionCount = submissionCountExact ?? 0;
+  const totalPages = Math.max(1, Math.ceil(submissionCount / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const from = (currentPage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
   const { data: submissionRows } = await supabase
     .from("submission")
     .select("id, signer_name, signer_email, signed_at, answers")
     .eq("template_id", template.id)
-    .order("signed_at", { ascending: false });
+    .order("signed_at", { ascending: false })
+    .range(from, to);
 
   const submissions = (submissionRows ?? []).map((row) => {
     const answers = (row.answers ?? {}) as Record<string, unknown>;
@@ -371,15 +415,12 @@ export default async function WaiverDetailPage({
     .eq("template_id", template.id)
     .order("version", { ascending: false });
 
-  const { data: proofVersionCounts } = await supabase
-    .from("signature_proof")
-    .select("template_version")
-    .eq("template_id", template.id);
-
   const signaturesByVersion = new Map<number, number>();
   for (const row of proofVersionCounts ?? []) {
-    const v = row.template_version;
-    signaturesByVersion.set(v, (signaturesByVersion.get(v) ?? 0) + 1);
+    signaturesByVersion.set(
+      row.template_version,
+      Number(row.signature_count),
+    );
   }
 
   const versions = (versionRows ?? []).map((row) => ({
@@ -401,8 +442,7 @@ export default async function WaiverDetailPage({
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
 
-  const submissionCount = submissions?.length ?? 0;
-  const lastSignedAt = submissions?.[0]?.signed_at ?? null;
+  const lastSignedAt = latestSubmission?.signed_at ?? null;
   const activity = deriveTemplateActivity(auditEvents ?? []);
   const currentVersion = versions.find((v) => v.is_current) ?? versions[0];
   const lastUpdateRelative = formatRelativeActivityFr(activity.lastUpdatedAt);
@@ -846,7 +886,7 @@ export default async function WaiverDetailPage({
                   }`
             }
             action={
-              submissionCount > 0 ? (
+              submissionCount > 0 && canExport ? (
                 <ExportCsvButton
                   href={`/dashboard/waivers/${template.id}/submissions/export`}
                   label="Exporter"
@@ -866,12 +906,16 @@ export default async function WaiverDetailPage({
               }))}
               groups={groupsForTemplate.map((g) => ({ id: g.id, name: g.name }))}
               submissions={submissions ?? []}
+              page={currentPage}
+              totalCount={submissionCount}
+              pageSize={PAGE_SIZE}
               emptyContext={{
                 createdAt: template.created_at,
                 publicUrl,
                 lastLinkViewedAt: activity.lastLinkViewedAt,
                 linkViewCount: activity.linkViews,
               }}
+              canErase={hasCapability(membership.role, "delete_submission")}
             />
           </div>
         </section>

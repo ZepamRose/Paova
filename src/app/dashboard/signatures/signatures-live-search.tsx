@@ -394,6 +394,8 @@ export function SignaturesLiveSearch({
   initialScope = "all",
   initialRows,
   initialError,
+  allowExport = true,
+  allowErase = false,
 }: {
   templates: TemplateOption[];
   groups?: GroupOption[];
@@ -404,6 +406,10 @@ export function SignaturesLiveSearch({
   initialScope?: PeriodScope;
   initialRows: SignatureResultRow[];
   initialError: string | null;
+  /** False for employees — bulk CSV export is owner/admin only. */
+  allowExport?: boolean;
+  /** False for employees — GDPR erasure is owner/admin only. */
+  allowErase?: boolean;
 }) {
   const router = useRouter();
   const reduced = useReducedMotion() ?? false;
@@ -609,7 +615,7 @@ export function SignaturesLiveSearch({
     return formatRelativeTime(overview.lastSignedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview?.lastSignedAt, relativeNow]);
-  const canExport = !error && scopedRows.length > 0;
+  const canExport = allowExport && !error && scopedRows.length > 0;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-3.5">
@@ -771,21 +777,29 @@ export function SignaturesLiveSearch({
             </button>
 
             <div className="flex items-center gap-1.5">
-              <ExportCsvButton
-                href={buildExportHref(filters, scope)}
-                label={buildExportLabel(scopedRows.length, groupScope, lockedGroup)}
-                title={
-                  lockedGroup
-                    ? `Exporte uniquement les signatures du groupe « ${lockedGroup.name} »`
-                    : "Exporte exactement les signatures actuellement affichées, selon les filtres en cours"
-                }
-                disabled={!canExport}
-                className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-[color-mix(in_srgb,var(--color-border)_42%,var(--color-foreground))] bg-[var(--color-surface-2)]/70 px-2.5 text-[12.5px] font-medium text-[var(--color-foreground)]/85 shadow-[var(--elev-1)] transition-[transform,background-color,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-40 disabled:shadow-none"
-              />
-              <span
-                className="h-3.5 w-px bg-[var(--color-border)]"
-                aria-hidden
-              />
+              {allowExport ? (
+                <>
+                  <ExportCsvButton
+                    href={buildExportHref(filters, scope)}
+                    label={buildExportLabel(
+                      scopedRows.length,
+                      groupScope,
+                      lockedGroup,
+                    )}
+                    title={
+                      lockedGroup
+                        ? `Exporte uniquement les signatures du groupe « ${lockedGroup.name} »`
+                        : "Exporte exactement les signatures actuellement affichées, selon les filtres en cours"
+                    }
+                    disabled={!canExport}
+                    className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-[color-mix(in_srgb,var(--color-border)_42%,var(--color-foreground))] bg-[var(--color-surface-2)]/70 px-2.5 text-[12.5px] font-medium text-[var(--color-foreground)]/85 shadow-[var(--elev-1)] transition-[transform,background-color,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-40 disabled:shadow-none"
+                  />
+                  <span
+                    className="h-3.5 w-px bg-[var(--color-border)]"
+                    aria-hidden
+                  />
+                </>
+              ) : null}
               <button
                 type="button"
                 onClick={resetFilters}
@@ -966,7 +980,11 @@ export function SignaturesLiveSearch({
             key={`${safePage}-${sort}-${scope}`}
             className="[animation:sig-fade_200ms_ease-out]"
           >
-            <SignaturesResults rows={pageRows} groups={groups} />
+            <SignaturesResults
+              rows={pageRows}
+              groups={groups}
+              canErase={allowErase}
+            />
           </div>
         ) : null}
 

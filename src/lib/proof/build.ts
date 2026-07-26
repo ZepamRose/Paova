@@ -100,6 +100,10 @@ export function buildContentSnapshot(
   const consentRaw = input.answers["__rgpd_consent_at"];
   const consent_at = typeof consentRaw === "string" ? consentRaw : null;
 
+  // New format: empty data URL + sha256 of PNG bytes (hash still covers both).
+  // Legacy/fallback: full data URL, no sha256 field.
+  const useSha = Boolean(input.signatureSha256);
+
   return {
     schema_version: 1,
     template: {
@@ -115,7 +119,8 @@ export function buildContentSnapshot(
       email: input.signerEmail,
     },
     answers: input.answers,
-    signature_data_url: input.signatureDataUrl,
+    signature_data_url: useSha ? "" : input.signatureDataUrl,
+    ...(useSha ? { signature_sha256: input.signatureSha256 } : {}),
     consent_at,
     signed_at: input.signedAt,
   };

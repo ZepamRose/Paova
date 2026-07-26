@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { DashboardGroupRow, DashboardListView } from "@/lib/dashboard/types";
+import { formatRelativeFr } from "@/lib/dates";
 import { GroupIcon } from "@/components/groups/group-icon";
 import { GroupProgressBar } from "@/components/groups/group-progress";
 import { CopyLinkButton } from "./copy-link-button";
@@ -16,20 +17,6 @@ import { unarchiveGroup } from "./groupes/actions";
 const LIST_EASE = [0.22, 1, 0.36, 1] as const;
 const motionCls = "duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
 
-function formatRelativeFr(iso: string): string | null {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const diffMs = Date.now() - date.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "à l'instant";
-  if (mins < 60) return `il y a ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "hier";
-  if (days < 7) return `il y a ${days} j`;
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
 
 export function DashboardGroupsSection({
   groups,

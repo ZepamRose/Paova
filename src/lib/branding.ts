@@ -86,6 +86,46 @@ export function sanitizeHttpUrl(value: unknown): string | null {
   }
 }
 
+/**
+ * Logos must live in our public Storage bucket. Anything else is rejected so
+ * owners cannot point logo_url at attacker-controlled hosts (SSRF via PDF
+ * generation) or break email HTML attributes.
+ */
+const LOGOS_PUBLIC_MARKER = "/storage/v1/object/public/logos/";
+const BUSINESS_ID_IN_PATH =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
+
+export function isAllowedLogoUrl(value: string | null | undefined): boolean {
+  const raw = (value ?? "").trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    if (url.username || url.password) return false;
+
+    const markerAt = url.pathname.indexOf(LOGOS_PUBLIC_MARKER);
+    if (markerAt < 0) return false;
+    const rest = url.pathname.slice(markerAt + LOGOS_PUBLIC_MARKER.length);
+    if (!BUSINESS_ID_IN_PATH.test(rest) || rest.includes("..")) return false;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    if (supabaseUrl) {
+      const expectedHost = new URL(supabaseUrl).host;
+      if (url.host !== expectedHost) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Return the URL only when it points at our logos bucket; otherwise null. */
+export function sanitizeLogoUrl(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  return isAllowedLogoUrl(raw) ? raw : null;
+}
+
 export function formatThankYouMessage(
   message: string | null | undefined,
   businessName: string,

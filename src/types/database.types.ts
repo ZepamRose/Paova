@@ -47,6 +47,9 @@ export type Database = {
           id: string;
           owner_id: string;
           name: string;
+          plan: string;
+          subscription_status: string;
+          stripe_customer_id: string | null;
           logo_url: string | null;
           brand_color: string;
           brand_font: string;
@@ -87,6 +90,9 @@ export type Database = {
           id?: string;
           owner_id: string;
           name: string;
+          plan?: string;
+          subscription_status?: string;
+          stripe_customer_id?: string | null;
           logo_url?: string | null;
           brand_color?: string;
           brand_font?: string;
@@ -127,6 +133,9 @@ export type Database = {
           id?: string;
           owner_id?: string;
           name?: string;
+          plan?: string;
+          subscription_status?: string;
+          stripe_customer_id?: string | null;
           logo_url?: string | null;
           brand_color?: string;
           brand_font?: string;
@@ -161,6 +170,39 @@ export type Database = {
           email_footer?: string | null;
           email_show_logo?: boolean;
           enabled_locales?: string[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      business_member: {
+        Row: {
+          id: string;
+          business_id: string;
+          user_id: string | null;
+          role: string;
+          status: string;
+          invited_email: string | null;
+          invited_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          user_id?: string | null;
+          role: string;
+          status?: string;
+          invited_email?: string | null;
+          invited_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          user_id?: string | null;
+          role?: string;
+          status?: string;
+          invited_email?: string | null;
+          invited_by?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -414,6 +456,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      rate_limit: {
+        Row: {
+          bucket: string;
+          identifier: string;
+          window_start: string;
+          hits: number;
+        };
+        Insert: {
+          bucket: string;
+          identifier: string;
+          window_start: string;
+          hits?: number;
+        };
+        Update: {
+          bucket?: string;
+          identifier?: string;
+          window_start?: string;
+          hits?: number;
+        };
+        Relationships: [];
+      };
       waiver_template_version: {
         Row: {
           id: string;
@@ -544,11 +607,68 @@ export type Database = {
         };
         Relationships: [];
       };
+      stripe_webhook_event: {
+        Row: {
+          id: string;
+          event_type: string;
+          received_at: string;
+        };
+        Insert: {
+          id: string;
+          event_type: string;
+          received_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_type?: string;
+          received_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      dashboard_template_stats: {
+        Args: { p_business_id: string };
+        Returns: {
+          template_id: string;
+          signature_count: number;
+          last_signed_at: string | null;
+        }[];
+      };
+      dashboard_group_stats: {
+        Args: { p_business_id: string };
+        Returns: {
+          group_id: string;
+          total: number;
+          signed: number;
+        }[];
+      };
+      dashboard_signature_days: {
+        Args: { p_business_id: string; p_from: string };
+        Returns: {
+          day: string;
+          cnt: number;
+        }[];
+      };
+      template_proof_version_counts: {
+        Args: { p_template_id: string };
+        Returns: {
+          template_version: number;
+          signature_count: number;
+        }[];
+      };
+      rate_limit_hit: {
+        Args: {
+          p_bucket: string;
+          p_identifier: string;
+          p_window_seconds: number;
+          p_max_hits: number;
+        };
+        Returns: boolean;
+      };
       search_submissions_for_owner: {
         Args: {
           p_query?: string | null;
@@ -558,6 +678,8 @@ export type Database = {
           p_status?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_group_id?: string | null;
+          p_group_mode?: string | null;
         };
         Returns: {
           submission_id: string;

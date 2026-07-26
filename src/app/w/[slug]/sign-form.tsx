@@ -702,7 +702,9 @@ export function SignForm({
               ? "Merci de signer avant de valider."
               : hasError === "consent"
                 ? "Merci d'accepter le traitement de vos données pour continuer."
-                : "Merci de remplir tous les champs obligatoires."}
+                : hasError === "rate"
+                  ? "Trop de tentatives depuis cet appareil. Patientez quelques minutes avant de réessayer."
+                  : "Merci de remplir tous les champs obligatoires."}
           </p>
         ) : null}
 

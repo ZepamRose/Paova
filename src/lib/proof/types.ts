@@ -18,7 +18,13 @@ export type SignedContentSnapshotV1 = {
     email: string | null;
   };
   answers: Record<string, unknown>;
+  /**
+   * Legacy proofs embed the full PNG data URL. New proofs store `""` here and
+   * put the PNG digest in `signature_sha256` (bytes live in Storage).
+   */
   signature_data_url: string;
+  /** SHA-256 hex of the signature PNG bytes (preferred over embedding the PNG). */
+  signature_sha256?: string;
   consent_at: string | null;
   signed_at: string;
 };
@@ -77,5 +83,11 @@ export type BuildProofInput = {
   signerName: string;
   signerEmail: string | null;
   answers: Record<string, unknown>;
+  /** Full data URL when falling back; ignored when `signatureSha256` is set. */
   signatureDataUrl: string;
+  /**
+   * When set, the snapshot stores an empty `signature_data_url` and this hex
+   * digest so integrity covers the PNG without embedding it.
+   */
+  signatureSha256?: string;
 };

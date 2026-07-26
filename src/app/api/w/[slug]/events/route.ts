@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { checkRateLimit, clientIpFrom, RATE_LIMITS } from "@/lib/rate-limit";
 import { recordAuditEvent } from "@/lib/audit";
 import type { AuditEventType } from "@/lib/audit";
 import {
@@ -42,6 +43,19 @@ export async function POST(
   }
 
   const supabase = createServiceRoleClient();
+
+  // Anonymous endpoint: cap before touching the database further.
+  const beaconIp = clientIpFrom(await headers());
+  const withinLimit = await checkRateLimit(supabase, {
+    bucket: `public_event:${slug}`,
+    identifier: beaconIp,
+    windowSeconds: RATE_LIMITS.publicEvent.windowSeconds,
+    maxHits: RATE_LIMITS.publicEvent.maxHits,
+  });
+  if (!withinLimit) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
   const { data: template } = await supabase
     .from("waiver_template")
     .select(
@@ -82,11 +96,7 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
-  const headerList = await headers();
-  const ip =
-    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    headerList.get("x-real-ip") ??
-    null;
+  const ip = beaconIp;
 
   const since = new Date(
     Date.now() - (DEBOUNCE_MS[eventType] ?? 15 * 60 * 1000),

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import { csvCell } from "@/lib/search";
 
@@ -16,10 +18,18 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+  // Bulk PII extraction — owner/admin only, never employees.
+  if (!hasCapability(membership.role, "export_data")) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) {
     return new NextResponse("Not found", { status: 404 });

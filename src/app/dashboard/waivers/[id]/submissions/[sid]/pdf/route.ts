@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isActiveMember } from "@/lib/auth/membership";
 import { recordAuditEvent } from "@/lib/audit";
 import {
   buildSubmissionPdf,
@@ -30,13 +31,8 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const { data: ownedBusiness } = await supabase
-    .from("business")
-    .select("id")
-    .eq("id", template.business_id)
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!ownedBusiness) {
+  const membership = await isActiveMember(supabase, user.id, template.business_id);
+  if (!membership) {
     return new NextResponse("Not found", { status: 404 });
   }
 

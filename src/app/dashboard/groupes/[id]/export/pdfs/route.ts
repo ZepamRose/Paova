@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveMembership } from "@/lib/auth/membership";
+import { hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import {
   buildSubmissionPdf,
+  loadSubmissionPdfContext,
   pdfFilenameForSigner,
 } from "@/lib/submission-pdf";
 import { buildZipStore } from "@/lib/zip-store";
 
 /** Keep serverless responses under control — regenerate PDFs on the fly. */
 const MAX_PDFS = 40;
+
+export const maxDuration = 60;
 
 export async function GET(
   _request: Request,
@@ -23,10 +28,18 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const membership = await getActiveMembership(supabase, user.id);
+  if (!membership) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+  // Bulk PII extraction — owner/admin only, never employees.
+  if (!hasCapability(membership.role, "export_data")) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   const { data: business } = await supabase
     .from("business")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("id", membership.businessId)
     .maybeSingle();
   if (!business) {
     return new NextResponse("Not found", { status: 404 });
@@ -60,15 +73,50 @@ export async function GET(
     );
   }
 
+  // Template + business + logo are identical for every member of the group:
+  // resolve them once instead of re-querying (and re-fetching the logo) per
+  // document. Proof metadata is batched WITHOUT content_snapshot so we do not
+  // pull embedded PNGs into memory — buildSubmissionPdf resolves signatures
+  // from Storage via submission.signature_url.
+  const context = await loadSubmissionPdfContext(supabase, group.template_id);
+  if (!context) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  const submissionIds = signed
+    .map((m) => m.signed_submission_id)
+    .filter((v): v is string => Boolean(v));
+
+  const { data: proofRows } = await supabase
+    .from("signature_proof")
+    .select(
+      "submission_id, reference, signed_at, timezone, timezone_offset_minutes, ip_address, user_agent, device_hint, template_version, content_sha256, hash_algorithm",
+    )
+    .in("submission_id", submissionIds);
+
+  const proofBySubmission = new Map(
+    (proofRows ?? []).map((row) => [
+      row.submission_id,
+      { ...row, content_snapshot: null },
+    ]),
+  );
+
   const usedNames = new Map<string, number>();
   const entries: { name: string; data: Uint8Array }[] = [];
 
   for (const member of signed) {
     if (!member.signed_submission_id) continue;
-    const pdf = await buildSubmissionPdf(supabase, {
-      submissionId: member.signed_submission_id,
-      templateId: group.template_id,
-    });
+    const pdf = await buildSubmissionPdf(
+      supabase,
+      {
+        submissionId: member.signed_submission_id,
+        templateId: group.template_id,
+      },
+      {
+        context,
+        proofRow: proofBySubmission.get(member.signed_submission_id) ?? null,
+      },
+    );
     if (!pdf) continue;
 
     const base = pdfFilenameForSigner(member.full_name || pdf.signerName);

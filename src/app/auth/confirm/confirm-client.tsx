@@ -12,6 +12,7 @@ import {
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/auth/safe-next-path";
 
 const OTP_TYPES = new Set<string>([
   "email",
@@ -180,7 +181,7 @@ export default function AuthConfirmClient() {
   const tokenHash = searchParams.get("token_hash");
   const typeParam = searchParams.get("type") ?? "email";
   const nextParam = searchParams.get("next") ?? "/dashboard";
-  const next = nextParam.startsWith("/") ? nextParam : "/dashboard";
+  const next = safeNextPath(nextParam);
 
   const [phase, setPhase] = useState<Phase>(() => {
     if (code) return "verifying";

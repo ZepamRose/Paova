@@ -85,9 +85,11 @@ function avatarTone(name: string) {
 function SignatureCard({
   row,
   groups,
+  canErase,
 }: {
   row: SignatureResultRow;
   groups: SignatureGroupOption[];
+  canErase: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pdfHref = `/dashboard/waivers/${row.templateId}/submissions/${row.submissionId}/pdf`;
@@ -248,6 +250,8 @@ function SignatureCard({
             onOpenChange={setOpen}
             triggerClassName="inline-flex h-7 items-center gap-1 rounded-md border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[var(--color-surface)] px-2.5 text-[12px] font-medium text-[var(--color-foreground)]/82 shadow-[var(--elev-1)] transition-[transform,background-color,box-shadow,border-color] duration-150 hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0"
             submission={submission}
+            canErase={canErase}
+            eraseReturnTo="signatures"
           />
           <PdfDownloadButton
             href={pdfHref}
@@ -263,14 +267,22 @@ function SignatureCard({
 export function SignaturesResults({
   rows,
   groups = [],
+  canErase = false,
 }: {
   rows: SignatureResultRow[];
   groups?: SignatureGroupOption[];
+  /** Owner/admin only — GDPR erasure. */
+  canErase?: boolean;
 }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {rows.map((row) => (
-        <SignatureCard key={row.submissionId} row={row} groups={groups} />
+        <SignatureCard
+          key={row.submissionId}
+          row={row}
+          groups={groups}
+          canErase={canErase}
+        />
       ))}
     </ul>
   );
