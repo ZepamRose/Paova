@@ -229,31 +229,12 @@ export default function AuthConfirmClient() {
       const supabase = createClient();
 
       safetyTimer = window.setTimeout(() => {
-        void (async () => {
-          const {
-            data: { user },
-          } = await createClient().auth.getUser();
-          if (user) {
-            window.location.replace(next);
-            return;
-          }
-          if (!abandoned) setPhase("error");
-        })();
+        if (!abandoned) setPhase("error");
       }, 10000);
 
-      // Strict Mode / refresh: session may already exist from the first invoke.
-      {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          window.clearTimeout(safetyTimer);
-          await holdForFeel(started, reducedMotion);
-          await go(next);
-          return;
-        }
-      }
-
+      // Always consume the link token first. Skipping verify when a session
+      // already exists left the *owner* logged in when they opened an invite
+      // link meant for a collaborator — invite stayed "pending".
       let failed = false;
 
       if (code) {
@@ -275,6 +256,8 @@ export default function AuthConfirmClient() {
       window.clearTimeout(safetyTimer);
 
       if (failed) {
+        // Strict Mode remount: token already spent on the first pass, but the
+        // session from that pass should still be present.
         const {
           data: { user },
         } = await supabase.auth.getUser();

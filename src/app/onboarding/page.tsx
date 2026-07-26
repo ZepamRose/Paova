@@ -22,7 +22,7 @@ export default async function OnboardingPage({
 
   // If the user already belongs to a business (owner, admin, or a newly
   // claimed invite), skip onboarding entirely.
-  const membership = await resolveBusinessContext(supabase, user.id, user.email);
+  const membership = await resolveBusinessContext(supabase, user.id, user);
   if (membership) {
     redirect("/dashboard");
   }

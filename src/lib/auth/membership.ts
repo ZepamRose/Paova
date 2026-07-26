@@ -1,9 +1,23 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { User, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isBusinessRole, type BusinessContext } from "./permissions";
 
 type DbClient = SupabaseClient<Database>;
+
+/** Normalize and collect every email address attached to the auth user. */
+export function emailsForAuthUser(user: Pick<User, "email" | "identities">): string[] {
+  const emails = new Set<string>();
+  const primary = user.email?.trim().toLowerCase();
+  if (primary) emails.add(primary);
+  for (const identity of user.identities ?? []) {
+    const raw = identity.identity_data?.email;
+    if (typeof raw === "string" && raw.trim()) {
+      emails.add(raw.trim().toLowerCase());
+    }
+  }
+  return [...emails];
+}
 
 /** Find the current user's active membership, if any (no invite claim). */
 export async function getActiveMembership(
@@ -25,10 +39,7 @@ export async function getActiveMembership(
     (row) => row.role === "admin" || row.role === "employee",
   );
 
-  // If someone was invited as collaborator but also created their own space
-  // (common when invite claim failed once), prefer the collaborator seat so
-  // they land in the team that invited them — not as a solo owner.
-  // A real business switcher can replace this later.
+  // Prefer collaborator seat over an accidental solo owner space.
   const picked = collaborator ?? owned ?? rows[0];
   if (!picked || !isBusinessRole(picked.role)) return null;
   return { businessId: picked.business_id, role: picked.role };
@@ -58,26 +69,48 @@ export async function isActiveMember(
 }
 
 /**
- * Attach every pending invite for this email to the authenticated user.
- * Uses the service role so claim cannot fail silently under RLS (invite rows
- * are often invisible to SELECT before user_id is set). Only rows whose
- * invited_email matches the caller's email are updated.
+ * Attach every pending invite for these emails to the authenticated user.
+ * Service role bypasses RLS; we still only touch rows whose invited_email
+ * matches one of the caller's emails (case-insensitive).
  */
 export async function claimPendingInvite(
   _supabase: DbClient,
   userId: string,
-  email: string | null | undefined,
+  emailOrUser: string | null | undefined | Pick<User, "email" | "identities">,
 ): Promise<number> {
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) return 0;
+  const emails =
+    emailOrUser && typeof emailOrUser === "object"
+      ? emailsForAuthUser(emailOrUser)
+      : emailOrUser?.trim()
+        ? [emailOrUser.trim().toLowerCase()]
+        : [];
+  if (emails.length === 0) return 0;
 
   const admin = createServiceRoleClient();
+  const { data: pending, error: listError } = await admin
+    .from("business_member")
+    .select("id, invited_email")
+    .eq("status", "invited")
+    .is("user_id", null);
+
+  if (listError) {
+    console.error("claimPendingInvite list failed:", listError.message);
+    return 0;
+  }
+
+  const ids = (pending ?? [])
+    .filter((row) => {
+      const invited = row.invited_email?.trim().toLowerCase();
+      return invited != null && emails.includes(invited);
+    })
+    .map((row) => row.id);
+
+  if (ids.length === 0) return 0;
+
   const { data, error } = await admin
     .from("business_member")
     .update({ user_id: userId, status: "active" })
-    .eq("invited_email", normalizedEmail)
-    .eq("status", "invited")
-    .is("user_id", null)
+    .in("id", ids)
     .select("id");
 
   if (error) {
@@ -95,8 +128,8 @@ export async function claimPendingInvite(
 export async function resolveBusinessContext(
   supabase: DbClient,
   userId: string,
-  email: string | null | undefined,
+  emailOrUser: string | null | undefined | Pick<User, "email" | "identities">,
 ): Promise<BusinessContext | null> {
-  await claimPendingInvite(supabase, userId, email);
+  await claimPendingInvite(supabase, userId, emailOrUser);
   return getActiveMembership(supabase, userId);
 }

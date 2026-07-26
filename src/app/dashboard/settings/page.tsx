@@ -23,7 +23,7 @@ export default async function SettingsPage({
     redirect("/login");
   }
 
-  const membership = await resolveBusinessContext(supabase, user.id, user.email);
+  const membership = await resolveBusinessContext(supabase, user.id, user);
   if (!membership) {
     redirect("/onboarding");
   }

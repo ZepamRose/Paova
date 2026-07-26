@@ -20,7 +20,7 @@ export async function createBusiness(formData: FormData) {
   }
 
   // Invitees must not create a parallel "owner" space — claim first.
-  const existing = await resolveBusinessContext(supabase, user.id, user.email);
+  const existing = await resolveBusinessContext(supabase, user.id, user);
   if (existing) {
     redirect("/dashboard");
   }
