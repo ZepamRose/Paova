@@ -13,6 +13,7 @@ import {
 } from "@/lib/groups/lifecycle";
 import { sendGroupReminder } from "@/lib/email";
 import { env } from "@/lib/env";
+import { logError } from "@/lib/observability/log";
 // membership resolved via requireBusiness → session helpers
 
 const REMINDER_COOLDOWN_MS = 30 * 60 * 1000;
@@ -101,7 +102,10 @@ export async function createSigningGroup(formData: FormData) {
     );
     if (memErr) {
       // Do not leave an empty "success" group — operators would share a dead QR.
-      console.error("group members insert failed:", memErr);
+      logError("group.members_insert_failed", memErr.message, {
+        groupId: group.id,
+        businessId: business.id,
+      });
       await supabase.from("signing_group").delete().eq("id", group.id);
       redirect(
         `/dashboard/groupes/new?error=members&template=${templateId}`,
@@ -159,7 +163,10 @@ export async function createExpressGroup(formData: FormData) {
     .single();
 
   if (error || !group) {
-    console.error("express group create failed:", error);
+    logError("group.express_create_failed", error?.message, {
+      businessId: business.id,
+      templateId,
+    });
     redirect(
       `/dashboard/groupes/express?error=create&template=${templateId}`,
     );
@@ -502,11 +509,16 @@ export async function archiveGroup(formData: FormData) {
   const { supabase, business } = await requireBusiness("manage_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
 
-  await supabase
+  const { data: updated, error } = await supabase
     .from("signing_group")
     .update({ status: "archived", archived_at: new Date().toISOString() })
     .eq("id", groupId)
-    .eq("business_id", business.id);
+    .eq("business_id", business.id)
+    .select("id");
+
+  if (error || !updated?.length) {
+    redirect(`/dashboard/groupes?error=archive`);
+  }
 
   revalidatePath("/dashboard/groupes");
   revalidatePath("/dashboard");

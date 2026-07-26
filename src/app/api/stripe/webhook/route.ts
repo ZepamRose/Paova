@@ -5,6 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import {
   claimStripeWebhookEvent,
+  completeStripeWebhookEvent,
   releaseStripeWebhookEvent,
   syncBusinessBillingFromStripe,
 } from "@/lib/stripe/sync-business-plan";
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
@@ -112,6 +114,16 @@ export async function POST(request: NextRequest) {
     const message =
       err instanceof Error ? err.message : "webhook_handler_failed";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  // Only now is the event permanently deduplicated. Until this point a crashed
+  // run leaves the claim reclaimable so Stripe's retry redoes the work.
+  const completed = await completeStripeWebhookEvent(supabase, event.id);
+  if (!completed.ok) {
+    return NextResponse.json(
+      { error: "complete_failed", detail: completed.reason },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ received: true });

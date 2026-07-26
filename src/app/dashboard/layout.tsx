@@ -2,8 +2,8 @@ import { getDashboardSession } from "@/lib/auth/session";
 
 /**
  * Ensures every dashboard request claims pending invites and resolves a
- * membership before rendering children. Pages still call
- * requireDashboardCapability for sensitive routes.
+ * membership (honouring the active-business cookie) before rendering children.
+ * Pages still call requireDashboardCapability for sensitive routes.
  */
 export default async function DashboardLayout({
   children,

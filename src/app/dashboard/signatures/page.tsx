@@ -22,6 +22,10 @@ export default async function SignaturesSearchPage({
 }) {
   const sp = await searchParams;
   const { supabase, membership } = await getDashboardSession();
+  if (!hasCapability(membership.role, "view_submissions")) {
+    redirect("/dashboard");
+  }
+
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -108,11 +112,12 @@ export default async function SignaturesSearchPage({
       status: status || null,
       limit: 200,
       offset: 0,
+      businessId: membership.businessId,
     });
     initialRows = await enrichSearchRows(supabase, rows);
   } catch {
     initialError =
-      "La recherche est indisponible. Vérifiez que la migration 0010 a été appliquée.";
+      "La recherche est indisponible. Vérifiez que les migrations 0010 et 0041 ont été appliquées.";
   }
 
   return (

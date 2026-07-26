@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireDashboardCapability } from "@/lib/auth/session";
 import { isPro, FREE_MONTHLY_LIMIT, PRO_PRICE_EUR, currentMonthStartISO } from "@/lib/plan";
@@ -69,6 +68,9 @@ export default async function BillingPage({
   const status = business?.subscription_status ?? null;
   const renewing =
     pro && (!status || status === "active" || status === "trialing");
+  const pastDue = status === "past_due";
+  const showCheckoutSuccess = Boolean(success) && pro;
+  const showCheckoutPending = Boolean(success) && !pro;
 
   let usedThisMonth = 0;
   if (business) {
@@ -104,9 +106,21 @@ export default async function BillingPage({
         </div>
       </header>
 
-      {success ? (
+      {showCheckoutSuccess ? (
         <p className="rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-4 py-3 text-sm leading-relaxed">
           Abonnement activé, merci ! Vos signatures sont désormais illimitées.
+        </p>
+      ) : null}
+      {showCheckoutPending ? (
+        <p className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface-2)] px-4 py-3 text-sm leading-relaxed text-[var(--color-muted)]">
+          Paiement reçu — finalisation en cours. Actualisez dans quelques
+          secondes si l&apos;offre Pro n&apos;apparaît pas encore.
+        </p>
+      ) : null}
+      {pastDue ? (
+        <p className="rounded-xl border border-[color-mix(in_srgb,#b45309_25%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-4 py-3 text-sm leading-relaxed text-[#92400e] dark:text-[#fbbf24]">
+          Paiement en retard. Mettez à jour votre moyen de paiement via le
+          portail Stripe — un nouvel abonnement n&apos;est pas nécessaire.
         </p>
       ) : null}
       {canceled ? (
@@ -163,10 +177,10 @@ export default async function BillingPage({
             </p>
           </div>
 
-          {pro ? (
+          {pro || pastDue ? (
             <form action={createPortalSession} className="shrink-0">
               <button type="submit" className={btnSecondary}>
-                Gérer mon abonnement
+                {pastDue ? "Mettre à jour le paiement" : "Gérer mon abonnement"}
               </button>
             </form>
           ) : (

@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveBusinessContext } from "@/lib/auth/membership";
+import {
+  hasPendingInviteForEmails,
+  resolveBusinessContext,
+} from "@/lib/auth/membership";
 
 export async function createBusiness(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -23,6 +26,12 @@ export async function createBusiness(formData: FormData) {
   const existing = await resolveBusinessContext(supabase, user.id, user);
   if (existing) {
     redirect("/dashboard");
+  }
+
+  // Fail closed: an open invite for this email must be claimed (or fixed)
+  // before inventing a solo owner workspace.
+  if (await hasPendingInviteForEmails(user)) {
+    redirect("/onboarding?error=invite_pending");
   }
 
   const { error } = await supabase

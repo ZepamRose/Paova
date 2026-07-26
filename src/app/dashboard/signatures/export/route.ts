@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
+import { actorKindFromRole } from "@/lib/auth/actor-kind";
 import { recordAuditEvent } from "@/lib/audit";
 import { buildSearchIndexCsv, searchSubmissions } from "@/lib/search";
 
@@ -65,8 +66,9 @@ export async function GET(request: Request) {
       from,
       to,
       status: status === "all" ? null : status || "signed",
-      limit: 200,
+      limit: 2000,
       offset: 0,
+      businessId: membership.businessId,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Search failed";
@@ -78,7 +80,7 @@ export async function GET(request: Request) {
   await recordAuditEvent(supabase, {
     businessId: business.id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "export",
     entityId: business.id,
     templateId: templateId || null,
@@ -103,6 +105,7 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="signatures-paova-${stamp}.csv"`,
+      "X-Export-Limit": "2000",
     },
   });
 }

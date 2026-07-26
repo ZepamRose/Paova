@@ -16,7 +16,8 @@ type PlanFields = {
   subscription_status?: string | null;
 };
 
-/** A business owner is "pro" (unlimited) once their profile plan is set to pro. */
+/** A business is "pro" (unlimited) once `business.plan` is set to pro
+ *  (synced from Stripe — see billing-snapshot / webhook). */
 export function isPro(profile: PlanFields | null | undefined): boolean {
   return profile?.plan === "pro";
 }

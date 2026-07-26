@@ -46,6 +46,17 @@ describe("pickPreferredMembership", () => {
     assert.deepEqual(picked, { businessId: "b", role: "admin" });
   });
 
+  it("honours a pinned business id when present", () => {
+    const picked = pickPreferredMembership(
+      [
+        { business_id: "solo", role: "owner" },
+        { business_id: "team", role: "employee" },
+      ],
+      "solo",
+    );
+    assert.deepEqual(picked, { businessId: "solo", role: "owner" });
+  });
+
   it("falls back to owner when no collaborator seat", () => {
     const picked = pickPreferredMembership([
       { business_id: "solo", role: "owner" },

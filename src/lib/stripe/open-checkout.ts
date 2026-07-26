@@ -11,12 +11,20 @@ export async function openSubscriptionCheckoutUrl(
   stripe: Stripe,
 ): Promise<string> {
   const listOpen = async () => {
-    const { data } = await stripe.checkout.sessions.list({
-      customer: customerId,
-      status: "open",
-      limit: 10,
-    });
-    return data.filter((session) => session.mode === "subscription");
+    const sessions: Stripe.Checkout.Session[] = [];
+    let startingAfter: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const { data, has_more } = await stripe.checkout.sessions.list({
+        customer: customerId,
+        status: "open",
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+      sessions.push(...data.filter((session) => session.mode === "subscription"));
+      if (!has_more || data.length === 0) break;
+      startingAfter = data[data.length - 1]!.id;
+    }
+    return sessions;
   };
 
   let open = await listOpen();

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveBusinessContext } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { actorKindFromRole } from "@/lib/auth/actor-kind";
+import { getBusinessContext, hasCapability } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit";
 import {
   buildSubmissionPdf,
@@ -28,32 +29,27 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const membership = await resolveBusinessContext(supabase, user.id, user);
-  if (!membership) {
-    return new NextResponse("Not found", { status: 404 });
-  }
-  // Bulk PII extraction — owner/admin only, never employees.
-  if (!hasCapability(membership.role, "export_data")) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-  const { data: business } = await supabase
-    .from("business")
-    .select("id")
-    .eq("id", membership.businessId)
-    .maybeSingle();
-  if (!business) {
-    return new NextResponse("Not found", { status: 404 });
-  }
+  await resolveBusinessContext(supabase, user.id, user);
 
   const { data: group } = await supabase
     .from("signing_group")
-    .select("id, name, template_id")
+    .select("id, name, template_id, business_id")
     .eq("id", id)
-    .eq("business_id", business.id)
     .maybeSingle();
   if (!group) {
     return new NextResponse("Not found", { status: 404 });
   }
+
+  const membership = await getBusinessContext(
+    supabase,
+    group.business_id,
+    user.id,
+  );
+  // Bulk PII extraction — owner/admin only, never employees.
+  if (!membership || !hasCapability(membership.role, "export_data")) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+  const business = { id: group.business_id };
 
   const { data: members } = await supabase
     .from("signing_group_member")
@@ -135,7 +131,7 @@ export async function GET(
   await recordAuditEvent(supabase, {
     businessId: business.id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "export",
     entityId: group.id,
     templateId: group.template_id,

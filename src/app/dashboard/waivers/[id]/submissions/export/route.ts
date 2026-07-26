@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isActiveMember, resolveBusinessContext } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { resolveBusinessContext } from "@/lib/auth/membership";
+import { getBusinessContext, hasCapability } from "@/lib/auth/permissions";
+import { actorKindFromRole } from "@/lib/auth/actor-kind";
 import { recordAuditEvent } from "@/lib/audit";
 import { csvCell } from "@/lib/search";
 import {
@@ -48,7 +49,7 @@ export async function GET(
   await resolveBusinessContext(supabase, user.id, user);
 
   // Bulk PII extraction — owner/admin only, never employees.
-  const membership = await isActiveMember(supabase, user.id, template.business_id);
+  const membership = await getBusinessContext(supabase, template.business_id, user.id);
   if (!membership || !hasCapability(membership.role, "export_data")) {
     return new NextResponse("Forbidden", { status: 403 });
   }
@@ -170,7 +171,7 @@ export async function GET(
   await recordAuditEvent(supabase, {
     businessId: template.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "export",
     entityId: id,
     templateId: id,

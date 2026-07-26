@@ -15,12 +15,16 @@ export type Capability =
   | "manage_waivers"
   | "manage_groups"
   | "view_stats"
+  /** Read signer PII in the dashboard (search, detail, single PDF). */
+  | "view_submissions"
   /** Bulk extraction of signer PII (CSV / ZIP). Deliberately not granted to
    *  employees: day-to-day signing never needs to download the whole roster. */
   | "export_data"
   /** Erase a signer's data on request (GDPR art. 17). */
   | "delete_submission"
-  | "sign_customers";
+  | "sign_customers"
+  /** Hand the owner seat to another member — owner only. */
+  | "transfer_ownership";
 
 /** Add a role or capability here — nothing else needs to change to extend access control. */
 const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
@@ -32,9 +36,11 @@ const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
     "manage_waivers",
     "manage_groups",
     "view_stats",
+    "view_submissions",
     "export_data",
     "delete_submission",
     "sign_customers",
+    "transfer_ownership",
   ],
   admin: [
     "invite_employees",
@@ -42,11 +48,13 @@ const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
     "manage_waivers",
     "manage_groups",
     "view_stats",
+    "view_submissions",
     "export_data",
     "delete_submission",
     "sign_customers",
   ],
-  employee: ["sign_customers"],
+  // Day-to-day métier: see who signed / open a PDF, never export or erase bulk.
+  employee: ["sign_customers", "view_submissions"],
 };
 
 export function hasCapability(role: BusinessRole, capability: Capability): boolean {
@@ -59,25 +67,34 @@ export type BusinessContext = {
 };
 
 /**
- * Resolve the current user's active membership for a business.
- * Returns null when unauthenticated or not an active member (RLS would
- * already block the underlying data — this gives the app a clean check to
- * branch on before hitting the database at all).
+ * Resolve a user's active membership for ONE specific business.
+ *
+ * Single implementation of this lookup — `isActiveMember` used to duplicate it
+ * in lib/auth/membership.ts. Pass `userId` when the caller already has the
+ * authenticated user to skip a redundant `auth.getUser()` round-trip.
+ *
+ * Returns null when unauthenticated or not an active member. RLS already
+ * blocks the underlying data; this lets the app branch cleanly before querying.
  */
 export async function getBusinessContext(
   supabase: SupabaseClient<Database>,
   businessId: string,
+  userId?: string,
 ): Promise<BusinessContext | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    resolvedUserId = user.id;
+  }
 
   const { data } = await supabase
     .from("business_member")
     .select("role")
     .eq("business_id", businessId)
-    .eq("user_id", user.id)
+    .eq("user_id", resolvedUserId)
     .eq("status", "active")
     .maybeSingle();
 

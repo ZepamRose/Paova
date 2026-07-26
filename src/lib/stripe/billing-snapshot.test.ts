@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { billingSnapshotFromSubscriptions } from "./billing-snapshot.ts";
+import {
+  billingSnapshotFromSubscriptions,
+  customerHasOpenSubscription,
+} from "./billing-snapshot.ts";
 
 describe("billingSnapshotFromSubscriptions", () => {
   it("is pro when any subscription is active", () => {
@@ -18,11 +21,17 @@ describe("billingSnapshotFromSubscriptions", () => {
     assert.equal(snap.subscription_status, "trialing");
   });
 
-  it("is free when only canceled/past_due remain", () => {
+  it("is pro during past_due grace", () => {
     const snap = billingSnapshotFromSubscriptions([
       { status: "canceled" },
       { status: "past_due" },
     ]);
+    assert.equal(snap.plan, "pro");
+    assert.equal(snap.subscription_status, "past_due");
+  });
+
+  it("is free when only canceled remain", () => {
+    const snap = billingSnapshotFromSubscriptions([{ status: "canceled" }]);
     assert.equal(snap.plan, "free");
   });
 
@@ -32,5 +41,21 @@ describe("billingSnapshotFromSubscriptions", () => {
       plan: "free",
       subscription_status: "inactive",
     });
+  });
+});
+
+describe("customerHasOpenSubscription", () => {
+  it("is true for past_due so Checkout stays blocked", () => {
+    assert.equal(
+      customerHasOpenSubscription([{ status: "past_due" }]),
+      true,
+    );
+  });
+
+  it("is false when only canceled remain", () => {
+    assert.equal(
+      customerHasOpenSubscription([{ status: "canceled" }]),
+      false,
+    );
   });
 });

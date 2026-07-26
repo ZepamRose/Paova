@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActionCapability } from "@/lib/auth/session";
+import { actorKindFromRole } from "@/lib/auth/actor-kind";
 import { recordAuditEvent } from "@/lib/audit";
 import { slugify, shortId } from "@/lib/slug";
 import {
@@ -201,7 +202,7 @@ export async function createTemplate(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: business.id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: created.id,
     templateId: created.id,
@@ -280,7 +281,7 @@ export async function createFromPreset(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: business.id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: created.id,
     templateId: created.id,
@@ -372,7 +373,8 @@ export async function updateTemplate(formData: FormData) {
       signer_name_label: nextContent.signer_name_label,
       version: nextVersion,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", membership.businessId);
 
   if (error) {
     throw new Error(error.message);
@@ -381,7 +383,7 @@ export async function updateTemplate(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: existing.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,
@@ -391,7 +393,7 @@ export async function updateTemplate(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: existing.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,
@@ -436,6 +438,7 @@ export async function deleteTemplate(formData: FormData) {
       deleted_at: deletedAt,
     })
     .eq("id", id)
+    .eq("business_id", membership.businessId)
     .is("deleted_at", null);
 
   if (error) {
@@ -445,7 +448,7 @@ export async function deleteTemplate(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: existing.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,
@@ -514,7 +517,8 @@ export async function toggleTemplateActive(formData: FormData) {
   const { error } = await supabase
     .from("waiver_template")
     .update(patch)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", membership.businessId);
 
   if (error) {
     throw new Error(error.message);
@@ -523,7 +527,7 @@ export async function toggleTemplateActive(formData: FormData) {
   await recordAuditEvent(supabase, {
     businessId: template.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,
@@ -617,7 +621,8 @@ export async function updateTemplateExpiration(
       expires_at: expiresAt,
       status: nextStatus,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", membership.businessId);
 
   if (error) {
     return {
@@ -630,7 +635,7 @@ export async function updateTemplateExpiration(
   await recordAuditEvent(supabase, {
     businessId: template.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,
@@ -648,7 +653,7 @@ export async function updateTemplateExpiration(
     await recordAuditEvent(supabase, {
       businessId: template.business_id,
       actorUserId: user.id,
-      actorKind: "owner",
+      actorKind: actorKindFromRole(membership.role),
       entityType: "template",
       entityId: id,
       templateId: id,
@@ -723,7 +728,8 @@ export async function updateTemplateSignatureHours(
       signature_hours_end: enabled ? end : null,
       signature_hours_days: uniqueDays,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", membership.businessId);
 
   if (error) {
     return {
@@ -736,7 +742,7 @@ export async function updateTemplateSignatureHours(
   await recordAuditEvent(supabase, {
     businessId: template.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "template",
     entityId: id,
     templateId: id,

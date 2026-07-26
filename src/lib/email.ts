@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { sanitizeLogoUrl } from "@/lib/branding";
+import { logError } from "@/lib/observability/log";
 
 type Attachment = {
   filename: string;
@@ -32,7 +33,8 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
   // Resend's onboarding address only delivers to the account owner — treat it
   // as misconfigured in production so we never pretend the signer got the PDF.
   if (isProd && /@resend\.dev\b/i.test(from)) {
-    console.error(
+    logError(
+      "email.misconfigured_sender",
       "RESEND_FROM still uses resend.dev in production; refusing to send.",
     );
     return false;
@@ -57,12 +59,14 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
     });
 
     if (!res.ok) {
-      console.error("Resend error:", res.status, await res.text());
+      // Body may carry Resend's reason (unverified domain, quota…); it never
+      // contains recipient content, so it is safe to log.
+      logError("email.send_failed", await res.text(), { status: res.status });
       return false;
     }
     return true;
   } catch (error) {
-    console.error("Resend request failed:", error);
+    logError("email.request_failed", error);
     return false;
   }
 }
@@ -280,10 +284,10 @@ export async function sendMemberInvite(input: {
         </a>
       </p>
       <p style="font-size: 13px; line-height: 1.6; color: #6b7280;">
-        Ce lien vous connecte automatiquement avec
-        ${escapeHtml(input.to)} — aucun mot de passe à retenir.
-        S'il a expiré, allez sur paova.app/login et demandez un nouveau lien
-        avec la même adresse email.
+        Ce lien ouvre la connexion Paova avec
+        ${escapeHtml(input.to)} prérempli. Demandez un lien magique sur
+        la page de connexion — aucun mot de passe à retenir.
+        Si le lien a expiré, allez sur paova.app/login avec la même adresse.
       </p>
       <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">
         Envoyé via Paova.

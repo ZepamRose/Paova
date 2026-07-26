@@ -4,6 +4,7 @@ import { CreditCard, Settings, Users } from "lucide-react";
 import { env } from "@/lib/env";
 import { isPro, currentMonthStartISO } from "@/lib/plan";
 import { getDashboardSession } from "@/lib/auth/session";
+import { listActiveMemberships } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { formatRelativeFr } from "@/lib/dates";
 import { BrandLogo } from "@/components/brand-logo";
@@ -19,6 +20,7 @@ import type {
 import { DashboardHome } from "./dashboard-home";
 import { DashboardBusinessHero } from "./dashboard-business-hero";
 import { DashboardCreateControl } from "./dashboard-create-control";
+import { BusinessSwitcher } from "./business-switcher";
 
 
 export default async function DashboardPage({
@@ -29,9 +31,25 @@ export default async function DashboardPage({
   const { view } = await searchParams;
   const initialView = view === "archived" ? "archived" : "active";
 
-  const { supabase, membership } = await getDashboardSession();
+  const { supabase, user, membership } = await getDashboardSession();
   const canManageWaivers = hasCapability(membership.role, "manage_waivers");
   const canManageGroups = hasCapability(membership.role, "manage_groups");
+
+  const seats = await listActiveMemberships(supabase, user.id);
+  const seatBusinessIds = seats.map((s) => s.businessId);
+  const { data: seatBusinesses } =
+    seatBusinessIds.length > 0
+      ? await supabase
+          .from("business")
+          .select("id, name")
+          .in("id", seatBusinessIds)
+      : { data: [] as { id: string; name: string }[] };
+  const nameById = new Map((seatBusinesses ?? []).map((b) => [b.id, b.name]));
+  const switcherOptions = seats.map((s) => ({
+    businessId: s.businessId,
+    name: nameById.get(s.businessId) ?? "Établissement",
+    role: s.role,
+  }));
 
   const { data: business } = await supabase
     .from("business")
@@ -341,6 +359,10 @@ export default async function DashboardPage({
         <BrandLogo href="/dashboard" size="sm" />
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <BusinessSwitcher
+            currentBusinessId={membership.businessId}
+            options={switcherOptions}
+          />
           <nav aria-label="Compte" className="flex items-center gap-1">
             {hasCapability(membership.role, "manage_members") ? (
               <Link

@@ -22,14 +22,27 @@ export function emailsForAuthUser(
 }
 
 /**
- * Choose which active seat the app should use when a user belongs to several
- * businesses. Collaborator/admin seats win over an accidental solo-owner
- * workspace created before an invite was claimed.
+ * Choose which active seat to use when no explicit tenant is pinned.
+ *
+ * Preference order:
+ * 1. `pinnedBusinessId` when the user holds an active seat there
+ * 2. Collaborator/admin seat (avoids an accidental solo-owner workspace
+ *    created before an invite was claimed)
+ * 3. Owner seat
+ * 4. Newest remaining seat
  */
 export function pickPreferredMembership(
   rows: readonly { business_id: string; role: string }[],
+  pinnedBusinessId?: string | null,
 ): BusinessContext | null {
   if (rows.length === 0) return null;
+
+  if (pinnedBusinessId) {
+    const pinned = rows.find((row) => row.business_id === pinnedBusinessId);
+    if (pinned && isRole(pinned.role)) {
+      return { businessId: pinned.business_id, role: pinned.role };
+    }
+  }
 
   const owned = rows.find((row) => row.role === "owner");
   const collaborator = rows.find(

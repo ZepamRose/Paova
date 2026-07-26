@@ -612,16 +612,19 @@ export type Database = {
           id: string;
           event_type: string;
           received_at: string;
+          processed_at: string | null;
         };
         Insert: {
           id: string;
           event_type: string;
           received_at?: string;
+          processed_at?: string | null;
         };
         Update: {
           id?: string;
           event_type?: string;
           received_at?: string;
+          processed_at?: string | null;
         };
         Relationships: [];
       };
@@ -669,6 +672,30 @@ export type Database = {
         };
         Returns: boolean;
       };
+      rate_limit_peek: {
+        Args: {
+          p_bucket: string;
+          p_identifier: string;
+          p_window_seconds: number;
+        };
+        Returns: number;
+      };
+      claim_stripe_webhook_event: {
+        Args: {
+          p_event_id: string;
+          p_event_type: string;
+          p_stale_after_seconds?: number;
+        };
+        Returns: boolean;
+      };
+      complete_stripe_webhook_event: {
+        Args: { p_event_id: string };
+        Returns: undefined;
+      };
+      transfer_business_ownership: {
+        Args: { p_business_id: string; p_new_owner_member_id: string };
+        Returns: undefined;
+      };
       search_submissions_for_owner: {
         Args: {
           p_query?: string | null;
@@ -680,6 +707,7 @@ export type Database = {
           p_offset?: number;
           p_group_id?: string | null;
           p_group_mode?: string | null;
+          p_business_id?: string | null;
         };
         Returns: {
           submission_id: string;

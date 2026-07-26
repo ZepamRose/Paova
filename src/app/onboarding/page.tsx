@@ -52,6 +52,12 @@ export default async function OnboardingPage({
         {error === "name" && (
           <p className="text-sm text-red-600">Veuillez saisir un nom.</p>
         )}
+        {error === "invite_pending" && (
+          <p className="text-sm text-red-600">
+            Une invitation est encore en attente pour votre adresse. Ouvrez le
+            lien reçu par e-mail, ou contactez la personne qui vous a invité.
+          </p>
+        )}
 
         <button
           type="submit"

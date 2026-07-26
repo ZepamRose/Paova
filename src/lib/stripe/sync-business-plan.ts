@@ -4,8 +4,10 @@ import type { Database } from "@/types/database.types";
 import { getStripe } from "@/lib/stripe/server";
 import {
   billingSnapshotFromSubscriptions,
+  customerHasOpenSubscription as snapshotHasOpenSubscription,
   type BillingSnapshot,
 } from "@/lib/stripe/billing-snapshot";
+import { logError } from "@/lib/observability/log";
 
 export type { BillingSnapshot };
 export { billingSnapshotFromSubscriptions };
@@ -16,28 +18,65 @@ const BUSINESS_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Authoritative plan for a Stripe customer: Pro only if at least one
- * subscription is still active or trialing. Survives event replay and
- * multi-subscription customers (cancel one, keep the other).
+ * Authoritative plan for a Stripe customer from the live subscription list.
+ * Survives event replay and multi-subscription customers.
  */
+export async function listCustomerSubscriptions(
+  customerId: string,
+  stripe: Stripe = getStripe(),
+): Promise<Stripe.Subscription[]> {
+  const subscriptions: Stripe.Subscription[] = [];
+  let startingAfter: string | undefined;
+
+  // Bounded so a pathological account cannot spin the webhook forever.
+  for (let page = 0; page < 10; page++) {
+    const { data, has_more } = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    subscriptions.push(...data);
+    if (!has_more || data.length === 0) {
+      return subscriptions;
+    }
+    if (page === 9 && has_more) {
+      throw new Error("stripe_subscriptions_pagination_exceeded");
+    }
+    startingAfter = data[data.length - 1]!.id;
+  }
+
+  return subscriptions;
+}
+
 export async function billingSnapshotForCustomer(
   customerId: string,
   stripe: Stripe = getStripe(),
 ): Promise<BillingSnapshot> {
-  const { data } = await stripe.subscriptions.list({
-    customer: customerId,
-    status: "all",
-    limit: 20,
-  });
-  return billingSnapshotFromSubscriptions(data);
+  const subscriptions = await listCustomerSubscriptions(customerId, stripe);
+  return billingSnapshotFromSubscriptions(subscriptions);
 }
 
+/** True when the customer currently has Pro access (active/trialing/past_due). */
 export async function customerHasLiveSubscription(
   customerId: string,
   stripe: Stripe = getStripe(),
 ): Promise<boolean> {
   const snap = await billingSnapshotForCustomer(customerId, stripe);
   return snap.plan === "pro";
+}
+
+/**
+ * True when Checkout must not create another subscription (portal instead).
+ * Includes past_due / unpaid / incomplete / paused.
+ */
+export async function customerHasOpenSubscription(
+  customerId: string,
+  stripe: Stripe = getStripe(),
+): Promise<boolean> {
+  const subscriptions = await listCustomerSubscriptions(customerId, stripe);
+  return snapshotHasOpenSubscription(subscriptions);
 }
 
 /**
@@ -117,57 +156,112 @@ export async function syncBusinessBillingFromStripe(
 > {
   const snapshot = await billingSnapshotForCustomer(input.customerId, stripe);
 
+  let businessId =
+    input.businessId && BUSINESS_ID_RE.test(input.businessId)
+      ? input.businessId
+      : null;
+
+  const fromMeta = await businessIdFromCustomerMetadata(
+    input.customerId,
+    stripe,
+  );
+
+  if (businessId && fromMeta && businessId !== fromMeta) {
+    return { ok: false, reason: "business_id_mismatch" };
+  }
+
+  // Prefer an already-linked customer row over a forged client_reference_id.
+  const { data: linkedRow } = await supabase
+    .from("business")
+    .select("id")
+    .eq("stripe_customer_id", input.customerId)
+    .maybeSingle();
+
+  if (linkedRow?.id) {
+    if (businessId && businessId !== linkedRow.id) {
+      return { ok: false, reason: "customer_linked_to_other_business" };
+    }
+    businessId = linkedRow.id;
+  } else if (!businessId) {
+    businessId = fromMeta;
+  }
+
   let written = await writeBusinessBilling(supabase, {
-    businessId: input.businessId,
-    customerId: input.businessId ? null : input.customerId,
+    businessId,
+    customerId: businessId ? null : input.customerId,
     plan: snapshot.plan,
     subscriptionStatus: snapshot.subscription_status,
     setCustomerId: input.setCustomerId ? input.customerId : null,
   });
 
   // subscription.* can arrive before checkout linked the customer on business.
-  // Recover via metadata set at customers.create.
   if (
     !written.ok &&
     written.reason === "customer_not_linked" &&
-    !input.businessId
+    fromMeta
   ) {
-    const fromMeta = await businessIdFromCustomerMetadata(
-      input.customerId,
-      stripe,
-    );
-    if (fromMeta) {
-      written = await writeBusinessBilling(supabase, {
-        businessId: fromMeta,
-        plan: snapshot.plan,
-        subscriptionStatus: snapshot.subscription_status,
-        setCustomerId: input.customerId,
-      });
-    }
+    written = await writeBusinessBilling(supabase, {
+      businessId: fromMeta,
+      plan: snapshot.plan,
+      subscriptionStatus: snapshot.subscription_status,
+      setCustomerId: input.customerId,
+    });
   }
 
   if (!written.ok) return written;
   return { ok: true, snapshot };
 }
 
-/** Claim an event id. Duplicates return "duplicate"; caller should ack 200. */
+/**
+ * Claim an event id for processing (migration 0038).
+ *
+ * A claim is not proof of completion: only `complete_stripe_webhook_event`
+ * marks an event done. A claim left unfinished by a crashed or timed-out run
+ * becomes reclaimable after the stale window, so Stripe's retry can finish the
+ * work instead of being waved through as a duplicate.
+ */
 export async function claimStripeWebhookEvent(
   supabase: ServiceClient,
   event: Pick<Stripe.Event, "id" | "type">,
 ): Promise<"claimed" | "duplicate" | { error: string }> {
-  const { error } = await supabase.from("stripe_webhook_event").insert({
-    id: event.id,
-    event_type: event.type,
+  const { data, error } = await supabase.rpc("claim_stripe_webhook_event", {
+    p_event_id: event.id,
+    p_event_type: event.type,
+    p_stale_after_seconds: 120,
   });
-  if (!error) return "claimed";
-  if (error.code === "23505") return "duplicate";
-  return { error: error.message };
+
+  if (error) return { error: error.message };
+  return data === true ? "claimed" : "duplicate";
 }
 
-/** Drop the claim so Stripe's retry can re-process after a failed sync. */
+/** Mark the event finished; later deliveries are then true duplicates. */
+export async function completeStripeWebhookEvent(
+  supabase: ServiceClient,
+  eventId: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const { error } = await supabase.rpc("complete_stripe_webhook_event", {
+    p_event_id: eventId,
+  });
+  if (error) {
+    logError("stripe.complete_event_failed", error.message, { eventId });
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Drop the claim so Stripe's retry can re-process immediately after a handled
+ * failure, without waiting for the stale window.
+ */
 export async function releaseStripeWebhookEvent(
   supabase: ServiceClient,
   eventId: string,
 ): Promise<void> {
-  await supabase.from("stripe_webhook_event").delete().eq("id", eventId);
+  const { error } = await supabase
+    .from("stripe_webhook_event")
+    .delete()
+    .eq("id", eventId);
+  if (error) {
+    logError("stripe.release_event_failed", error.message, { eventId });
+  }
 }

@@ -43,6 +43,11 @@ describe("permissions", () => {
       assert.equal(hasCapability("employee", "edit_business_info"), false);
       assert.equal(hasCapability("employee", "manage_waivers"), false);
       assert.equal(hasCapability("employee", "manage_groups"), false);
+      assert.equal(hasCapability("employee", "transfer_ownership"), false);
+    });
+
+    it("can view submissions for day-to-day work", () => {
+      assert.equal(hasCapability("employee", "view_submissions"), true);
     });
   });
 
@@ -62,6 +67,10 @@ describe("permissions", () => {
       assert.equal(hasCapability("admin", "manage_billing"), false);
     });
 
+    it("cannot transfer ownership", () => {
+      assert.equal(hasCapability("admin", "transfer_ownership"), false);
+    });
+
     it("cannot edit business identity or branding", () => {
       assert.equal(hasCapability("admin", "edit_business_info"), false);
     });
@@ -77,9 +86,11 @@ describe("permissions", () => {
         "manage_waivers",
         "manage_groups",
         "view_stats",
+        "view_submissions",
         "export_data",
         "delete_submission",
         "sign_customers",
+        "transfer_ownership",
       ] as const;
       for (const capability of all) {
         assert.equal(

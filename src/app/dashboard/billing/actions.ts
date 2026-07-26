@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireActionCapability } from "@/lib/auth/session";
 import { getStripe } from "@/lib/stripe/server";
 import { openSubscriptionCheckoutUrl } from "@/lib/stripe/open-checkout";
-import { customerHasLiveSubscription } from "@/lib/stripe/sync-business-plan";
+import { customerHasOpenSubscription } from "@/lib/stripe/sync-business-plan";
 import { env } from "@/lib/env";
 
 /**
@@ -78,7 +78,9 @@ export async function createCheckoutSession() {
   }
 
   // Re-check after resolving the customer (covers race winners + DB lag).
-  if (await customerHasLiveSubscription(customerId)) {
+  // Block Checkout whenever any non-canceled Stripe sub exists (incl. past_due)
+  // so we never mint a second subscription — send them to the portal instead.
+  if (await customerHasOpenSubscription(customerId)) {
     redirect("/dashboard/billing");
   }
 

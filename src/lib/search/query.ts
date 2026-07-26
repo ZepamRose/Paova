@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { logError } from "@/lib/observability/log";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -34,6 +35,8 @@ export type SearchSubmissionsFilters = {
   status?: string | null;
   limit?: number;
   offset?: number;
+  /** Required: pin results to one of the caller's active businesses. */
+  businessId: string;
 };
 
 function endOfDayIso(dateYmd: string): string {
@@ -97,6 +100,10 @@ export async function searchSubmissions(
   filters: SearchSubmissionsFilters,
 ): Promise<SubmissionSearchRow[]> {
   const n = normalizeSearchFilters(filters);
+  const businessId = filters.businessId?.trim();
+  if (!businessId) {
+    throw new Error("businessId is required for submission search");
+  }
 
   if (
     n.groupId &&
@@ -108,6 +115,7 @@ export async function searchSubmissions(
       .from("signing_group")
       .select("id")
       .eq("id", n.groupId)
+      .eq("business_id", businessId)
       .maybeSingle();
     if (!group) return [];
   }
@@ -124,10 +132,11 @@ export async function searchSubmissions(
     p_offset: n.offset,
     p_group_id: groupArgs.p_group_id,
     p_group_mode: groupArgs.p_group_mode,
+    p_business_id: businessId,
   });
 
   if (error) {
-    console.error("search_submissions_for_owner failed:", error.message);
+    logError("search.query_failed", error.message);
     throw new Error(error.message);
   }
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isActiveMember } from "@/lib/auth/membership";
+import { resolveBusinessContext } from "@/lib/auth/membership";
+import { getBusinessContext, hasCapability } from "@/lib/auth/permissions";
+import { actorKindFromRole } from "@/lib/auth/actor-kind";
 import { recordAuditEvent } from "@/lib/audit";
 import {
   buildSubmissionPdf,
@@ -21,6 +23,8 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  await resolveBusinessContext(supabase, user.id, user);
+
   const { data: template } = await supabase
     .from("waiver_template")
     .select("id, business_id")
@@ -31,8 +35,12 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const membership = await isActiveMember(supabase, user.id, template.business_id);
-  if (!membership) {
+  const membership = await getBusinessContext(
+    supabase,
+    template.business_id,
+    user.id,
+  );
+  if (!membership || !hasCapability(membership.role, "view_submissions")) {
     return new NextResponse("Not found", { status: 404 });
   }
 
@@ -48,7 +56,7 @@ export async function GET(
   await recordAuditEvent(supabase, {
     businessId: template.business_id,
     actorUserId: user.id,
-    actorKind: "owner",
+    actorKind: actorKindFromRole(membership.role),
     entityType: "submission",
     entityId: sid,
     templateId: id,
