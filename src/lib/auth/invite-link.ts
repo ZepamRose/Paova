@@ -1,13 +1,16 @@
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { getAppUrl, getAuthConfirmUrl } from "@/lib/app-url";
+import { getAppUrl } from "@/lib/app-url";
 
 /**
- * One-click login URL for invite emails. Falls back to /login with the email
- * prefilled when generateLink is unavailable so the invite still works.
+ * One-click login URL for invite emails.
+ *
+ * Do NOT use generateLink's `action_link`: it goes through Supabase's
+ * /auth/v1/verify with a non-PKCE token and often lands on /auth/confirm
+ * without token_hash → "lien incomplet". Instead we build our confirm URL
+ * with the hashed_token so verifyOtp can run in the browser.
  */
 export async function buildMemberInviteLoginUrl(email: string): Promise<string> {
   const normalized = email.trim().toLowerCase();
-  const confirmUrl = `${getAuthConfirmUrl()}?next=${encodeURIComponent("/dashboard")}`;
   const loginFallback = `${getAppUrl()}/login?email=${encodeURIComponent(normalized)}&next=${encodeURIComponent("/dashboard")}`;
 
   try {
@@ -15,18 +18,24 @@ export async function buildMemberInviteLoginUrl(email: string): Promise<string> 
     const { data, error } = await admin.auth.admin.generateLink({
       type: "magiclink",
       email: normalized,
-      options: { redirectTo: confirmUrl },
     });
     if (error) {
       console.error("invite generateLink failed:", error.message);
       return loginFallback;
     }
-    const actionLink = data.properties?.action_link?.trim();
-    if (!actionLink) {
-      console.error("invite generateLink returned no action_link");
+
+    const hashedToken = data.properties?.hashed_token?.trim();
+    if (!hashedToken) {
+      console.error("invite generateLink returned no hashed_token");
       return loginFallback;
     }
-    return actionLink;
+
+    const params = new URLSearchParams({
+      token_hash: hashedToken,
+      type: "magiclink",
+      next: "/dashboard",
+    });
+    return `${getAppUrl()}/auth/confirm?${params.toString()}`;
   } catch (err) {
     console.error("invite generateLink error:", err);
     return loginFallback;
