@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { logError } from "@/lib/observability/log";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -69,7 +70,7 @@ export async function ensureGroupAccepting(
       .eq("id", group.id)
       .eq("status", "open");
     if (error) {
-      console.error("Failed to auto-close group:", error.message);
+      logError("group.auto_close_failed", error.message, { groupId: group.id });
     }
   }
 

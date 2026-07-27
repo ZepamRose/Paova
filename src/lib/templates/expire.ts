@@ -6,6 +6,7 @@ import {
   effectiveTemplateStatus,
   type TemplateLifecycle,
 } from "./status";
+import { logError } from "@/lib/observability/log";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -44,7 +45,7 @@ export async function ensureTemplateNotStale(
     .eq("status", "open");
 
   if (error) {
-    console.error("Failed to mark template expired:", error.message);
+    logError("template.expire_failed", error.message, { templateId: template.id });
   } else {
     await recordAuditEvent(client, {
       businessId: template.business_id,

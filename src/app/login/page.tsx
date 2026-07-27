@@ -6,12 +6,14 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAuthConfirmUrl } from "@/lib/app-url";
 import { safeNextPath } from "@/lib/auth/safe-next-path";
+import {
+  AuthRequestError,
+  describeAuthError,
+  GENERIC_MESSAGE,
+} from "@/lib/auth/auth-error";
 import { createClient } from "@/lib/supabase/client";
 import { MagicLinkSent } from "./magic-link-sent";
-import {
-  isRateLimitError,
-  RateLimitWarning,
-} from "./rate-limit-warning";
+import { RateLimitWarning } from "./rate-limit-warning";
 
 type Status = "idle" | "sending" | "sent" | "error";
 type ErrorKind = "none" | "rate_limit" | "generic";
@@ -20,22 +22,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim());
-}
-
-function friendlyAuthError(message: string): string {
-  const lower = message.toLowerCase();
-  if (isRateLimitError(message)) {
-    return "rate_limit";
-  }
-  if (
-    lower.includes("smtp") ||
-    lower.includes("email") ||
-    lower.includes("resend") ||
-    lower.includes("deliver")
-  ) {
-    return "Impossible d'envoyer l'email pour le moment. En mode test, seuls certains emails reçoivent le lien — réessayez avec votre email principal, ou attendez le domaine.";
-  }
-  return message || "Une erreur est survenue. Réessayez.";
 }
 
 async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
@@ -337,7 +323,14 @@ export default function LoginPage() {
     );
 
     if (otpError) {
-      throw new Error(friendlyAuthError(otpError.message));
+      // Keep the technical detail in the console for support; the thrown error
+      // carries an already-classified, human-readable kind for the UI.
+      console.error("[login] signInWithOtp:", {
+        name: otpError.name,
+        status: otpError.status,
+        message: otpError.message,
+      });
+      throw new AuthRequestError(describeAuthError(otpError));
     }
   }
 
@@ -357,15 +350,23 @@ export default function LoginPage() {
       await sendMagicLink(email);
       setStatus("sent");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Une erreur est survenue.";
-      const friendly = friendlyAuthError(message);
-      if (friendly === "rate_limit" || isRateLimitError(message)) {
+      // Already classified in sendMagicLink — no second round of string
+      // matching, which is what previously turned "{}" into visible garbage.
+      const kind =
+        err instanceof AuthRequestError
+          ? err.kind
+          : describeAuthError({
+              message: err instanceof Error ? err.message : "",
+            }).kind;
+
+      if (kind === "rate_limit") {
         setErrorKind("rate_limit");
         setError("");
       } else {
         setErrorKind("generic");
-        setError(friendly);
+        setError(
+          err instanceof Error && err.message ? err.message : GENERIC_MESSAGE,
+        );
       }
       setStatus("error");
     }

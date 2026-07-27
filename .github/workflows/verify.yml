@@ -1,0 +1,43 @@
+name: Verify
+
+# The 74 tests only protect the codebase if something actually runs them.
+# `main` shipped with five blocking ESLint errors precisely because nothing did.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # typecheck → lint → tests, same chain developers run locally.
+      - name: Verify
+        run: npm run verify
+
+      # Catches what `verify` cannot: broken imports, server/client boundary
+      # violations, and anything that only surfaces at build time. Env vars are
+      # placeholders — the build must never need real credentials.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_DIST_DIR: .next-ci
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_APP_URL: https://paova.app

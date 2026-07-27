@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getDashboardSession } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/auth/permissions";
 import { getAppUrl } from "@/lib/app-url";
+import { env } from "@/lib/env";
 import { DashboardEntrance } from "../../dashboard-entrance";
 import { InviteMemberForm } from "./invite-member-form";
 import { MemberRow } from "./member-row";
@@ -16,6 +17,7 @@ const ERROR_COPY: Record<string, string> = {
   insert: "Impossible d'envoyer l'invitation. Réessayez.",
   delete: "Impossible de retirer ce membre. Réessayez.",
   update: "Impossible de mettre à jour le rôle. Réessayez.",
+  transfer: "Impossible de transférer la propriété. Réessayez.",
 };
 
 const SUCCESS_COPY: Record<string, string> = {
@@ -25,6 +27,8 @@ const SUCCESS_COPY: Record<string, string> = {
   updated: "Rôle mis à jour.",
   disabled: "Membre désactivé.",
   reactivated: "Membre réactivé.",
+  transferred:
+    "Propriété transférée. Vous êtes désormais administrateur de cet espace.",
 };
 
 const WARNING_COPY: Record<string, string> = {
@@ -49,6 +53,10 @@ export default async function MembersPage({
 
   const canManage = hasCapability(membership.role, "manage_members");
   const canInviteAdmin = membership.role === "owner";
+  // Resend's sandbox sender only delivers to the account owner, so invites and
+  // magic links for anyone else are dropped. Surface it here rather than
+  // letting the owner discover it through a silent, broken login form.
+  const usingSandboxSender = /@resend\.dev\b/i.test(env.resend.from);
   const canAssignAdmin = membership.role === "owner";
 
   const { data: business } = await supabase
@@ -63,17 +71,21 @@ export default async function MembersPage({
     .eq("business_id", membership.businessId)
     .order("created_at", { ascending: true });
 
-  const userIds = (rows ?? [])
-    .map((r) => r.user_id)
-    .filter((v): v is string => Boolean(v));
+  const { data: memberDirectory } =
+    (rows?.some((row) => Boolean(row.user_id)) ?? false)
+      ? await supabase.rpc("business_member_directory", {
+          p_business_id: membership.businessId,
+        })
+      : {
+          data: [] as {
+            user_id: string;
+            email: string | null;
+            full_name: string | null;
+          }[],
+        };
 
-  const { data: memberProfiles } =
-    userIds.length > 0
-      ? await supabase.from("profiles").select("id, email").in("id", userIds)
-      : { data: [] as { id: string; email: string | null }[] };
-
-  const emailByUserId = new Map(
-    (memberProfiles ?? []).map((p) => [p.id, p.email]),
+  const directoryByUserId = new Map(
+    (memberDirectory ?? []).map((p) => [p.user_id, p]),
   );
 
   const members = rows ?? [];
@@ -184,9 +196,14 @@ export default async function MembersPage({
                       id={m.id}
                       role={m.role}
                       status={m.status}
+                      name={
+                        m.user_id
+                          ? (directoryByUserId.get(m.user_id)?.full_name ?? null)
+                          : null
+                      }
                       email={
                         m.user_id
-                          ? (emailByUserId.get(m.user_id) ?? null)
+                          ? (directoryByUserId.get(m.user_id)?.email ?? null)
                           : m.invited_email
                       }
                       isSelf={m.user_id === user.id}
@@ -194,6 +211,7 @@ export default async function MembersPage({
                       canAssignAdmin={canAssignAdmin}
                       loginUrl={`${getAppUrl()}/login?email=${encodeURIComponent(m.invited_email ?? "")}&next=${encodeURIComponent("/dashboard")}`}
                       isLast={index === members.length - 1}
+                      viewerIsOwner={membership.role === "owner"}
                     />
                   ))}
                 </ul>
@@ -202,6 +220,28 @@ export default async function MembersPage({
           </DashboardEntrance>
 
           <DashboardEntrance step={2}>
+            {usingSandboxSender ? (
+              <div
+                role="status"
+                className="mb-4 rounded-xl border border-[color-mix(in_srgb,#b45309_28%,var(--color-border))] bg-[color-mix(in_srgb,#b45309_8%,var(--color-background))] px-4 py-3.5"
+              >
+                <p className="text-[13px] font-semibold tracking-tight text-[#92400e] dark:text-[#fbbf24]">
+                  Envoi d&apos;emails en mode test
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#a16207]/90 dark:text-[#fcd34d]/85">
+                  Tant qu&apos;un domaine n&apos;est pas vérifié, seuls les
+                  emails destinés au propriétaire du compte partent réellement.
+                  Vos invités ne recevront ni l&apos;invitation, ni leur lien de
+                  connexion — et le formulaire de connexion leur affichera une
+                  erreur d&apos;envoi.
+                </p>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#a16207]/80 dark:text-[#fcd34d]/75">
+                  À faire une fois : vérifier un domaine sur Resend, puis
+                  reporter cette adresse dans <code>RESEND_FROM</code> et dans
+                  Supabase → Authentication → Emails → SMTP Settings.
+                </p>
+              </div>
+            ) : null}
             <InviteMemberForm
               businessId={membership.businessId}
               canInviteAdmin={canInviteAdmin}

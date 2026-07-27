@@ -237,6 +237,9 @@ export default function AuthConfirmClient() {
       // link meant for a collaborator — invite stayed "pending".
       let failed = false;
 
+      // Browser console on purpose: lib/observability/log targets server log
+      // drains, and this component runs in the user's tab. Keep failures
+      // visible here for support, without shipping a client logger.
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         failed = Boolean(error);

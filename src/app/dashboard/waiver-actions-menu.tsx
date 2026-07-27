@@ -31,13 +31,16 @@ export function WaiverActionsMenu({
   id,
   title,
   submissionCount = 0,
+  publicUrl,
 }: {
   id: string;
   title: string;
   submissionCount?: number;
+  publicUrl?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const menuId = `waiver-menu-${id}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion() ?? false;
@@ -63,6 +66,17 @@ export function WaiverActionsMenu({
     };
   }, [open]);
 
+  async function copyPublicLink() {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard can be unavailable on an insecure local origin.
+    }
+  }
+
   return (
     <div ref={rootRef} className={`relative ${open ? "z-50" : ""}`}>
       <button
@@ -72,7 +86,7 @@ export function WaiverActionsMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full transition-[color,background-color,transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.94] ${
+        className={`relative inline-flex h-11 w-11 items-center justify-center rounded-xl transition-[color,background-color,transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.94] sm:h-8 sm:w-8 sm:rounded-full ${
           open
             ? "bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] text-[var(--color-foreground)] shadow-[var(--elev-1)]"
             : "text-[var(--color-muted)]/70 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
@@ -104,6 +118,20 @@ export function WaiverActionsMenu({
             transition={{ duration: 0.15, ease: EASE }}
             className="absolute right-0 z-50 mt-1.5 min-w-[10.5rem] origin-top-right overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] py-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.18),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
           >
+            {publicUrl ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={copyPublicLink}
+                className="flex min-h-11 w-full items-center gap-2.5 px-3 text-left text-[13px] font-medium tracking-tight text-[var(--color-foreground)]/88 transition-[background-color,color] duration-150 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="opacity-55">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                {copied ? "Lien copi\u00e9" : "Copier le lien"}
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -111,7 +139,7 @@ export function WaiverActionsMenu({
                 setOpen(false);
                 setConfirmOpen(true);
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] font-medium tracking-tight text-[var(--color-foreground)]/88 transition-[background-color,color,padding] duration-150 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
+              className="flex min-h-11 w-full items-center gap-2.5 px-3 text-left text-[13px] font-medium tracking-tight text-[var(--color-foreground)]/88 transition-[background-color,color,padding] duration-150 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
             >
               <ArchiveIcon className="opacity-55" />
               Archiver

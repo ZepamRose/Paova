@@ -6,6 +6,7 @@ import {
   buildSubmissionPdf,
   pdfFilenameForSigner,
 } from "@/lib/submission-pdf";
+import { logError } from "@/lib/observability/log";
 
 /** Allow enough time for PDF + logo fetch on serverless. */
 export const maxDuration = 30;
@@ -77,7 +78,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("Public thank-you PDF failed:", err);
+    logError("pdf.public_thank_you_failed", err, { slug });
     return new NextResponse("PDF generation failed", { status: 500 });
   }
 }

@@ -63,7 +63,7 @@ export function DashboardGroupsSection({
   const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
   const quietAction = `inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,background-color,transform] ${motionCls} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
   /** Primary card action — open the group. */
-  const viewAction = `inline-flex h-8 items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
+  const viewAction = `inline-flex h-11 items-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:h-8 sm:rounded-lg sm:px-3`;
 
   return (
     <section
@@ -168,7 +168,7 @@ export function DashboardGroupsSection({
             {!showArchived && !searchActive && canManageGroups && canCreateGroup ? (
               <Link
                 href="/dashboard/groupes/new"
-                className={`inline-flex min-h-10 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
+                className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
                 Créer un groupe
               </Link>
@@ -199,14 +199,14 @@ export function DashboardGroupsSection({
                       duration: 0.2,
                       ease: LIST_EASE,
                     }}
-                    className={`relative z-0 rounded-[1.15rem] hover:z-10 ${groupCard} ${cardHover}`}
+                    className={`relative z-0 rounded-[1.2rem] hover:z-10 ${groupCard} ${cardHover}`}
                   >
                     <span
                       aria-hidden
                       className="absolute inset-y-2.5 left-0 w-[3px] rounded-full bg-[var(--color-brand)]"
                     />
 
-                    <div className="flex flex-col gap-2.5 px-3.5 py-3 pl-4 sm:px-4 sm:py-3.5 sm:pl-[1.15rem]">
+                    <div className="flex flex-col gap-3 px-4 py-4 pl-[1.2rem] sm:gap-2.5 sm:px-4 sm:py-3.5 sm:pl-[1.15rem]">
                       <div className="flex items-start gap-3">
                         <Link
                           href={`/dashboard/groupes/${g.id}`}
@@ -217,10 +217,10 @@ export function DashboardGroupsSection({
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                              <h3 className="truncate text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[15px]">
+                              <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.3] tracking-tight text-[var(--color-foreground)] sm:truncate sm:text-[15px] sm:leading-normal">
                                 {g.name}
                               </h3>
-                              <span className="inline-flex shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold leading-4 tracking-[0.02em] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_24%,transparent)]">
+                              <span className="hidden shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold leading-4 tracking-[0.02em] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_24%,transparent)] sm:inline-flex">
                                 Groupe
                               </span>
                               {closed ? (
@@ -229,7 +229,7 @@ export function DashboardGroupsSection({
                                 </span>
                               ) : null}
                             </div>
-                            <p className="mt-0.5 truncate text-[11.5px] text-[var(--color-muted)]">
+                            <p className="mt-1 truncate text-[12px] text-[var(--color-muted)] sm:mt-0.5 sm:text-[11.5px]">
                               {g.template_title}
                               {createdRel ? (
                                 <>

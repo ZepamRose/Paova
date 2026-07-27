@@ -18,7 +18,7 @@ export function DashboardViewToggle({
   const showArchived = listView === "archived";
 
   const tabClass = (on: boolean) =>
-    `rounded-md px-2.5 py-1 text-[12px] transition-[color,background-color,box-shadow,transform] ${motionCls} ${
+    `min-h-11 rounded-lg px-3 py-1 text-[12px] transition-[color,background-color,box-shadow,transform] ${motionCls} sm:min-h-0 sm:rounded-md sm:px-2.5 ${
       on
         ? "bg-[var(--color-surface)] font-semibold text-[var(--color-foreground)] shadow-[0_1px_3px_rgba(15,23,42,0.1),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)]"
         : "font-medium text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-surface)_55%,transparent)] hover:text-[var(--color-foreground)]"

@@ -8,6 +8,8 @@
 
 # next.js
 /.next/
+# Isolated build output (NEXT_DIST_DIR) — keeps `next build` off the dev server
+/.next-ci/
 /out/
 
 # production

@@ -641,6 +641,21 @@ export type Database = {
           last_signed_at: string | null;
         }[];
       };
+      business_member_emails: {
+        Args: { p_business_id: string };
+        Returns: {
+          user_id: string;
+          email: string | null;
+        }[];
+      };
+      business_member_directory: {
+        Args: { p_business_id: string };
+        Returns: {
+          user_id: string;
+          email: string | null;
+          full_name: string | null;
+        }[];
+      };
       dashboard_group_stats: {
         Args: { p_business_id: string };
         Returns: {

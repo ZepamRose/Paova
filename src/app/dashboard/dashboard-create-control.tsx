@@ -24,9 +24,8 @@ export function DashboardCreateControl({
   canManageWaivers?: boolean;
   canManageGroups?: boolean;
 }) {
-  if (!canManageWaivers && !canManageGroups) {
-    return null;
-  }
+  // Hooks must run on every render, in the same order — the early return for
+  // employees (no manage capability) lives below, after all of them.
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -58,6 +57,11 @@ export function DashboardCreateControl({
   const focus =
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]";
 
+  // Nothing to create: employees see no control at all.
+  if (!canManageWaivers && !canManageGroups) {
+    return null;
+  }
+
   return (
     <div ref={rootRef} className={`relative ${open ? "z-50" : ""} ${className}`}>
       <button
@@ -67,7 +71,7 @@ export function DashboardCreateControl({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-brand)] px-3.5 text-[13px] font-medium tracking-tight text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_1px_2px_rgba(0,0,0,0.06)] sm:px-4 ${motionCls} hover:brightness-[1.03] ${focus} active:scale-[0.985]`}
+        className={`inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--color-brand)] px-3.5 text-[13px] font-medium tracking-tight text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_1px_2px_rgba(0,0,0,0.06)] sm:h-9 sm:px-4 ${motionCls} hover:brightness-[1.03] ${focus} active:scale-[0.985]`}
       >
         <span>Créer</span>
         <svg

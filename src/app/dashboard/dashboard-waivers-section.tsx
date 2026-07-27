@@ -22,7 +22,6 @@ import {
   formatRelativeFr,
   formatShortDateFr,
 } from "@/lib/dates";
-import { CopyLinkButton } from "./copy-link-button";
 import {
   DASHBOARD_PAGE_SIZE,
   DashboardListPagination,
@@ -120,8 +119,8 @@ export function DashboardWaiversSection({
   const cardHover = `transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_18%,var(--color-border))] hover:shadow-[var(--elev-hover)]`;
   const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
   /** Primary card action — open the waiver. */
-  const viewAction = `inline-flex h-8 items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
-  const restoreBtn = `inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[13px] font-medium text-[var(--color-on-brand)] ${primaryBtn}`;
+  const viewAction = `inline-flex h-11 items-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:h-8 sm:rounded-lg sm:px-3`;
+  const restoreBtn = `inline-flex h-11 items-center rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-medium text-[var(--color-on-brand)] sm:h-8 sm:rounded-lg sm:px-3 ${primaryBtn}`;
 
   return (
     <section
@@ -213,7 +212,7 @@ export function DashboardWaiversSection({
             {!showArchived && !searchActive ? (
               <Link
                 href="/onboarding/premiere-decharge"
-                className={`inline-flex min-h-10 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
+                className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
                 Créer ma première décharge
               </Link>
@@ -239,6 +238,9 @@ export function DashboardWaiversSection({
                   formatShort: formatShortDateFr,
                 });
                 const created = formatShortDateFr(t.created_at);
+                const compactDate = lastSignedIso
+                  ? `Sign\u00e9e le ${formatShortDateFr(lastSignedIso)}`
+                  : `Cr\u00e9\u00e9e le ${created}`;
                 const archivedAt = t.deleted_at
                   ? formatLongDateFr(t.deleted_at)
                   : null;
@@ -294,21 +296,32 @@ export function DashboardWaiversSection({
                       duration: 0.2,
                       ease: LIST_EASE,
                     }}
-                    className={`relative z-0 rounded-[1.05rem] px-3.5 py-2.5 hover:z-10 has-[[aria-expanded=true]]:z-30 sm:px-3.5 sm:py-2.5 ${waiverCard} ${cardHover}`}
+                    className={`relative z-0 rounded-[1.15rem] px-4 py-4 hover:z-10 has-[[aria-expanded=true]]:z-30 sm:rounded-[1.05rem] sm:px-3.5 sm:py-2.5 ${waiverCard} ${cardHover}`}
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-start gap-3 sm:items-center sm:gap-2.5">
                       <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)]/65"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface-2))] text-[var(--color-brand)]/75 sm:h-7 sm:w-7 sm:rounded-lg sm:bg-transparent sm:text-[var(--color-muted)]/65"
                         aria-hidden
                       >
-                        <FileText size={14} strokeWidth={1.75} />
+                        <FileText size={16} strokeWidth={1.7} className="sm:h-[14px] sm:w-[14px]" />
                       </span>
 
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <h3 className="min-w-0 truncate text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[15px]">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-0.5">
+                        <div className="min-w-0">
+                          <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.3] tracking-tight text-[var(--color-foreground)] sm:truncate sm:text-[14.5px] sm:leading-normal sm:text-[15px]">
                             {t.title}
                           </h3>
+                          <div className="hidden items-center gap-2 sm:flex">
+                            {!showArchived ? <StatusBadge status={rowStatus} /> : null}
+                            <span
+                              className="text-[10px] font-normal tabular-nums tracking-tight text-[var(--color-muted)]/32"
+                              aria-label={`Version ${version}`}
+                            >
+                              v{version}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:hidden">
                           {!showArchived ? (
                             <StatusBadge
                               status={rowStatus}
@@ -316,14 +329,21 @@ export function DashboardWaiversSection({
                             />
                           ) : null}
                           <span
-                            className="shrink-0 text-[10px] font-normal tabular-nums tracking-tight text-[var(--color-muted)]/32"
+                            className="text-[10px] font-normal tabular-nums tracking-tight text-[var(--color-muted)]/42"
                             aria-label={`Version ${version}`}
                           >
                             v{version}
                           </span>
                         </div>
 
-                        <p className="truncate text-[12px] leading-snug text-[var(--color-muted)]">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] leading-snug text-[var(--color-muted)] sm:hidden">
+                          <span className={count > 0 ? "font-semibold tabular-nums text-[var(--color-brand)]" : "font-medium"}>
+                            {count === 0 ? "Aucune signature" : `${count} signature${count > 1 ? "s" : ""}`}
+                          </span>
+                          <span aria-hidden className="text-[var(--color-muted)]/35">{"\u00b7"}</span>
+                          <span>{compactDate}</span>
+                        </p>
+                        <p className="hidden truncate text-[12px] leading-snug text-[var(--color-muted)] sm:block">
                           {metaParts.map((part, i) => (
                             <span
                               key={`${part}-${i}`}
@@ -340,7 +360,7 @@ export function DashboardWaiversSection({
                         </p>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-0.5">
+                      <div className="flex shrink-0 items-center gap-0.5 pt-0.5 sm:pt-0">
                         {showArchived ? (
                           <>
                             <ToggleStatusForm
@@ -359,11 +379,6 @@ export function DashboardWaiversSection({
                           </>
                         ) : (
                           <>
-                            <CopyLinkButton
-                              url={publicUrl}
-                              variant="icon"
-                              size="sm"
-                            />
                             <Link
                               href={`/dashboard/waivers/${t.id}`}
                               className={viewAction}
@@ -374,6 +389,7 @@ export function DashboardWaiversSection({
                               id={t.id}
                               title={t.title}
                               submissionCount={count}
+                              publicUrl={publicUrl}
                             />
                           </>
                         )}

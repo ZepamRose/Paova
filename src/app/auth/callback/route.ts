@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { safeNextPath } from "@/lib/auth/safe-next-path";
 import type { Database } from "@/types/database.types";
+import { logWarn } from "@/lib/observability/log";
 
 /**
  * Exchanges the magic-link code (or token_hash) for a session cookie,
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return redirectResponse;
     }
-    console.error("[auth/callback] exchangeCodeForSession:", error.message);
+    logWarn("auth.exchange_code_failed", { message: error.message });
   }
 
   if (tokenHash && type) {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return redirectResponse;
     }
-    console.error("[auth/callback] verifyOtp:", error.message);
+    logWarn("auth.verify_otp_failed", { message: error.message });
   }
 
   return NextResponse.redirect(errorUrl);

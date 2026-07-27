@@ -10,13 +10,22 @@ import type { Database } from "@/types/database.types";
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  // Until Supabase is configured (.env.local), skip session refresh so the
-  // app boots cleanly. Session handling activates automatically once the
-  // NEXT_PUBLIC_SUPABASE_* variables are set.
+  // Local bootstrap convenience: before .env.local exists, skip the refresh so
+  // the app still boots. In production the same silence is a trap — a missing
+  // variable would surface as users being logged out at random rather than as
+  // a deployment error, so fail loudly there instead.
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
+    if (
+      process.env.NODE_ENV === "production" ||
+      process.env.VERCEL_ENV === "production"
+    ) {
+      throw new Error(
+        "Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY: auth sessions cannot be refreshed.",
+      );
+    }
     return response;
   }
 

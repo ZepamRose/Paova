@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/database.types";
 import type { TemplateVersionContent } from "./types";
+import { logError } from "@/lib/observability/log";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -37,7 +38,9 @@ export async function insertTemplateVersion(
     .single();
 
   if (error || !data) {
-    console.error("waiver_template_version insert failed:", error?.message);
+    logError("template.version_insert_failed", error?.message, {
+      templateId: input.templateId,
+    });
     return null;
   }
 

@@ -122,7 +122,7 @@ export function DashboardHome({
   const canCreateGroup = active.length > 0;
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
+    <div className="flex flex-col gap-5 sm:gap-5">
       {!showArchived && !q ? (
         <DashboardAttention items={attentionItems} />
       ) : null}
@@ -131,7 +131,7 @@ export function DashboardHome({
         step={2}
         className="flex flex-col gap-2.5 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_22%,var(--color-background))] p-2.5 sm:p-3"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <DashboardViewToggle
             listView={listView}
             onChange={changeListView}
@@ -140,7 +140,7 @@ export function DashboardHome({
           />
           <Link
             href="/dashboard/signatures"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:h-9 sm:rounded-lg"
           >
             <SignaturesIcon className="text-[var(--color-brand)]" />
             Toutes les signatures

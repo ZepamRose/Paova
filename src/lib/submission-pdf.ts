@@ -6,6 +6,7 @@ import {
 } from "@/lib/pdf";
 import type { SignedContentSnapshotV1 } from "@/lib/proof";
 import { resolveSignatureDataUrl } from "@/lib/signatures/storage";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
 function isSnapshotV1(value: unknown): value is SignedContentSnapshotV1 {
@@ -174,8 +175,16 @@ export async function buildSubmissionPdf(
     snapshot?.signature_data_url && snapshot.signature_data_url.length > 0
       ? snapshot.signature_data_url
       : submission.signature_url;
+  // Read the PNG with the service role, not the caller's client. The
+  // `signatures` bucket is private and its SELECT policy is owner/admin only,
+  // so an employee's client silently failed the download and the PDF rendered
+  // "(signature non disponible)" — for the one role whose job is collecting
+  // signatures. Authorisation to see this document was already established by
+  // the caller (membership + capability); the bucket policy must not silently
+  // re-decide it here.
+  const storageClient = createServiceRoleClient();
   const signatureDataUrl =
-    (await resolveSignatureDataUrl(supabase, rawSignature)) ?? rawSignature;
+    (await resolveSignatureDataUrl(storageClient, rawSignature)) ?? rawSignature;
 
   const bytes = await generateWaiverPdf({
     title: snapshot?.template.title ?? template.title,

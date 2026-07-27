@@ -3,6 +3,7 @@ import path from "path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
 import { sanitizeLogoUrl } from "@/lib/branding";
+import { logWarn } from "@/lib/observability/log";
 
 export type WaiverField = {
   key: string;
@@ -126,7 +127,9 @@ async function loadBrandWordmarkFont(
     const bytes = await readFile(fontPath);
     return await pdf.embedFont(bytes, { subset: true });
   } catch (err) {
-    console.error("Brand wordmark font failed, using fallback:", err);
+    logWarn("pdf.wordmark_font_fallback", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return fallback;
   }
 }
@@ -150,7 +153,9 @@ async function loadBusinessBrandFont(
     const bytes = await readFile(fontPath);
     return await pdf.embedFont(bytes, { subset: true });
   } catch (err) {
-    console.error("Business brand font failed, using fallback:", err);
+    logWarn("pdf.brand_font_fallback", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     return fallback;
   }
 }

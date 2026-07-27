@@ -70,6 +70,8 @@ describe("database types stay in sync with migrations", () => {
       "dashboard_group_stats",
       "dashboard_signature_days",
       "template_proof_version_counts",
+      "business_member_emails",
+      "business_member_directory",
     ];
     const declared = declaredFunctions(sql);
 

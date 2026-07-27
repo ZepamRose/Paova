@@ -1,5 +1,12 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  checkRateLimit,
+  clientIpFrom,
+  peekRateLimit,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 import {
   acceptsGroupSignatures,
   ensureGroupAccepting,
@@ -32,6 +39,26 @@ export default async function PublicGroupPage({
   const sp = await searchParams;
   const supabase = createServiceRoleClient();
 
+  // This page exposes the full roster — participant names and dates of birth,
+  // often minors — to anyone holding the link. Two counters guard it:
+  //
+  //  1. Failed lookups per IP (tight). A real visitor opens one valid link, so
+  //     repeated misses mean somebody is guessing tokens. Checked BEFORE the
+  //     query so an enumerator stops costing database work.
+  //  2. Views of a valid link per (IP, token) (generous). A venue kiosk or a
+  //     shared Wi-Fi legitimately reloads the same link many times, so this
+  //     only stops sustained scraping of one group.
+  const visitorIp = clientIpFrom(await headers());
+
+  const misses = await peekRateLimit(supabase, {
+    bucket: "group_token_miss",
+    identifier: visitorIp,
+    windowSeconds: RATE_LIMITS.groupTokenMiss.windowSeconds,
+  });
+  if (misses >= RATE_LIMITS.groupTokenMiss.maxHits) {
+    notFound();
+  }
+
   const { data: group } = await supabase
     .from("signing_group")
     .select(
@@ -40,7 +67,25 @@ export default async function PublicGroupPage({
     .eq("public_token", token)
     .maybeSingle();
 
-  if (!group) notFound();
+  if (!group) {
+    await checkRateLimit(supabase, {
+      bucket: "group_token_miss",
+      identifier: visitorIp,
+      windowSeconds: RATE_LIMITS.groupTokenMiss.windowSeconds,
+      maxHits: RATE_LIMITS.groupTokenMiss.maxHits,
+    });
+    notFound();
+  }
+
+  const withinViewLimit = await checkRateLimit(supabase, {
+    bucket: `group_view:${group.id}`,
+    identifier: visitorIp,
+    windowSeconds: RATE_LIMITS.groupView.windowSeconds,
+    maxHits: RATE_LIMITS.groupView.maxHits,
+  });
+  if (!withinViewLimit) {
+    notFound();
+  }
 
   await ensureGroupAccepting(supabase, group);
   const { data: freshGroup } = await supabase

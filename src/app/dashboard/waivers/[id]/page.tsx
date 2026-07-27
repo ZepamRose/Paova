@@ -14,8 +14,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { isActiveMember, resolveBusinessContext } from "@/lib/auth/membership";
-import { hasCapability } from "@/lib/auth/permissions";
+import { resolveBusinessContext } from "@/lib/auth/membership";
+import { getBusinessContext, hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import {
   configFromTemplateRow,
@@ -285,7 +285,7 @@ export default async function WaiverDetailPage({
     notFound();
   }
 
-  const membership = await isActiveMember(supabase, user.id, template.business_id);
+  const membership = await getBusinessContext(supabase, template.business_id, user.id);
   if (!membership) {
     notFound();
   }

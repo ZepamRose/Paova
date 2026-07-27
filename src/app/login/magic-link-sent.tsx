@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  isRateLimitError,
-  RateLimitWarning,
-} from "./rate-limit-warning";
+  AuthRequestError,
+  describeAuthError,
+  type AuthErrorKind,
+} from "@/lib/auth/auth-error";
+import { RateLimitWarning } from "./rate-limit-warning";
 
 const RESEND_COOLDOWN_SEC = 30;
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -59,6 +61,7 @@ export function MagicLinkSent({
   const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SEC);
   const [resending, setResending] = useState(false);
   const [resendError, setResendError] = useState("");
+  const [resendKind, setResendKind] = useState<AuthErrorKind | null>(null);
   const [resendFlash, setResendFlash] = useState(false);
 
   useEffect(() => {
@@ -73,24 +76,30 @@ export function MagicLinkSent({
     if (secondsLeft > 0 || resending) return;
     setResending(true);
     setResendError("");
+    setResendKind(null);
     try {
       await onResend();
       setSecondsLeft(RESEND_COOLDOWN_SEC);
       setResendFlash(true);
       window.setTimeout(() => setResendFlash(false), 2200);
     } catch (err) {
-      setResendError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de renvoyer le lien. Réessayez.",
-      );
+      // Same classifier as the initial send: never render a raw provider
+      // message (supabase-js can hand us the literal string "{}").
+      const description =
+        err instanceof AuthRequestError
+          ? { kind: err.kind, message: err.message }
+          : describeAuthError({
+              message: err instanceof Error ? err.message : "",
+            });
+      setResendKind(description.kind);
+      setResendError(description.message);
     } finally {
       setResending(false);
     }
   }
 
   const canResend = secondsLeft === 0 && !resending;
-  const rateLimited = resendError ? isRateLimitError(resendError) : false;
+  const rateLimited = resendKind === "rate_limit";
 
   return (
     <motion.div

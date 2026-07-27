@@ -21,6 +21,7 @@ import { DashboardHome } from "./dashboard-home";
 import { DashboardBusinessHero } from "./dashboard-business-hero";
 import { DashboardCreateControl } from "./dashboard-create-control";
 import { BusinessSwitcher } from "./business-switcher";
+import { DashboardMobileMenu } from "./dashboard-mobile-menu";
 
 
 export default async function DashboardPage({
@@ -34,6 +35,9 @@ export default async function DashboardPage({
   const { supabase, user, membership } = await getDashboardSession();
   const canManageWaivers = hasCapability(membership.role, "manage_waivers");
   const canManageGroups = hasCapability(membership.role, "manage_groups");
+  const canManageMembers = hasCapability(membership.role, "manage_members");
+  const canEditBusiness = hasCapability(membership.role, "edit_business_info");
+  const canManageBilling = hasCapability(membership.role, "manage_billing");
 
   const seats = await listActiveMemberships(supabase, user.id);
   const seatBusinessIds = seats.map((s) => s.businessId);
@@ -349,22 +353,23 @@ export default async function DashboardPage({
   const lastSignedRecord = Object.fromEntries(lastSignedByTemplate);
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-4 px-5 py-7 sm:gap-5 sm:px-6 sm:py-8">
+    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-5 px-4 py-4 sm:gap-5 sm:px-6 sm:py-8">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(80%_60%_at_50%_-10%,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent)]"
       />
 
-      <header className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_32%,transparent)] pb-2.5 sm:gap-4">
+      <header className="flex min-w-0 items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_32%,transparent)] pb-3 sm:gap-4 sm:pb-2.5">
         <BrandLogo href="/dashboard" size="sm" />
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <BusinessSwitcher
-            currentBusinessId={membership.businessId}
-            options={switcherOptions}
-          />
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
+            <BusinessSwitcher
+              currentBusinessId={membership.businessId}
+              options={switcherOptions}
+            />
           <nav aria-label="Compte" className="flex items-center gap-1">
-            {hasCapability(membership.role, "manage_members") ? (
+            {canManageMembers ? (
               <Link
                 href="/dashboard/settings/membres"
                 className={utilityItem}
@@ -379,7 +384,7 @@ export default async function DashboardPage({
                 <span className="hidden sm:inline">Équipe</span>
               </Link>
             ) : null}
-            {hasCapability(membership.role, "edit_business_info") ? (
+            {canEditBusiness ? (
               <Link
                 href="/dashboard/settings"
                 className={utilityItem}
@@ -394,7 +399,7 @@ export default async function DashboardPage({
                 <span className="hidden sm:inline">Réglages</span>
               </Link>
             ) : null}
-            {hasCapability(membership.role, "manage_billing") ? (
+            {canManageBilling ? (
               <Link
                 href="/dashboard/billing"
                 className={utilityItem}
@@ -435,6 +440,28 @@ export default async function DashboardPage({
               Quitter
             </button>
           </form>
+          </div>
+
+          <div className="flex items-center gap-2 sm:hidden">
+            {canManageWaivers || canManageGroups ? (
+              <DashboardCreateControl
+                canManageWaivers={canManageWaivers}
+                canManageGroups={canManageGroups}
+                canCreateGroup={
+                  canManageGroups && activeTemplatesList.length > 0
+                }
+              />
+            ) : null}
+            <DashboardMobileMenu
+              currentBusinessId={membership.businessId}
+              businesses={switcherOptions}
+              businessName={business.name}
+              role={membership.role}
+              canManageMembers={canManageMembers}
+              canEditBusiness={canEditBusiness}
+              canManageBilling={canManageBilling}
+            />
+          </div>
         </div>
       </header>
 

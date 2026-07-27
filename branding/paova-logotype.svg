@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 348.7 100" role="img" aria-label="Paova">
+ <title>Paova</title>
+ <!-- Logotype horizontal Paova.
+      Symbole : branding/paova-mark.svg embarque tel quel - memes traces, memes
+      degradés, ids prefixes "lg-" pour pouvoir cohabiter avec le symbole seul
+      sur une meme page. Ne pas editer ici : editer le symbole et regenerer.
+      Mot : Newsreader wght 400 / opsz 72, vectorise en traces, donc aucune
+      dependance a une police installee.
+      Proportions, espacements et crenage : voir branding/README.md. -->
+ <g transform="scale(0.0449439)">
+  <g transform="translate(-11.47 -11.83) scale(17.9853)">
+   <defs>
+     <linearGradient id="lg-paovaBowl" gradientUnits="userSpaceOnUse" x1="18" y1="-4" x2="84" y2="100">
+      <stop offset="0" stop-color="#B6E2CA"/>
+      <stop offset=".34" stop-color="#63A184"/>
+      <stop offset=".68" stop-color="#33654E"/>
+      <stop offset="1" stop-color="#173E32"/>
+     </linearGradient>
+     <linearGradient id="lg-paovaStem" gradientUnits="userSpaceOnUse" x1="6" y1="48" x2="40" y2="128">
+      <stop offset="0" stop-color="#8AC5A6"/>
+      <stop offset=".46" stop-color="#2F5D4D"/>
+      <stop offset="1" stop-color="#12352C"/>
+     </linearGradient>
+     <linearGradient id="lg-frost" gradientUnits="userSpaceOnUse" x1="12" y1="-6" x2="86" y2="118">
+      <stop offset="0" stop-color="#EAFBF2" stop-opacity=".13"/>
+      <stop offset=".35" stop-color="#D8F1E5" stop-opacity=".085"/>
+      <stop offset=".68" stop-color="#B6DCC8" stop-opacity=".045"/>
+      <stop offset="1" stop-color="#93C4AC" stop-opacity=".02"/>
+     </linearGradient>
+     <linearGradient id="lg-coreBowl" gradientUnits="userSpaceOnUse" x1="20" y1="4" x2="82" y2="96">
+      <stop offset="0" stop-color="#0E2A22" stop-opacity="0"/>
+      <stop offset=".3" stop-color="#0E2A22" stop-opacity=".06"/>
+      <stop offset=".55" stop-color="#0E2A22" stop-opacity=".13"/>
+      <stop offset=".8" stop-color="#0A241D" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#071D18" stop-opacity=".3"/>
+     </linearGradient>
+     <linearGradient id="lg-coreStem" gradientUnits="userSpaceOnUse" x1="8" y1="50" x2="40" y2="126">
+      <stop offset="0" stop-color="#0E2A22" stop-opacity="0"/>
+      <stop offset=".28" stop-color="#0D2822" stop-opacity=".07"/>
+      <stop offset=".5" stop-color="#0B2620" stop-opacity=".15"/>
+      <stop offset=".76" stop-color="#092019" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#061914" stop-opacity=".34"/>
+     </linearGradient>
+     <linearGradient id="lg-depthBowl" gradientUnits="userSpaceOnUse" x1="34" y1="92" x2="62" y2="66">
+      <stop offset="0" stop-color="#04140F" stop-opacity=".3"/>
+      <stop offset=".3" stop-color="#04140F" stop-opacity=".15"/>
+      <stop offset=".6" stop-color="#04140F" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#04140F" stop-opacity="0"/>
+     </linearGradient>
+     <linearGradient id="lg-depthStem" gradientUnits="userSpaceOnUse" x1="44" y1="62" x2="18" y2="86">
+      <stop offset="0" stop-color="#03110C" stop-opacity=".54"/>
+      <stop offset=".22" stop-color="#03120D" stop-opacity=".34"/>
+      <stop offset=".45" stop-color="#04140F" stop-opacity=".16"/>
+      <stop offset=".7" stop-color="#04140F" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#04140F" stop-opacity="0"/>
+     </linearGradient>
+     <linearGradient id="lg-rimSoft" gradientUnits="userSpaceOnUse" x1="12" y1="-6" x2="86" y2="118">
+      <stop offset="0" stop-color="#A8D8BE"/>
+      <stop offset=".3" stop-color="#8FC7AB"/>
+      <stop offset=".55" stop-color="#74B296"/>
+      <stop offset=".8" stop-color="#5F9B81"/>
+      <stop offset="1" stop-color="#4F8A72"/>
+     </linearGradient>
+     <linearGradient id="lg-rimHot" gradientUnits="userSpaceOnUse" x1="12" y1="-6" x2="86" y2="118">
+      <stop offset="0" stop-color="#F8FFFB"/>
+      <stop offset=".25" stop-color="#E4F8ED"/>
+      <stop offset=".45" stop-color="#CFEFDD"/>
+      <stop offset=".72" stop-color="#AEDAC3"/>
+      <stop offset="1" stop-color="#8FC4A8"/>
+     </linearGradient>
+     <linearGradient id="lg-facetDark" gradientUnits="userSpaceOnUse" x1="20" y1="10" x2="80" y2="115">
+      <stop offset="0" stop-color="#123A2E" stop-opacity=".34"/>
+      <stop offset=".26" stop-color="#103328" stop-opacity=".37"/>
+      <stop offset=".5" stop-color="#0C2C24" stop-opacity=".4"/>
+      <stop offset=".76" stop-color="#092420" stop-opacity=".47"/>
+      <stop offset="1" stop-color="#051A15" stop-opacity=".53"/>
+     </linearGradient>
+     <path id="lg-pbowl" d="M35.16 86.9C34.77 84.25 38.91 82.74 39.97 80.58C40.56 79.37 40.75 77.86 41.04 76.55C41.29 75.43 41.3 73.67 42.4 73.07C43.45 72.5 48.99 75.78 51.91 75.53C54.24 75.33 56.96 72.65 58.83 71.36C63.61 68.01 70.84 66.5 71.33 59.53C71.45 57.88 71.43 55.99 70.66 54.5C68.92 51.11 62.76 47.82 59.54 45.87C50.35 40.34 29.2 30.44 23.18 22.91C16.5 14.54 20.18 1.31 31.67 0.67C38.41 0.3 52.17 12.37 58.47 15.91C66.5 20.41 81.25 27.63 87.82 33.26C91.33 36.27 94.61 40.48 96.22 44.84C99.47 53.65 97.75 69.16 92 76.67C86.73 83.56 77.19 86.01 70.01 90.23C65.74 92.73 61.92 96.5 57.04 97.81C50.2 99.64 45.38 95.18 40.16 91.51C38.6 90.41 35.46 88.94 35.16 86.9Z"/>
+     <path id="lg-pstem" d="M39.63 46.82C40.92 47.66 40.25 50.78 40.2 52.12C40.04 57.15 41.63 62.4 40.41 67.4C39.26 72.07 29.98 72.49 27.13 77.26C23.75 82.9 26.73 97.9 26.81 104.7C26.88 109.42 26.72 114.75 24.11 118.87C19.19 126.63 9.15 125.8 3.99 118.79C-0.39 112.84 0.67 99.26 0.96 91.98C1.21 85.84 1.27 74.33 4.37 69.1C8.31 62.48 19.82 58.16 26.33 54.42C28.58 53.13 37.51 45.46 39.63 46.82Z"/>
+     <path id="lg-b1" d="M39 -2C67.4 34.6 67.5 23.6 31.1 52L-39.8 15L-31.9 -39Z"/>
+     <path id="lg-b2" d="M39 50.6C47 47.2 55 43.9 62.9 40.5C65 39.6 67.2 38.6 69.5 38.9C71.6 39.2 85.8 50.9 84.8 52.9C83.4 55.4 80 56.8 77.4 57.9C69.5 61.3 61.6 64.8 53.6 68.3L9.3 134.9L-5.3 117.3Z"/>
+     <path id="lg-b3" d="M93.2 81.7C45 91.2 57.7 96.4 40 56.2L59.6 -21.4L112.7 4.1Z"/>
+     <path id="lg-s1" d="M35.3 75.7C10.3 116.6 23.4 114 -19.1 98.7L-65.8 33.8L-11.5 10.7Z"/>
+     <clipPath id="lg-cbowl"><use href="#lg-pbowl"/></clipPath>
+     <clipPath id="lg-cstem"><use href="#lg-pstem"/></clipPath>
+    </defs>
+    <g clip-path="url(#lg-cbowl)">
+     <use href="#lg-pbowl" fill="url(#lg-paovaBowl)" fill-opacity=".94"/>
+     <use href="#lg-pbowl" fill="url(#lg-frost)"/>
+     <use href="#lg-pbowl" fill="url(#lg-coreBowl)"/>
+     <use href="#lg-pbowl" fill="url(#lg-depthBowl)"/>
+     <g fill="none" stroke="url(#lg-facetDark)">
+      <use href="#lg-b1" fill="url(#lg-facetDark)" stroke="none"/>
+      <use href="#lg-b1" stroke-width="6" stroke-opacity=".055"/>
+      <use href="#lg-b1" stroke-width="4" stroke-opacity=".06"/>
+      <use href="#lg-b1" stroke-width="2.4" stroke-opacity=".07"/>
+      <use href="#lg-b1" stroke-width="1.2" stroke-opacity=".075"/>
+      <use href="#lg-b2" fill="url(#lg-facetDark)" stroke="none"/>
+      <use href="#lg-b2" stroke-width="6" stroke-opacity=".055"/>
+      <use href="#lg-b2" stroke-width="4" stroke-opacity=".06"/>
+      <use href="#lg-b2" stroke-width="2.4" stroke-opacity=".07"/>
+      <use href="#lg-b2" stroke-width="1.2" stroke-opacity=".075"/>
+      <use href="#lg-b3" fill="url(#lg-facetDark)" stroke="none"/>
+      <use href="#lg-b3" stroke-width="6" stroke-opacity=".055"/>
+      <use href="#lg-b3" stroke-width="4" stroke-opacity=".06"/>
+      <use href="#lg-b3" stroke-width="2.4" stroke-opacity=".07"/>
+      <use href="#lg-b3" stroke-width="1.2" stroke-opacity=".075"/>
+     </g>
+     <g fill="none" stroke="url(#lg-rimSoft)">
+      <use href="#lg-pbowl" stroke-width="15" stroke-opacity=".035"/>
+      <use href="#lg-pbowl" stroke-width="13" stroke-opacity=".038"/>
+      <use href="#lg-pbowl" stroke-width="11" stroke-opacity=".042"/>
+      <use href="#lg-pbowl" stroke-width="9.2" stroke-opacity=".046"/>
+      <use href="#lg-pbowl" stroke-width="7.5" stroke-opacity=".05"/>
+      <use href="#lg-pbowl" stroke-width="6" stroke-opacity=".055"/>
+     </g>
+     <g fill="none" stroke="url(#lg-rimHot)">
+      <use href="#lg-pbowl" stroke-width="4.6" stroke-opacity=".075"/>
+      <use href="#lg-pbowl" stroke-width="3.4" stroke-opacity=".1"/>
+      <use href="#lg-pbowl" stroke-width="2.3" stroke-opacity=".14"/>
+      <use href="#lg-pbowl" stroke-width="1.5" stroke-opacity=".19"/>
+      <use href="#lg-pbowl" stroke-width=".9" stroke-opacity=".26"/>
+     </g>
+    </g>
+    <g clip-path="url(#lg-cstem)">
+     <use href="#lg-pstem" fill="url(#lg-paovaStem)" fill-opacity=".94"/>
+     <use href="#lg-pstem" fill="url(#lg-frost)"/>
+     <use href="#lg-pstem" fill="url(#lg-coreStem)"/>
+     <use href="#lg-pstem" fill="url(#lg-depthStem)"/>
+     <g fill="none" stroke="url(#lg-facetDark)">
+      <use href="#lg-s1" fill="url(#lg-facetDark)" stroke="none"/>
+      <use href="#lg-s1" stroke-width="6" stroke-opacity=".055"/>
+      <use href="#lg-s1" stroke-width="4" stroke-opacity=".06"/>
+      <use href="#lg-s1" stroke-width="2.4" stroke-opacity=".07"/>
+      <use href="#lg-s1" stroke-width="1.2" stroke-opacity=".075"/>
+     </g>
+     <g fill="none" stroke="url(#lg-rimSoft)">
+      <use href="#lg-pstem" stroke-width="15" stroke-opacity=".035"/>
+      <use href="#lg-pstem" stroke-width="13" stroke-opacity=".038"/>
+      <use href="#lg-pstem" stroke-width="11" stroke-opacity=".042"/>
+      <use href="#lg-pstem" stroke-width="9.2" stroke-opacity=".046"/>
+      <use href="#lg-pstem" stroke-width="7.5" stroke-opacity=".05"/>
+      <use href="#lg-pstem" stroke-width="6" stroke-opacity=".055"/>
+     </g>
+     <g fill="none" stroke="url(#lg-rimHot)">
+      <use href="#lg-pstem" stroke-width="4.6" stroke-opacity=".075"/>
+      <use href="#lg-pstem" stroke-width="3.4" stroke-opacity=".1"/>
+      <use href="#lg-pstem" stroke-width="2.3" stroke-opacity=".14"/>
+      <use href="#lg-pstem" stroke-width="1.5" stroke-opacity=".19"/>
+      <use href="#lg-pstem" stroke-width=".9" stroke-opacity=".26"/>
+     </g>
+    </g>
+  </g>
+  <g transform="translate(2391.64 1595.37) scale(1 -1)" fill="#F3F5F4">
+   <path d="M918 482Q918 697 839.0 802.0Q760 907 602 907Q546 907 495.0 894.5Q444 882 397.0 854.0Q350 826 305 778L290 798Q356 869 412.5 916.5Q469 964 518.0 992.0Q567 1020 611.0 1032.0Q655 1044 696 1044Q827 1044 920.5 983.5Q1014 923 1064.0 815.0Q1114 707 1114 562Q1114 379 1044.5 248.5Q975 118 852.0 49.0Q729 -20 568 -20Q510 -20 449.5 -11.5Q389 -3 332.0 15.0Q275 33 226 61H360V-388L523 -418V-445H33V-418L176 -388V856Q163 864 144.0 876.0Q125 888 97.5 905.5Q70 923 33 946V964L356 1055H360V892V253Q360 188 393.0 137.0Q426 86 483.0 57.0Q540 28 610 28Q708 28 777.0 80.5Q846 133 882.0 234.5Q918 336 918 482Z"/>
+   <path transform="translate(1220 0)" d="M705 666 716 624Q575 580 487.5 540.0Q400 500 354.0 460.0Q308 420 291.0 376.0Q274 332 274 279Q274 193 324.0 149.5Q374 106 446 106Q504 106 547.0 128.5Q590 151 614.5 194.5Q639 238 639 301V760Q639 863 588.5 916.0Q538 969 435 969Q386 969 336.5 961.5Q287 954 259 940L312 980Q309 943 302.5 903.5Q296 864 286.5 832.0Q277 800 264 784Q251 768 224.5 759.0Q198 750 170 750Q134 750 112.5 764.5Q91 779 91 810Q91 852 131.0 893.5Q171 935 234.5 969.0Q298 1003 371.5 1023.5Q445 1044 512 1044Q625 1044 693.0 1011.0Q761 978 792.0 918.5Q823 859 823 779V186Q823 153 833.5 133.0Q844 113 863.0 104.0Q882 95 906 95Q940 95 973.5 106.0Q1007 117 1043 142V115Q969 27 912.0 3.5Q855 -20 795 -20Q736 -20 702.0 6.5Q668 33 653.5 83.0Q639 133 636 203H639Q622 139 584.0 88.5Q546 38 492.0 9.0Q438 -20 373 -20Q249 -20 166.0 46.0Q83 112 83 238Q83 304 105.5 354.5Q128 405 192.5 451.0Q257 497 380.5 548.0Q504 599 705 666Z"/>
+   <path transform="translate(2266 0)" d="M566 24Q663 24 729.0 79.0Q795 134 828.5 242.5Q862 351 862 511Q862 672 829.0 780.5Q796 889 731.5 944.5Q667 1000 572 1000Q475 1000 409.0 945.0Q343 890 309.5 781.5Q276 673 276 513Q276 353 309.0 244.0Q342 135 406.5 79.5Q471 24 566 24ZM564 -20Q428 -20 316.5 48.0Q205 116 139.0 236.5Q73 357 73 513Q73 669 140.5 789.0Q208 909 321.5 976.5Q435 1044 574 1044Q713 1044 824.0 976.0Q935 908 1000.0 788.0Q1065 668 1065 511Q1065 355 996.5 235.0Q928 115 814.0 47.5Q700 -20 564 -20Z"/>
+   <path transform="translate(3334 0)" d="M1005 962 590 -26H564L112 953L-16 991V1024H461V991L316 955L667 178H623L925 961L782 991V1024H1124V991Z"/>
+   <path transform="translate(4324 0)" d="M705 666 716 624Q575 580 487.5 540.0Q400 500 354.0 460.0Q308 420 291.0 376.0Q274 332 274 279Q274 193 324.0 149.5Q374 106 446 106Q504 106 547.0 128.5Q590 151 614.5 194.5Q639 238 639 301V760Q639 863 588.5 916.0Q538 969 435 969Q386 969 336.5 961.5Q287 954 259 940L312 980Q309 943 302.5 903.5Q296 864 286.5 832.0Q277 800 264 784Q251 768 224.5 759.0Q198 750 170 750Q134 750 112.5 764.5Q91 779 91 810Q91 852 131.0 893.5Q171 935 234.5 969.0Q298 1003 371.5 1023.5Q445 1044 512 1044Q625 1044 693.0 1011.0Q761 978 792.0 918.5Q823 859 823 779V186Q823 153 833.5 133.0Q844 113 863.0 104.0Q882 95 906 95Q940 95 973.5 106.0Q1007 117 1043 142V115Q969 27 912.0 3.5Q855 -20 795 -20Q736 -20 702.0 6.5Q668 33 653.5 83.0Q639 133 636 203H639Q622 139 584.0 88.5Q546 38 492.0 9.0Q438 -20 373 -20Q249 -20 166.0 46.0Q83 112 83 238Q83 304 105.5 354.5Q128 405 192.5 451.0Q257 497 380.5 548.0Q504 599 705 666Z"/>
+  </g>
+ </g>
+</svg>

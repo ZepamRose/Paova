@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/database.types";
+import { logError } from "@/lib/observability/log";
 import type { RecordAuditEventInput } from "./types";
 
 type DbClient = SupabaseClient<Database>;
@@ -26,11 +27,15 @@ export async function recordAuditEvent(
       payload,
     });
     if (error) {
-      console.error("audit_event insert failed:", error.message, {
+      logError("audit.insert_failed", error.message, {
         eventType: input.eventType,
+        businessId: input.businessId,
       });
     }
   } catch (err) {
-    console.error("audit_event insert failed:", err);
+    logError("audit.insert_failed", err, {
+      eventType: input.eventType,
+      businessId: input.businessId,
+    });
   }
 }

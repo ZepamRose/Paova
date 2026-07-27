@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireDashboardCapability } from "@/lib/auth/session";
 import { WaiverForm } from "../waiver-form";

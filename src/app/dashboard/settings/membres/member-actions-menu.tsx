@@ -15,6 +15,7 @@ import {
   changeMemberRole,
   resendInvite,
   setMemberStatus,
+  transferOwnership,
 } from "./actions";
 import { MemberConfirmDialog } from "./member-confirm-dialog";
 
@@ -26,31 +27,44 @@ const menuItem =
 const menuItemDanger =
   "flex w-full items-center px-3 py-2 text-left text-[13px] font-medium tracking-tight text-red-600/90 transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,#dc2626_9%,transparent)] hover:text-red-600 disabled:opacity-50 dark:text-red-400";
 
-type ConfirmKind = "role" | "disable" | "enable" | "remove" | null;
+type ConfirmKind =
+  | "role"
+  | "disable"
+  | "enable"
+  | "remove"
+  | "transfer"
+  | null;
 
 export function MemberActionsMenu({
   businessId,
   id,
   role,
   status,
+  name,
   email,
+  canManageTarget,
   canAssignAdmin,
   loginUrl,
+  canTransferOwnership = false,
 }: {
   businessId: string;
   id: string;
   role: string;
   status: string;
+  name: string | null;
   email: string | null;
+  canManageTarget: boolean;
   canAssignAdmin: boolean;
   loginUrl: string;
+  /** Only the current owner may hand over the seat, and only to an active member. */
+  canTransferOwnership?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [nextRole, setNextRole] = useState(
     role === "admin" ? "admin" : "employee",
   );
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"email" | "link" | null>(null);
   const [isPending, startTransition] = useTransition();
   const [coords, setCoords] = useState<{
     top?: number;
@@ -134,17 +148,17 @@ export function MemberActionsMenu({
     });
   }
 
-  async function handleCopyLink() {
+  async function handleCopy(value: string, kind: "email" | "link") {
     try {
-      await navigator.clipboard.writeText(loginUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(value);
+      setCopied(kind);
+      window.setTimeout(() => setCopied(null), 1600);
     } catch {
       // ignore
     }
   }
 
-  const label = email ?? "ce membre";
+  const label = name?.trim() || email || "ce membre";
   const menu =
     open && coords && typeof document !== "undefined"
       ? createPortal(
@@ -183,6 +197,31 @@ export function MemberActionsMenu({
                 coords.openUp ? "origin-bottom-right" : "origin-top-right"
               }`}
             >
+              {email ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    setOpen(false);
+                    void handleCopy(email, "email");
+                  }}
+                >
+                  {copied === "email"
+                    ? "Adresse copi\u00e9e"
+                    : "Copier l'adresse e-mail"}
+                </button>
+              ) : null}
+
+              {email && canManageTarget ? (
+                <div
+                  role="separator"
+                  className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)]"
+                />
+              ) : null}
+
+              {canManageTarget ? (
+                <>
               <button
                 type="button"
                 role="menuitem"
@@ -218,10 +257,10 @@ export function MemberActionsMenu({
                     className={menuItem}
                     onClick={() => {
                       setOpen(false);
-                      void handleCopyLink();
+                      void handleCopy(loginUrl, "link");
                     }}
                   >
-                    {copied ? "Lien copié" : "Copier le lien"}
+                    {copied === "link" ? "Lien copi\u00e9" : "Copier le lien"}
                   </button>
                 </>
               ) : null}
@@ -259,6 +298,20 @@ export function MemberActionsMenu({
                 className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)]"
               />
 
+              {canTransferOwnership ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    setOpen(false);
+                    setConfirm("transfer");
+                  }}
+                >
+                  Transférer la propriété
+                </button>
+              ) : null}
+
               <button
                 type="button"
                 role="menuitem"
@@ -270,6 +323,12 @@ export function MemberActionsMenu({
               >
                 Supprimer
               </button>
+                </>
+              ) : !email ? (
+                <p className="px-3 py-2 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
+                  Aucune action administrative disponible.
+                </p>
+              ) : null}
             </motion.div>
           </AnimatePresence>,
           document.body,
@@ -287,7 +346,7 @@ export function MemberActionsMenu({
         aria-controls={open ? menuId : undefined}
         disabled={isPending}
         onClick={() => setOpen((v) => !v)}
-        className={`relative inline-flex h-9 w-9 items-center justify-center rounded-xl transition-[color,background-color,transform,box-shadow] duration-[200ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.96] disabled:opacity-55 ${
+        className={`relative inline-flex h-11 w-11 items-center justify-center rounded-xl transition-[color,background-color,transform,box-shadow] duration-[200ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.96] disabled:opacity-55 sm:h-9 sm:w-9 ${
           open
             ? "bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] text-[var(--color-foreground)] shadow-[var(--elev-1)]"
             : "text-[var(--color-muted)]/75 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
@@ -391,6 +450,23 @@ export function MemberActionsMenu({
           fd.set("member_id", id);
           setConfirm(null);
           run(() => removeMember(fd));
+        }}
+      />
+
+      <MemberConfirmDialog
+        open={confirm === "transfer"}
+        onClose={() => setConfirm(null)}
+        title="Transférer la propriété ?"
+        description={`${label} deviendra propriétaire de l'espace et gérera la facturation. Vous repasserez administrateur et ne pourrez pas annuler vous-même.`}
+        confirmLabel="Transférer"
+        pendingLabel="Transfert…"
+        tone="danger"
+        onConfirm={() => {
+          const fd = new FormData();
+          fd.set("business_id", businessId);
+          fd.set("member_id", id);
+          setConfirm(null);
+          run(() => transferOwnership(fd));
         }}
       />
     </div>

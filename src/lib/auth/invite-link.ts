@@ -1,43 +1,23 @@
-import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/app-url";
 
 /**
- * One-click login URL for invite emails.
+ * Login URL for invite emails.
  *
- * Do NOT use generateLink's `action_link`: it goes through Supabase's
- * /auth/v1/verify with a non-PKCE token and often lands on /auth/confirm
- * without token_hash → "lien incomplet". Instead we build our confirm URL
- * with the hashed_token so verifyOtp can run in the browser.
+ * Deliberately NOT a pre-generated magic link. Calling
+ * `auth.admin.generateLink` returns a token that authenticates whoever holds
+ * it, and embedding it in the email body persists a working credential in
+ * Resend's storage, in their logs, and in every relay along the way. Worse,
+ * for an address that already has a Paova account, an admin could trigger the
+ * minting of a session token for an account they do not control.
+ *
+ * The invitee lands on /login with the address prefilled and asks Supabase for
+ * their own magic link. One extra click, no credential leaving our boundary.
  */
-export async function buildMemberInviteLoginUrl(email: string): Promise<string> {
+export function buildMemberInviteLoginUrl(email: string): string {
   const normalized = email.trim().toLowerCase();
-  const loginFallback = `${getAppUrl()}/login?email=${encodeURIComponent(normalized)}&next=${encodeURIComponent("/dashboard")}`;
-
-  try {
-    const admin = createServiceRoleClient();
-    const { data, error } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email: normalized,
-    });
-    if (error) {
-      console.error("invite generateLink failed:", error.message);
-      return loginFallback;
-    }
-
-    const hashedToken = data.properties?.hashed_token?.trim();
-    if (!hashedToken) {
-      console.error("invite generateLink returned no hashed_token");
-      return loginFallback;
-    }
-
-    const params = new URLSearchParams({
-      token_hash: hashedToken,
-      type: "magiclink",
-      next: "/dashboard",
-    });
-    return `${getAppUrl()}/auth/confirm?${params.toString()}`;
-  } catch (err) {
-    console.error("invite generateLink error:", err);
-    return loginFallback;
-  }
+  const params = new URLSearchParams({
+    email: normalized,
+    next: "/dashboard",
+  });
+  return `${getAppUrl()}/login?${params.toString()}`;
 }
