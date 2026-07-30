@@ -1,4 +1,5 @@
 import { getDashboardSession } from "@/lib/auth/session";
+import { DashboardActivityHeartbeat } from "./dashboard-activity-heartbeat";
 
 /**
  * Ensures every dashboard request claims pending invites and resolves a
@@ -11,5 +12,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   await getDashboardSession();
-  return children;
+  return (
+    <>
+      <DashboardActivityHeartbeat />
+      {children}
+    </>
+  );
 }
