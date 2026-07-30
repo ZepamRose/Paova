@@ -90,11 +90,13 @@ export function RoleBadge({
   if (!isRoleId(role)) return <>{role}</>;
   const r = ROLES[role];
   return (
-    <span className="flex flex-col items-end gap-1">
+    <span className="flex flex-col items-start gap-1">
+      {/* Fixed width so all three badges occupy the same column width in the
+          table — "Administrateur" is the longest and sets the floor at ~108 px. */}
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold leading-4 ring-1 ${r.badge}`}
+        className={`inline-flex w-[7.25rem] items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold leading-4 ring-1 ${r.badge}`}
       >
-        <span className={`h-1.5 w-1.5 rounded-full ${r.dot}`} aria-hidden />
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.dot}`} aria-hidden />
         {r.label}
       </span>
       {showSummary ? (

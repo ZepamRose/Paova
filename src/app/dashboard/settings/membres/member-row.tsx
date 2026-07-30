@@ -13,28 +13,34 @@ function initialsFromIdentity(name: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
+function hhmm(d: Date): string {
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
 function formatLastActivity(iso: string | null): string {
   if (!iso) return "Jamais connecté";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Jamais connecté";
 
   const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
+  // Compare calendar dates in local time so "today" and "yesterday" match
+  // what the user sees on their clock, not UTC midnight boundaries.
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor(
+    (todayStart.getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) /
+      86_400_000,
+  );
 
-  if (diffDay === 0) {
-    const h = d.getHours().toString().padStart(2, "0");
-    const m = d.getMinutes().toString().padStart(2, "0");
-    return `Aujourd'hui à ${h}:${m}`;
-  }
-  if (diffDay === 1) return "Hier";
-  if (diffDay < 7) return `Il y a ${diffDay} jours`;
+  if (diffDays <= 0) return `Aujourd'hui à ${hhmm(d)}`;
+  if (diffDays === 1) return `Hier à ${hhmm(d)}`;
+  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  if (diffDays < 14) return "Il y a une semaine";
+  if (diffDays < 31) return `Il y a ${Math.floor(diffDays / 7)} semaines`;
 
   return new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "short",
+    year: diffDays > 365 ? "numeric" : undefined,
   }).format(d);
 }
 
@@ -49,7 +55,7 @@ const AVATAR_TONE: Record<RoleId, string> = {
     "bg-violet-500/14 text-violet-700 ring-violet-500/25 dark:text-violet-300",
 };
 
-const CELL = "px-3 py-2 align-middle sm:px-4";
+const CELL = "px-3 py-[7px] align-middle sm:px-4";
 
 /**
  * One row of the team table.
@@ -155,7 +161,7 @@ export function MemberRow({
         </span>
       </td>
 
-      <td className={`${CELL} pr-4 text-right sm:pr-5`}>
+      <td className={`${CELL} w-px pr-3 text-right sm:pr-4`}>
         {canRenameTarget || canManageTarget || email ? (
           <div className="flex justify-end">
             <MemberActionsMenu

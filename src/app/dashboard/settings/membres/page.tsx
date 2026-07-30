@@ -136,7 +136,7 @@ export default async function MembersPage({
       <>
           <DashboardEntrance step={1}>
             <section className="overflow-hidden rounded-[1.35rem] border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-2)]">
-              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-5 py-3">
+              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-5 py-2.5">
                 <h2 className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]">
                   Équipe
                 </h2>
@@ -166,16 +166,16 @@ export default async function MembersPage({
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)]">
-                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4 sm:pl-5">
+                      <th scope="col" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4 sm:pl-5">
                         Nom
                       </th>
-                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
+                      <th scope="col" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
                         Rôle
                       </th>
-                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
+                      <th scope="col" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
                         Dernière activité
                       </th>
-                      <th scope="col" className="px-3 py-2 pr-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:pr-5 sm:px-4">
+                      <th scope="col" className="w-px px-3 py-1.5 pr-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4 sm:pr-4">
                         Actions
                       </th>
                     </tr>

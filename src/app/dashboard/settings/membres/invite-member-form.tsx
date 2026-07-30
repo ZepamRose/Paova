@@ -89,7 +89,7 @@ export function InviteMemberForm({
           <PendingSubmitButton
             idle="Envoyer l'invitation"
             pendingLabel="Envoi…"
-            className={`mt-2 inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[13.5px] font-semibold tracking-tight text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] ${ease} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_10px_22px_-12px_color-mix(in_srgb,var(--color-brand)_50%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985] sm:mt-0 sm:w-auto sm:px-5`}
+            className={`mt-2 inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-4 text-[13px] font-semibold tracking-tight text-[var(--color-brand)] shadow-[var(--elev-1)] ${ease} hover:border-[color-mix(in_srgb,var(--color-brand)_42%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_13%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.985] sm:mt-0 sm:w-auto sm:px-4`}
           />
         </div>
 
