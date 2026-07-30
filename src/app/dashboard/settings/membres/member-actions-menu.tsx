@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   removeMember,
+  renameMember,
   changeMemberRole,
   resendInvite,
   setMemberStatus,
@@ -43,6 +44,7 @@ export function MemberActionsMenu({
   name,
   email,
   canManageTarget,
+  canRenameTarget,
   canAssignAdmin,
   loginUrl,
   canTransferOwnership = false,
@@ -54,6 +56,9 @@ export function MemberActionsMenu({
   name: string | null;
   email: string | null;
   canManageTarget: boolean;
+  /** Renommer est autorisé sur soi-même quel que soit le rôle : corriger son
+   *  propre nom affiché ne relève pas de l'administration de l'équipe. */
+  canRenameTarget: boolean;
   canAssignAdmin: boolean;
   loginUrl: string;
   /** Only the current owner may hand over the seat, and only to an active member. */
@@ -65,7 +70,10 @@ export function MemberActionsMenu({
     role === "admin" ? "admin" : "employee",
   );
   const [copied, setCopied] = useState<"email" | "link" | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(name ?? "");
   const [isPending, startTransition] = useTransition();
+  const [showingEmail, setShowingEmail] = useState(false);
   const [coords, setCoords] = useState<{
     top?: number;
     bottom?: number;
@@ -213,11 +221,41 @@ export function MemberActionsMenu({
                 </button>
               ) : null}
 
-              {email && canManageTarget ? (
+              {email ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    setOpen(false);
+                    setShowingEmail(true);
+                  }}
+                >
+                  {showingEmail ? "Masquer l'adresse e-mail" : "Voir l'adresse e-mail"}
+                </button>
+              ) : null}
+
+              {email ? (
                 <div
                   role="separator"
                   className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)]"
                 />
+              ) : null}
+
+              {/* Renommer d'abord : correction la plus courante, la moins
+                  lourde de conséquences, et la seule ouverte sur soi-même. */}
+              {canRenameTarget ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    setOpen(false);
+                    setRenaming(true);
+                  }}
+                >
+                  Modifier le nom
+                </button>
               ) : null}
 
               {canManageTarget ? (
@@ -324,9 +362,13 @@ export function MemberActionsMenu({
                 Supprimer
               </button>
                 </>
-              ) : !email ? (
+              ) : null}
+
+              {/* Ne s'affiche que si le menu serait autrement vide : renommer
+                  est une action, même sans levier d'administration. */}
+              {!canManageTarget && !canRenameTarget && !email ? (
                 <p className="px-3 py-2 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
-                  Aucune action administrative disponible.
+                  Aucune action disponible.
                 </p>
               ) : null}
             </motion.div>
@@ -368,6 +410,43 @@ export function MemberActionsMenu({
       </button>
 
       {menu}
+
+      {/* Même dialogue que les autres actions du menu : un seul motif de
+          confirmation dans toute la page. */}
+      <MemberConfirmDialog
+        open={renaming}
+        onClose={() => setRenaming(false)}
+        title="Modifier le nom"
+        description={`Nom affiché pour ${label} dans cet espace.`}
+        confirmLabel="Enregistrer"
+        pendingLabel="Enregistrement…"
+        onConfirm={() => {
+          const fd = new FormData();
+          fd.set("business_id", businessId);
+          fd.set("member_id", id);
+          fd.set("display_name", draftName);
+          setRenaming(false);
+          run(() => renameMember(fd));
+        }}
+      >
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium tracking-tight text-[var(--color-foreground)]">
+            Nom
+          </span>
+          <input
+            type="text"
+            value={draftName}
+            maxLength={80}
+            autoFocus
+            onChange={(e) => setDraftName(e.target.value)}
+            placeholder={email ?? "Nom du membre"}
+            className="h-11 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[var(--color-background)] px-3.5 text-[14px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+          />
+          <span className="text-[12px] text-[var(--color-muted)]">
+            Laissez vide pour revenir au nom du compte.
+          </span>
+        </label>
+      </MemberConfirmDialog>
 
       <MemberConfirmDialog
         open={confirm === "role"}

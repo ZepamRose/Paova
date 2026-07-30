@@ -13,6 +13,11 @@ export type Capability =
   | "manage_members"
   | "invite_employees"
   | "manage_waivers"
+  /** Run a planned session: create it, pick an existing form, set the date,
+   *  share the link, chase signatures. Split out from `manage_groups` so a
+   *  collaborator can prepare a group without inheriting archive/delete. */
+  | "create_groups"
+  /** Lifecycle of a session — archive and restore. Owners and admins only. */
   | "manage_groups"
   | "view_stats"
   /** Read signer PII in the dashboard (search, detail, single PDF). */
@@ -34,6 +39,7 @@ const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
     "manage_members",
     "invite_employees",
     "manage_waivers",
+    "create_groups",
     "manage_groups",
     "view_stats",
     "view_submissions",
@@ -46,6 +52,7 @@ const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
     "invite_employees",
     "manage_members",
     "manage_waivers",
+    "create_groups",
     "manage_groups",
     "view_stats",
     "view_submissions",
@@ -53,8 +60,10 @@ const ROLE_CAPABILITIES: Record<BusinessRole, readonly Capability[]> = {
     "delete_submission",
     "sign_customers",
   ],
-  // Day-to-day métier: see who signed / open a PDF, never export or erase bulk.
-  employee: ["sign_customers", "view_submissions"],
+  // Day-to-day métier: sign customers, prepare a planned session from an
+  // existing form, see who signed. Never authors forms, never exports or
+  // erases in bulk, never archives.
+  employee: ["sign_customers", "view_submissions", "create_groups"],
 };
 
 export function hasCapability(role: BusinessRole, capability: Capability): boolean {

@@ -20,6 +20,89 @@ Créer une identité visuelle premium, moderne et intemporelle.
 
 Toute évolution devra rester fidèle à cette direction artistique.
 
+## Assets de production
+
+Tous générés depuis les deux SVG officiels — aucun redessin, aucune retouche de
+couleur. Régénérables à l'identique.
+
+**Icônes** (dans `public/`) : `favicon.ico` (16+32+48, charges PNG),
+`favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png` (180),
+`android-chrome-192x192.png`, `android-chrome-512x512.png`,
+`icon-maskable-192x192.png`, `icon-maskable-512x512.png`, `site.webmanifest`.
+
+**Exports** (dans `branding/exports/`) : symbole en 1x/2x/4x (256/512/1024 px de
+haut), logotype et sa variante claire en 1x/2x/4x (360/720/1440 px de large).
+Tous en PNG à fond transparent, rognés sur la boîte d'encre exacte — le viewBox
+du symbole porte ~2 unités de marge asymétrique qu'il ne faut pas cuire dans
+chaque asset.
+
+### Deux décisions qui n'existent pas dans les fichiers sources
+
+Le symbole est transparent et au format 0,786 : 1. Une icône est carrée et
+opaque : il a donc fallu trancher un fond et un cadrage.
+
+**Fond `#0F172A`**, la valeur sombre de la palette officielle — et non une
+pipette sur le dégradé de la maquette, qui donnerait `#101818`.
+
+**Cadrage** : le symbole occupe 70 % de la hauteur du carré (proportion relevée
+sur la planche), 56 % pour les icônes *maskable* afin de tenir dans la zone sûre
+d'Android. Vérifié : rayon d'encre 0,331 côté pour une limite de 0,400.
+Aux petites tailles la marge se resserre — 86 % à 32 px, **94 % à 16 px** — car
+un favicon n'a que 16 pixels et le chrome du navigateur fournit déjà la
+séparation. Testé contre 86 / 94 / 100 % : à 100 % la forme touche le bord.
+
+Le débordement d'`android-chrome-512` hors du cercle des 80 % est normal : les
+icônes `purpose: any` sont affichées telles quelles, jamais masquées.
+
+### Limite connue
+
+À 16 px, le symbole ne peut pas montrer la structure de son ruban : il lui reste
+15 pixels de haut. Il lit comme une silhouette verte, correctement — c'est une
+propriété de la complexité du symbole, pas un défaut de génération, et aucun
+réglage d'échelle n'y change quoi que ce soit.
+
+### Régénérer
+
+Le générateur vit hors dépôt. Pour reproduire : rendre les SVG via `sharp`,
+rogner sur la boîte d'encre `(0.638, 0.658, 97.212, 123.712)` du viewBox
+`100 × 128.3`, composer sur `#0F172A` aux fractions ci-dessus. Le `.ico` est un
+conteneur ICONDIR + charges PNG.
+
+## Intégration dans l'application
+
+| Emplacement | Fichier | Usage |
+|---|---|---|
+| `public/brand/paova-mark.svg` | copie servie du symbole | chrome applicatif + favicon vectoriel |
+| `public/*.png`, `favicon.ico` | icônes générées | favicons, Apple Touch, Android, PWA |
+| `public/site.webmanifest` | manifeste | déclaré via `metadata.manifest` |
+
+`src/components/brand-logo.tsx` compose **le symbole + le nom du produit dans la
+police d'interface**, pas le logotype officiel. C'est délibéré : le composant
+rend entre 22 et 30 px de haut, or le mot en Newsreader exige 96 px de large au
+minimum (voir plus bas). Le logotype officiel reste la signature de marque —
+marketing, e-mails, documents — le chrome applicatif utilise le symbole.
+
+**Le symbole est portrait (0,7794 : 1), pas carré.** L'ancien placeholder l'était,
+et tous les usages posaient `width === height`. Chaque `<img>` fixe désormais la
+hauteur et laisse `w-auto` déduire la largeur : le rapport ne peut plus être
+écrasé par un futur changement de taille. Vérifié au rendu : 0,779 partout.
+
+Les logotypes ne sont **pas** copiés dans `public/` : rien ne les sert
+aujourd'hui (les e-mails affichent le logo du client, pas celui de Paova). Les
+copier depuis `branding/` le jour où une page marketing ou une image Open Graph
+en aura besoin.
+
+### Favicon : SVG ou PNG
+
+Les deux sont déclarés, le SVG en dernier — les navigateurs modernes le
+préfèrent, les anciens retombent sur le PNG. Le SVG est transparent, les PNG
+portent le fond `#0F172A` incrusté.
+
+Contre-intuitivement, **le SVG transparent est le meilleur des deux sur fond
+sombre** : les barres d'onglets sombres (Chrome `#202124`, Firefox `#2b2a33`)
+sont plus claires que `#0F172A`, donc le symbole y contraste davantage sans le
+pavé bleu nuit du PNG. Testé sur les trois fonds avant d'arbitrer.
+
 ## Logotype horizontal
 
 `paova-logotype.svg` — version principale, fonds sombres.

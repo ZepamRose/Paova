@@ -49,27 +49,32 @@ export function GroupProgressBar({
                 {pending} restant{pending > 1 ? "s" : ""}
               </span>
             ) : null}
-            {complete ? (
-              <span className="ml-1.5 font-medium text-[var(--color-brand)]">
-                <span
-                  aria-hidden
-                  className="mr-1.5 text-[var(--color-muted)]/40"
-                >
-                  ·
-                </span>
-                Complet
-              </span>
-            ) : null}
           </p>
-          <p
-            className={`shrink-0 text-[17px] font-semibold leading-none tabular-nums tracking-tight ${
-              complete
-                ? "text-[var(--color-brand)]"
-                : "text-[var(--color-foreground)]"
-            }`}
-          >
-            {total === 0 ? "—" : `${pct}%`}
-          </p>
+          {/* Une session complète est le seul état qui appelle une action :
+              plus rien à relancer. Elle mérite une pastille pleine, pas une
+              mention en gris parmi d'autres. Sinon, le pourcentage suffit. */}
+          {complete ? (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--color-brand)] px-2.5 py-1 text-[11px] font-semibold leading-4 tracking-[0.01em] text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.14)_inset]">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="m5 13 4 4L19 7" />
+              </svg>
+              Complète
+            </span>
+          ) : (
+            <p className="shrink-0 text-[17px] font-semibold leading-none tabular-nums tracking-tight text-[var(--color-foreground)]">
+              {total === 0 ? "—" : `${pct}%`}
+            </p>
+          )}
         </div>
         <div
           className="mt-2 h-2.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)]"

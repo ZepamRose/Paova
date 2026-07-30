@@ -12,7 +12,7 @@ export default async function ExpressGroupePage({
   const sp = await searchParams;
   const preselectedTemplateId = String(sp.template ?? "").trim();
   const { supabase, membership } =
-    await requireDashboardCapability("manage_groups");
+    await requireDashboardCapability("create_groups");
   const { data: business } = await supabase
     .from("business")
     .select("id")

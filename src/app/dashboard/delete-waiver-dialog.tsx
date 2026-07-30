@@ -134,7 +134,7 @@ export function DeleteWaiverDialog({
                     id={titleId}
                     className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]"
                   >
-                    Archiver cette décharge ?
+                    Archiver ce formulaire ?
                   </h2>
                   <div
                     id={descId}
@@ -176,7 +176,7 @@ export function DeleteWaiverDialog({
                     </p>
                     <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
                       Vous pourrez toujours les retrouver via la recherche et les
-                      exports, ou en restaurant la décharge.
+                      exports, ou en restaurant le formulaire.
                     </p>
                   </div>
                 </div>

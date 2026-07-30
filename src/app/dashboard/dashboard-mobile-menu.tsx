@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CreditCard, Menu, Settings, Users, X } from "lucide-react";
+import { Menu, Settings, Users, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { RoleBadge } from "./settings/membres/roles";
 import { BusinessSwitcher } from "./business-switcher";
 
 type BusinessOption = {
@@ -25,7 +26,6 @@ export function DashboardMobileMenu({
   role,
   canManageMembers,
   canEditBusiness,
-  canManageBilling,
 }: {
   currentBusinessId: string;
   businesses: BusinessOption[];
@@ -33,18 +33,10 @@ export function DashboardMobileMenu({
   role: "owner" | "admin" | "employee";
   canManageMembers: boolean;
   canEditBusiness: boolean;
-  canManageBilling: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const reduced = useReducedMotion() ?? false;
-  const hasAccountLinks = canManageMembers || canEditBusiness || canManageBilling;
-  const roleLabel =
-    role === "owner"
-      ? "Propri\u00e9taire"
-      : role === "admin"
-        ? "Administrateur"
-        : "Collaborateur";
-
+  const hasAccountLinks = canManageMembers || canEditBusiness;
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -123,8 +115,11 @@ export function DashboardMobileMenu({
                     {businessName}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-2.5 py-1 text-[10.5px] font-semibold text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_18%,transparent)]">
-                  {roleLabel}
+                {/* Même composant que partout ailleurs : le collaborateur
+                    était affiché en vert de marque ici alors que sa couleur
+                    officielle est le violet. */}
+                <span className="shrink-0">
+                  <RoleBadge role={role} showSummary={false} />
                 </span>
               </div>
               {businesses.length > 1 ? (
@@ -159,12 +154,8 @@ export function DashboardMobileMenu({
                   {"R\u00e9glages"}
                 </Link>
               ) : null}
-              {canManageBilling ? (
-                <Link href="/dashboard/billing" className={item} onClick={() => setOpen(false)}>
-                  <CreditCard size={18} strokeWidth={1.75} className="text-[var(--color-muted)]" aria-hidden />
-                  Facturation
-                </Link>
-              ) : null}
+              {/* Facturation retirée de la navigation pendant la bêta. La route
+                  et ses permissions restent en place, seul l'accès est masqué. */}
             </nav>
             </section>
             ) : null}
@@ -185,7 +176,7 @@ export function DashboardMobileMenu({
                   type="submit"
                   className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-[14px] font-medium text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                 >
-                  Quitter
+                  {"Déconnexion"}
                 </button>
               </form>
             </div>

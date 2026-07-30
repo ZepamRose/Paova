@@ -295,11 +295,11 @@ function HeroProductVisual() {
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/PaovaIcon.svg"
+              src="/brand/paova-mark.svg"
               alt=""
-              width={18}
+              width={14}
               height={18}
-              className="h-[18px] w-[18px]"
+              className="h-[18px] w-auto"
             />
             <span className="text-[13px] font-semibold tracking-tight">
               Escape Room Lyon

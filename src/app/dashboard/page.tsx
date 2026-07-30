@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CreditCard, Settings, Users } from "lucide-react";
+import { Settings, Users } from "lucide-react";
 import { env } from "@/lib/env";
 import { isPro, currentMonthStartISO } from "@/lib/plan";
 import { getDashboardSession } from "@/lib/auth/session";
@@ -13,10 +13,7 @@ import {
   effectiveTemplateStatus,
   isTemplateStatus,
 } from "@/lib/templates";
-import type {
-  DashboardAttentionItem,
-  DashboardHeroPulse,
-} from "@/lib/dashboard/types";
+import type { DashboardAttentionItem } from "@/lib/dashboard/types";
 import { DashboardHome } from "./dashboard-home";
 import { DashboardBusinessHero } from "./dashboard-business-hero";
 import { DashboardCreateControl } from "./dashboard-create-control";
@@ -24,20 +21,19 @@ import { BusinessSwitcher } from "./business-switcher";
 import { DashboardMobileMenu } from "./dashboard-mobile-menu";
 
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>;
-}) {
-  const { view } = await searchParams;
-  const initialView = view === "archived" ? "archived" : "active";
-
+export default async function DashboardPage() {
   const { supabase, user, membership } = await getDashboardSession();
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const viewerName =
+    [meta.full_name, meta.name, meta.first_name]
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .find((v) => v.length > 0) ?? null;
   const canManageWaivers = hasCapability(membership.role, "manage_waivers");
+  // Créer et animer une session : ouvert aux collaborateurs.
+  const canCreateGroups = hasCapability(membership.role, "create_groups");
+  // Archiver / restaurer : propriétaires et administrateurs seulement.
   const canManageGroups = hasCapability(membership.role, "manage_groups");
-  const canManageMembers = hasCapability(membership.role, "manage_members");
   const canEditBusiness = hasCapability(membership.role, "edit_business_info");
-  const canManageBilling = hasCapability(membership.role, "manage_billing");
 
   const seats = await listActiveMemberships(supabase, user.id);
   const seatBusinessIds = seats.map((s) => s.businessId);
@@ -65,12 +61,6 @@ export default async function DashboardPage({
     redirect("/onboarding");
   }
 
-  const sevenDaysAgo = new Date(
-    Date.now() - 7 * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const fourteenDaysAgo = new Date(
-    Date.now() - 14 * 24 * 60 * 60 * 1000,
-  ).toISOString();
   const { data: allTemplates } = await supabase
     .from("waiver_template")
     .select(
@@ -81,8 +71,9 @@ export default async function DashboardPage({
 
   const { data: signingGroups } = await supabase
     .from("signing_group")
-    .select("id, name, status, template_id, created_at, public_token")
+    .select("id, name, status, template_id, scheduled_at, created_at, public_token")
     .eq("business_id", business.id)
+    .order("scheduled_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   const groupIds = (signingGroups ?? []).map((g) => g.id);
@@ -121,8 +112,9 @@ export default async function DashboardPage({
       id: g.id,
       name: g.name,
       template_id: g.template_id,
-      template_title: groupTemplateTitle.get(g.template_id) ?? "Décharge",
+      template_title: groupTemplateTitle.get(g.template_id) ?? "Formulaire",
       status: g.status,
+      scheduled_at: g.scheduled_at,
       total: s.total,
       signed: s.signed,
       created_at: g.created_at,
@@ -132,14 +124,8 @@ export default async function DashboardPage({
   const dashboardGroups = allDashboardGroups.filter(
     (g) => g.status !== "archived",
   );
-  const archivedDashboardGroups = allDashboardGroups.filter(
-    (g) => g.status === "archived",
-  );
-
   const activeTemplatesList =
     allTemplates?.filter((t) => !t.deleted_at) ?? [];
-  const archivedTemplatesList =
-    allTemplates?.filter((t) => Boolean(t.deleted_at)) ?? [];
   const activeForStats = activeTemplatesList;
 
   // Plan is per tenant (migration 0031), so every member sees the real tier.
@@ -148,35 +134,16 @@ export default async function DashboardPage({
 
   const [
     { count: usedThisMonth },
-    { count: last7Days },
-    { count: prev7Days },
     { data: templateStats },
-    { data: signatureDays },
   ] = await Promise.all([
     supabase
       .from("submission")
       .select("id", { count: "exact", head: true })
       .eq("business_id", business.id)
       .gte("signed_at", monthStart),
-    supabase
-      .from("submission")
-      .select("id", { count: "exact", head: true })
-      .eq("business_id", business.id)
-      .gte("signed_at", sevenDaysAgo),
-    supabase
-      .from("submission")
-      .select("id", { count: "exact", head: true })
-      .eq("business_id", business.id)
-      .gte("signed_at", fourteenDaysAgo)
-      .lt("signed_at", sevenDaysAgo),
     // Per-template totals aggregated in SQL (migration 0032): constant payload
     // regardless of how many signatures the business has accumulated.
     supabase.rpc("dashboard_template_stats", { p_business_id: business.id }),
-    // Daily buckets in UTC (migration 0035) — feeds the week sparkline.
-    supabase.rpc("dashboard_signature_days", {
-      p_business_id: business.id,
-      p_from: sevenDaysAgo,
-    }),
   ]);
 
   const signatureCountByTemplate = new Map<string, number>();
@@ -185,33 +152,6 @@ export default async function DashboardPage({
     signatureCountByTemplate.set(row.template_id, Number(row.signature_count));
     if (row.last_signed_at) {
       lastSignedByTemplate.set(row.template_id, row.last_signed_at);
-    }
-  }
-
-  let signaturesToday = 0;
-  // 7 daily buckets, oldest → today — feeds the week sparkline in the hero.
-  // Days from the RPC are UTC calendar dates (see dashboard_signature_days).
-  const weekSeries = [0, 0, 0, 0, 0, 0, 0];
-  const dayMs = 24 * 60 * 60 * 1000;
-  const todayUtc = new Date();
-  todayUtc.setUTCHours(0, 0, 0, 0);
-  const todayUtcMs = todayUtc.getTime();
-  const todayUtcYmd = todayUtc.toISOString().slice(0, 10);
-
-  for (const row of signatureDays ?? []) {
-    const cnt = Number(row.cnt);
-    const dayStr =
-      typeof row.day === "string"
-        ? row.day.slice(0, 10)
-        : new Date(row.day).toISOString().slice(0, 10);
-    if (dayStr === todayUtcYmd) {
-      signaturesToday += cnt;
-    }
-    const dayMsValue = Date.parse(`${dayStr}T00:00:00.000Z`);
-    if (Number.isNaN(dayMsValue)) continue;
-    const daysAgo = Math.round((todayUtcMs - dayMsValue) / dayMs);
-    if (daysAgo >= 0 && daysAgo < 7) {
-      weekSeries[6 - daysAgo] += cnt;
     }
   }
 
@@ -257,7 +197,7 @@ export default async function DashboardPage({
         id: `complete-${g.id}`,
         kind: "group_complete",
         title: g.name,
-        meta: "Toutes les signatures sont réunies — pensez à fermer le groupe.",
+        meta: "Toutes les signatures sont réunies — pensez à fermer la session.",
         href: `/dashboard/groupes/${g.id}`,
       });
     } else if (g.signed / g.total >= 0.8) {
@@ -281,57 +221,6 @@ export default async function DashboardPage({
       .sort()
       .at(-1) ?? null;
   const latestTemplate = allTemplates?.[0] ?? null;
-
-  // One primary pulse; secondary only adds decision-useful context.
-  const weekCount = last7Days ?? 0;
-  const monthCount = usedThisMonth ?? 0;
-  const weekDelta = weekCount - (prev7Days ?? 0);
-  const todayAsPrimary = signaturesToday > 0;
-
-  // Prefer delta, then a single complementary window — max 2 fragments.
-  const secondaryParts: string[] = [];
-  if (weekDelta > 0) secondaryParts.push(`+${weekDelta} vs sem. préc.`);
-  else if (weekDelta < 0) secondaryParts.push(`${weekDelta} vs sem. préc.`);
-
-  if (todayAsPrimary) {
-    if (weekCount !== signaturesToday) {
-      secondaryParts.push(`${weekCount} cette semaine`);
-    }
-    if (monthCount !== weekCount && monthCount !== signaturesToday) {
-      secondaryParts.push(`${monthCount} ce mois`);
-    }
-  } else {
-    if (signaturesToday > 0) {
-      secondaryParts.push(`${signaturesToday} aujourd’hui`);
-    }
-    if (monthCount !== weekCount) {
-      secondaryParts.push(`${monthCount} ce mois`);
-    }
-  }
-
-  const heroPulse: DashboardHeroPulse = todayAsPrimary
-    ? {
-        value: signaturesToday,
-        label:
-          signaturesToday === 1
-            ? "signature aujourd’hui"
-            : "signatures aujourd’hui",
-        secondary:
-          secondaryParts.length > 0
-            ? secondaryParts.slice(0, 2).join(" · ")
-            : undefined,
-      }
-    : {
-        value: weekCount,
-        label:
-          weekCount === 1
-            ? "signature cette semaine"
-            : "signatures cette semaine",
-        secondary:
-          secondaryParts.length > 0
-            ? secondaryParts.slice(0, 2).join(" · ")
-            : undefined,
-      };
 
   const planLabel = pro ? "Plan Pro" : "Plan Gratuit";
   const lastActivityIso = (() => {
@@ -369,21 +258,21 @@ export default async function DashboardPage({
               options={switcherOptions}
             />
           <nav aria-label="Compte" className="flex items-center gap-1">
-            {canManageMembers ? (
-              <Link
-                href="/dashboard/settings/membres"
-                className={utilityItem}
-                aria-label="Équipe"
-              >
-                <Users
-                  size={14}
-                  strokeWidth={1.85}
-                  className="text-[var(--color-muted)]"
-                  aria-hidden
-                />
-                <span className="hidden sm:inline">Équipe</span>
-              </Link>
-            ) : null}
+            {/* Ouvert à tous les membres : la page est en lecture seule pour
+                qui ne peut pas administrer. */}
+            <Link
+              href="/dashboard/settings/membres"
+              className={utilityItem}
+              aria-label="Accès & rôles"
+            >
+              <Users
+                size={14}
+                strokeWidth={1.85}
+                className="text-[var(--color-muted)]"
+                aria-hidden
+              />
+              <span className="hidden sm:inline">{"Accès & rôles"}</span>
+            </Link>
             {canEditBusiness ? (
               <Link
                 href="/dashboard/settings"
@@ -399,21 +288,8 @@ export default async function DashboardPage({
                 <span className="hidden sm:inline">Réglages</span>
               </Link>
             ) : null}
-            {canManageBilling ? (
-              <Link
-                href="/dashboard/billing"
-                className={utilityItem}
-                aria-label="Facturation"
-              >
-                <CreditCard
-                  size={14}
-                  strokeWidth={1.85}
-                  className="text-[var(--color-muted)]"
-                  aria-hidden
-                />
-                <span className="hidden sm:inline">Facturation</span>
-              </Link>
-            ) : null}
+            {/* Facturation retirée de la navigation pendant la bêta. La route
+                /dashboard/billing et ses permissions restent intactes. */}
             <ThemeToggle variant="ghost" />
           </nav>
 
@@ -422,12 +298,12 @@ export default async function DashboardPage({
             aria-hidden
           />
 
-          {canManageWaivers || canManageGroups ? (
+          {canManageWaivers || canCreateGroups ? (
             <DashboardCreateControl
               canManageWaivers={canManageWaivers}
-              canManageGroups={canManageGroups}
+              canCreateGroups={canCreateGroups}
               canCreateGroup={
-                canManageGroups && activeTemplatesList.length > 0
+                canCreateGroups && activeTemplatesList.length > 0
               }
             />
           ) : null}
@@ -437,18 +313,18 @@ export default async function DashboardPage({
               type="submit"
               className={`px-1.5 text-[12px] text-[var(--color-muted)]/70 transition-colors ${motion} hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
             >
-              Quitter
+              {"Déconnexion"}
             </button>
           </form>
           </div>
 
           <div className="flex items-center gap-2 sm:hidden">
-            {canManageWaivers || canManageGroups ? (
+            {canManageWaivers || canCreateGroups ? (
               <DashboardCreateControl
                 canManageWaivers={canManageWaivers}
-                canManageGroups={canManageGroups}
+                canCreateGroups={canCreateGroups}
                 canCreateGroup={
-                  canManageGroups && activeTemplatesList.length > 0
+                  canCreateGroups && activeTemplatesList.length > 0
                 }
               />
             ) : null}
@@ -457,9 +333,8 @@ export default async function DashboardPage({
               businesses={switcherOptions}
               businessName={business.name}
               role={membership.role}
-              canManageMembers={canManageMembers}
+              canManageMembers={true}
               canEditBusiness={canEditBusiness}
-              canManageBilling={canManageBilling}
             />
           </div>
         </div>
@@ -472,23 +347,21 @@ export default async function DashboardPage({
         isPro={pro}
         lastActivityRelative={lastActivityRelative}
         lastActivityIso={lastActivityIso}
-        pulse={heroPulse}
-        weekSeries={weekSeries}
         activeWaivers={activeWaivers}
         activeGroups={activeGroups}
         usedThisMonth={usedThisMonth ?? 0}
+        role={membership.role}
+        viewerName={viewerName}
       />
 
       <DashboardHome
         attentionItems={visibleAttentionItems}
         active={activeTemplatesList}
-        archived={archivedTemplatesList}
         groups={dashboardGroups}
-        archivedGroups={archivedDashboardGroups}
-        initialView={initialView}
         appUrl={appUrl}
         signatureCountByTemplate={signatureCountRecord}
         lastSignedByTemplate={lastSignedRecord}
+        canCreateGroups={canCreateGroups}
         canManageGroups={canManageGroups}
       />
     </main>

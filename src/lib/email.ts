@@ -1,6 +1,16 @@
 import { env } from "@/lib/env";
 import { sanitizeLogoUrl } from "@/lib/branding";
 import { logError } from "@/lib/observability/log";
+import {
+  button,
+  escapeHtml,
+  heading,
+  hint,
+  paragraph,
+  renderEmail,
+  signature,
+  type EmailBlock,
+} from "@/lib/email-layout";
 
 type Attachment = {
   filename: string;
@@ -12,6 +22,8 @@ type SendEmailInput = {
   to: string;
   subject: string;
   html: string;
+  /** Plain-text alternative. Improves deliverability and screen-reader access. */
+  text?: string;
   from?: string;
   attachments?: Attachment[];
 };
@@ -52,6 +64,7 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
         to: input.to,
         subject: input.subject,
         html: input.html,
+        text: input.text,
         attachments: input.attachments,
       }),
       // Don't leave UI / server actions hanging forever on a stalled Resend call.
@@ -69,15 +82,6 @@ async function sendEmail(input: SendEmailInput): Promise<boolean> {
     logError("email.request_failed", error);
     return false;
   }
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function formatFromAddress(fromName: string | null | undefined): string | undefined {
@@ -117,48 +121,37 @@ export async function sendSignerConfirmation(input: {
     .replaceAll("{nom}", input.businessName?.trim() || business)
     .slice(0, 160);
 
-  const signatureBlock = (input.signature ?? "").trim()
-    ? `<p style="font-size: 13px; line-height: 1.6; color: #4b5563; white-space: pre-wrap;">${escapeHtml(
-        input.signature!.trim(),
-      )}</p>`
-    : `<p style="font-size: 13px; line-height: 1.6; color: #4b5563;">— L'équipe ${escapeHtml(
-        business,
-      )}</p>`;
+  const signOff = (input.signature ?? "").trim() || `— L'équipe ${business}`;
+  const logoSafe = input.showLogo !== false ? sanitizeLogoUrl(input.logoUrl) : null;
 
-  const footerBlock = (input.footer ?? "").trim()
-    ? `<p style="font-size: 11px; color: #9ca3af; margin-top: 20px; white-space: pre-wrap;">${escapeHtml(
-        input.footer!.trim(),
-      )}</p>`
-    : `<p style="font-size: 12px; color: #6b7280; margin-top: 24px;">Envoyé via Paova.</p>`;
+  const blocks: EmailBlock[] = [
+    heading("Votre décharge est signée"),
+    paragraph(
+      `Bonjour ${escapeHtml(input.signerName)},`,
+      `Bonjour ${input.signerName},`,
+    ),
+    paragraph(
+      `Nous confirmons la signature de la décharge « ${escapeHtml(
+        input.waiverTitle,
+      )} » auprès de ${escapeHtml(business)}.`,
+      `Nous confirmons la signature de la décharge « ${input.waiverTitle} » auprès de ${business}.`,
+    ),
+    paragraph(
+      "Vous trouverez une copie de votre décharge signée en pièce jointe (PDF). Conservez-la précieusement.",
+      "Vous trouverez une copie de votre décharge signée en pièce jointe (PDF). Conservez-la précieusement.",
+    ),
+    signature(signOff),
+  ];
 
-  const logoSafe = sanitizeLogoUrl(input.logoUrl);
-  const logoBlock =
-    input.showLogo !== false && logoSafe
-      ? `<div style="margin-bottom: 16px;"><img src="${escapeHtml(
-          logoSafe,
-        )}" alt="" width="48" height="48" style="display:block;border-radius:10px;object-fit:contain;" /></div>`
-      : "";
-
-  const html = `
-    <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
-      ${logoBlock}
-      <h1 style="font-size: 20px; color: ${color};">Votre décharge est signée</h1>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        Bonjour ${escapeHtml(input.signerName)},
-      </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        Nous confirmons la signature de la décharge
-        « ${escapeHtml(input.waiverTitle)} » auprès de
-        ${escapeHtml(business)}.
-      </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        Vous trouverez une copie de votre décharge signée en pièce jointe (PDF).
-        Conservez-la précieusement.
-      </p>
-      ${signatureBlock}
-      ${footerBlock}
-    </div>
-  `;
+  const { html, text } = renderEmail({
+    title: "Votre décharge est signée",
+    preheader: `Votre copie signée de « ${input.waiverTitle} » est en pièce jointe.`,
+    businessName: business,
+    brandColor: color,
+    logoUrl: logoSafe,
+    blocks,
+    footerNote: input.footer,
+  });
 
   const base64 = Buffer.from(input.pdfBytes).toString("base64");
   const safeTitle = input.waiverTitle
@@ -170,6 +163,7 @@ export async function sendSignerConfirmation(input: {
     from: formatFromAddress(input.fromName),
     subject,
     html,
+    text,
     attachments: [
       {
         filename: `decharge-${safeTitle}.pdf`,
@@ -209,38 +203,42 @@ export async function sendGroupReminder(input: {
       ? `Signature à compléter — ${input.groupName}`
       : `Signatures à compléter — ${input.groupName}`;
 
-  const html = `
-    <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
-      <h1 style="font-size: 20px; color: ${color};">Signature en attente</h1>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        Bonjour,
-      </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        ${escapeHtml(business)} vous invite à signer la décharge
-        « ${escapeHtml(input.waiverTitle)} » pour
-        <strong>${escapeHtml(namesLabel)}</strong>
-        (groupe ${escapeHtml(input.groupName)}).
-      </p>
-      <p style="margin: 24px 0;">
-        <a href="${escapeHtml(input.signUrl)}"
-           style="display:inline-block;background:${color};color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;">
-          Ouvrir le lien de signature
-        </a>
-      </p>
-      <p style="font-size: 13px; line-height: 1.6; color: #6b7280;">
-        Sur la page, recherchez le nom puis signez. Ce lien est personnel au groupe.
-      </p>
-      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">
-        Envoyé via Paova.
-      </p>
-    </div>
-  `;
+  const blocks: EmailBlock[] = [
+    heading("Signature en attente"),
+    paragraph("Bonjour,", "Bonjour,"),
+    paragraph(
+      `${escapeHtml(business)} vous invite à signer la décharge « ${escapeHtml(
+        input.waiverTitle,
+      )} » pour <strong>${escapeHtml(namesLabel)}</strong> (groupe ${escapeHtml(
+        input.groupName,
+      )}).`,
+      `${business} vous invite à signer la décharge « ${input.waiverTitle} » pour ${namesLabel} (groupe ${input.groupName}).`,
+    ),
+    button({
+      href: input.signUrl,
+      label: "Ouvrir le lien de signature",
+      color,
+    }),
+    hint(
+      "Sur la page, recherchez le nom puis signez. Ce lien est personnel au groupe.",
+      "Sur la page, recherchez le nom puis signez. Ce lien est personnel au groupe.",
+    ),
+  ];
+
+  const { html, text } = renderEmail({
+    title: "Signature en attente",
+    preheader: `${business} attend votre signature pour ${input.groupName}.`,
+    businessName: business,
+    brandColor: color,
+    blocks,
+  });
 
   return sendEmail({
     to: input.to,
     from: formatFromAddress(input.fromName ?? input.businessName),
     subject,
     html,
+    text,
   });
 }
 
@@ -266,38 +264,43 @@ export async function sendMemberInvite(input: {
   const roleLabel = ROLE_LABEL[input.role];
   const from = (input.invitedByName ?? "").trim();
 
-  const html = `
-    <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
-      <h1 style="font-size: 20px; color: ${color};">Vous êtes invité·e sur Paova</h1>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        Bonjour,
-      </p>
-      <p style="font-size: 14px; line-height: 1.6; color: #374151;">
-        ${from ? `${escapeHtml(from)} vous invite` : "Vous avez été invité·e"}
-        à rejoindre l'espace <strong>${escapeHtml(business)}</strong> sur Paova,
-        avec le rôle <strong>${escapeHtml(roleLabel)}</strong>.
-      </p>
-      <p style="margin: 24px 0;">
-        <a href="${escapeHtml(input.loginUrl)}"
-           style="display:inline-block;background:${color};color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;">
-          Accéder à l'espace
-        </a>
-      </p>
-      <p style="font-size: 13px; line-height: 1.6; color: #6b7280;">
-        Ce lien ouvre la connexion Paova avec
-        ${escapeHtml(input.to)} prérempli. Demandez un lien magique sur
-        la page de connexion — aucun mot de passe à retenir.
-        Si le lien a expiré, allez sur paova.app/login avec la même adresse.
-      </p>
-      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">
-        Envoyé via Paova.
-      </p>
-    </div>
-  `;
+  const inviteLead = from
+    ? `${escapeHtml(from)} vous invite`
+    : "Vous avez été invité·e";
+  const inviteLeadText = from ? `${from} vous invite` : "Vous avez été invité·e";
+
+  const blocks: EmailBlock[] = [
+    heading("Vous êtes invité·e sur Paova"),
+    paragraph("Bonjour,", "Bonjour,"),
+    paragraph(
+      `${inviteLead} à rejoindre l'espace <strong>${escapeHtml(
+        business,
+      )}</strong> sur Paova, avec le rôle <strong>${escapeHtml(
+        roleLabel,
+      )}</strong>.`,
+      `${inviteLeadText} à rejoindre l'espace ${business} sur Paova, avec le rôle ${roleLabel}.`,
+    ),
+    button({ href: input.loginUrl, label: "Accéder à l'espace", color }),
+    hint(
+      `Ce lien ouvre la connexion Paova avec ${escapeHtml(
+        input.to,
+      )} prérempli. Demandez un lien magique sur la page de connexion — aucun mot de passe à retenir. Si le lien a expiré, allez sur paova.app/login avec la même adresse.`,
+      `Ce lien ouvre la connexion Paova avec ${input.to} prérempli. Demandez un lien magique sur la page de connexion — aucun mot de passe à retenir. Si le lien a expiré, allez sur paova.app/login avec la même adresse.`,
+    ),
+  ];
+
+  const { html, text } = renderEmail({
+    title: "Vous êtes invité·e sur Paova",
+    preheader: `Rejoignez ${business} sur Paova en tant que ${roleLabel}.`,
+    businessName: business,
+    brandColor: color,
+    blocks,
+  });
 
   return sendEmail({
     to: input.to,
     subject: `Invitation à rejoindre ${business} sur Paova`,
     html,
+    text,
   });
 }

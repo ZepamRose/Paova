@@ -93,7 +93,8 @@ export function ResetSettingsDialog({
                 id={descId}
                 className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--color-muted)]"
               >
-                Couleurs, branding, PDF, e-mails et langues seront réinitialisés.
+                Les coordonnées et la personnalisation des e-mails seront
+                réinitialisées.
                 Le nom et le logo restent inchangés. Vous pourrez encore
                 enregistrer ou annuler ensuite.
               </p>

@@ -1,80 +1,66 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { RoleBadge, type RoleId } from "./settings/membres/roles";
 import { motion, useReducedMotion } from "framer-motion";
+import { Archive, PenLine, Users } from "lucide-react";
 import { FREE_MONTHLY_LIMIT } from "@/lib/plan";
-import type { DashboardHeroPulse } from "@/lib/dashboard/types";
 import {
   DASHBOARD_ENTRANCE_DURATION,
   DASHBOARD_ENTRANCE_EASE,
-  DASHBOARD_ENTRANCE_STAGGER,
   DashboardEntrance,
 } from "./dashboard-entrance";
 
-function useCountUp(target: number, durationMs = 420, delayMs = 0) {
-  const [value, setValue] = useState(0);
-  const played = useRef(false);
-  const reduced = useReducedMotion() ?? false;
+/**
+ * The three places a manager actually needs to reach from the dashboard.
+ * They replace the week counter, the delta and the sparkline: those described
+ * the past without offering anything to do about it, and a control centre is
+ * judged on how fast it gets you somewhere.
+ */
+const CONTROLS = [
+  {
+    href: "/dashboard/settings/membres",
+    icon: Users,
+    label: "Équipe",
+    hint: "Accès & rôles",
+  },
+  {
+    href: "/dashboard/signatures",
+    icon: PenLine,
+    label: "Toutes les signatures",
+    hint: "Rechercher et exporter",
+  },
+  {
+    href: "/dashboard/archives",
+    icon: Archive,
+    label: "Archives",
+    hint: "Formulaires et sessions",
+  },
+] as const;
 
-  useEffect(() => {
-    if (played.current) {
-      setValue(target);
-      return;
-    }
-    played.current = true;
-    if (reduced || target <= 0) {
-      setValue(target);
-      return;
-    }
-
-    let raf = 0;
-    let start = 0;
-    const timeout = window.setTimeout(() => {
-      start = performance.now();
-      function tick(now: number) {
-        const t = Math.min(1, (now - start) / durationMs);
-        const eased = 1 - (1 - t) ** 3;
-        setValue(Math.round(target * eased));
-        if (t < 1) raf = requestAnimationFrame(tick);
-      }
-      raf = requestAnimationFrame(tick);
-    }, delayMs);
-
-    return () => {
-      window.clearTimeout(timeout);
-      cancelAnimationFrame(raf);
-    };
-  }, [target, durationMs, delayMs, reduced]);
-
-  return value;
-}
-
-function WeekSparkline({ series }: { series: number[] }) {
-  const max = Math.max(1, ...series);
+function ControlTile({
+  href,
+  icon: Icon,
+  label,
+  hint,
+}: (typeof CONTROLS)[number]) {
   return (
-    <div
-      className="hidden h-9 items-end gap-[3px] sm:flex sm:h-10"
-      aria-hidden
-      title="Signatures sur 7 jours"
+    <Link
+      href={href}
+      className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_45%,var(--color-surface))] px-3.5 py-3 transition-[transform,border-color,box-shadow,background-color] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_45%,transparent)] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
     >
-      {series.map((n, i) => {
-        const h = Math.max(3, Math.round((n / max) * 32));
-        const isLast = i === series.length - 1;
-        return (
-          <span
-            key={i}
-            className={`w-[4px] rounded-[1.5px] sm:w-[5px] ${
-              isLast
-                ? "bg-[var(--color-brand)]"
-                : n > 0
-                  ? "bg-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-muted))]"
-                  : "bg-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)]"
-            }`}
-            style={{ height: h }}
-          />
-        );
-      })}
-    </div>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_11%,transparent)] text-[var(--color-brand)] transition-colors duration-150 group-hover:bg-[color-mix(in_srgb,var(--color-brand)_17%,transparent)]">
+        <Icon size={17} strokeWidth={1.8} aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13.5px] font-medium tracking-tight text-[var(--color-foreground)]">
+          {label}
+        </span>
+        <span className="mt-0.5 block truncate text-[12px] leading-snug text-[var(--color-muted)]">
+          {hint}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -88,15 +74,15 @@ function InventorySummary({
   if (activeWaivers === 0 && activeGroups === 0) {
     return (
       <p className="text-[13.5px] leading-snug tracking-tight text-[var(--color-muted)]">
-        Aucune décharge ni groupe ouvert
+        Aucun formulaire ni session ouverte
       </p>
     );
   }
 
   const waiverLabel =
-    activeWaivers <= 1 ? "décharge ouverte" : "décharges ouvertes";
+    activeWaivers <= 1 ? "formulaire ouvert" : "formulaires ouverts";
   const groupLabel =
-    activeGroups <= 1 ? "groupe ouvert" : "groupes ouverts";
+    activeGroups <= 1 ? "session ouverte" : "sessions ouvertes";
 
   return (
     <p
@@ -126,8 +112,8 @@ function InventorySummary({
 }
 
 /**
- * Business identity + a single operational pulse.
- * One dominant number, quiet context — no nested KPI card.
+ * Business identity and the control centre: who the space belongs to, what is
+ * open right now, and the three destinations that matter.
  */
 export function DashboardBusinessHero({
   name,
@@ -136,11 +122,11 @@ export function DashboardBusinessHero({
   isPro,
   lastActivityRelative,
   lastActivityIso,
-  pulse,
-  weekSeries,
   activeWaivers,
   activeGroups,
   usedThisMonth,
+  role,
+  viewerName,
 }: {
   name: string;
   brandColor?: string | null;
@@ -148,23 +134,19 @@ export function DashboardBusinessHero({
   isPro: boolean;
   lastActivityRelative: string | null;
   lastActivityIso: string | null;
-  pulse: DashboardHeroPulse;
-  weekSeries: number[];
   activeWaivers: number;
   activeGroups: number;
   usedThisMonth: number;
+  /** Rôle de la personne connectée, dans cet espace. */
+  role: RoleId;
+  /** Prénom ou nom affiché de la personne connectée, si connu. */
+  viewerName: string | null;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const display = useCountUp(
-    pulse.value,
-    420,
-    Math.round(DASHBOARD_ENTRANCE_STAGGER * 1000) + 50,
-  );
   const freePct = isPro
     ? null
     : Math.min(100, Math.round((usedThisMonth / FREE_MONTHLY_LIMIT) * 100));
   const nearLimit = freePct !== null && freePct >= 80;
-  const showSpark = weekSeries.length === 7;
 
   // Pulse already signals recent activity — only surface stale / empty states.
   const showActivityMeta = (() => {
@@ -226,6 +208,18 @@ export function DashboardBusinessHero({
             >
               {name}
             </h1>
+            {/* Qui je suis, ici. Sur un espace partagé, savoir sous quel rôle
+                on agit évite de chercher pourquoi une action manque — et sa
+                place est auprès du nom de l'établissement, pas dans la barre
+                d'outils au milieu des actions. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
+              <RoleBadge role={role} showSummary={false} />
+              {viewerName ? (
+                <span className="text-[13px] text-[var(--color-muted)]">
+                  {viewerName}
+                </span>
+              ) : null}
+            </div>
             <InventorySummary
               activeWaivers={activeWaivers}
               activeGroups={activeGroups}
@@ -274,26 +268,14 @@ export function DashboardBusinessHero({
         </DashboardEntrance>
 
         <DashboardEntrance step={1}>
-          <div
-            className="flex flex-col gap-1.5 border-t border-[color-mix(in_srgb,var(--color-border)_42%,transparent)] pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:pt-4"
-            aria-label="Activité récente"
+          <nav
+            className="flex flex-col gap-2 border-t border-[color-mix(in_srgb,var(--color-border)_42%,transparent)] pt-3 sm:flex-row sm:gap-2.5 sm:pt-4"
+            aria-label="Accès rapides"
           >
-            <div className="min-w-0">
-              <p className="text-[2rem] font-semibold tracking-tight tabular-nums leading-none text-[var(--color-foreground)] sm:text-[2.75rem]">
-                {display}
-              </p>
-              <p className="mt-1 text-[12.5px] tracking-tight text-[var(--color-muted)] sm:mt-1.5 sm:text-[13px]">
-                {pulse.label}
-              </p>
-              {pulse.secondary ? (
-                <p className="mt-0.5 hidden text-[12.5px] leading-snug text-[var(--color-muted)]/80 sm:block">
-                  {pulse.secondary}
-                </p>
-              ) : null}
-            </div>
-
-            {showSpark ? <WeekSparkline series={weekSeries} /> : null}
-          </div>
+            {CONTROLS.map((c) => (
+              <ControlTile key={c.href} {...c} />
+            ))}
+          </nav>
         </DashboardEntrance>
       </div>
     </section>

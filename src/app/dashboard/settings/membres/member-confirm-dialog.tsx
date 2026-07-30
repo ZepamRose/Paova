@@ -40,7 +40,6 @@ export function MemberConfirmDialog({
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const t = window.setTimeout(() => cancelRef.current?.focus(), 40);
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -52,10 +51,26 @@ export function MemberConfirmDialog({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = prev;
-      window.clearTimeout(t);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);
+
+  /**
+   * Initial focus, deliberately kept in its own effect keyed on `open` alone.
+   *
+   * Callers pass `onClose` as an inline arrow, so its identity changes on every
+   * parent render. Folded into the effect above, this timeout re-armed on each
+   * keystroke and yanked focus out of any field the dialog contains — you could
+   * type exactly one character before landing back on "Annuler".
+   *
+   * A dialog carrying a form leaves focus alone: its own field owns it.
+   */
+  const hasForm = Boolean(children);
+  useEffect(() => {
+    if (!open || hasForm) return;
+    const t = window.setTimeout(() => cancelRef.current?.focus(), 40);
+    return () => window.clearTimeout(t);
+  }, [open, hasForm]);
 
   if (typeof document === "undefined") return null;
 

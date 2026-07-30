@@ -9,20 +9,20 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 /**
  * Primary create control — one button, clear hierarchy:
- * Créer une décharge | Créer un groupe
+ * Créer un formulaire | Créer une session planifiée
  */
 export function DashboardCreateControl({
   className = "",
   canCreateGroup = true,
   canManageWaivers = true,
-  canManageGroups = true,
+  canCreateGroups = true,
 }: {
   className?: string;
   /** False when the business has no active waiver yet. */
   canCreateGroup?: boolean;
   /** From business_member role — never invent on the client. */
   canManageWaivers?: boolean;
-  canManageGroups?: boolean;
+  canCreateGroups?: boolean;
 }) {
   // Hooks must run on every render, in the same order — the early return for
   // employees (no manage capability) lives below, after all of them.
@@ -58,7 +58,7 @@ export function DashboardCreateControl({
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]";
 
   // Nothing to create: employees see no control at all.
-  if (!canManageWaivers && !canManageGroups) {
+  if (!canManageWaivers && !canCreateGroups) {
     return null;
   }
 
@@ -127,7 +127,7 @@ export function DashboardCreateControl({
               </span>
               <span className="min-w-0">
                 <span className="block text-[13px] font-medium text-[var(--color-foreground)]">
-                  Créer une décharge
+                  Créer un formulaire
                 </span>
                 <span className="mt-0.5 block text-[12px] leading-snug text-[var(--color-muted)]">
                   Un formulaire à partager par lien ou QR
@@ -136,7 +136,7 @@ export function DashboardCreateControl({
             </Link>
             ) : null}
 
-            {canManageGroups ? (
+            {canCreateGroups ? (
               canCreateGroup ? (
               <Link
                 role="menuitem"
@@ -149,10 +149,10 @@ export function DashboardCreateControl({
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium text-[var(--color-foreground)]">
-                    Créer un groupe
+                    Créer une session planifiée
                   </span>
                   <span className="mt-0.5 block text-[12px] leading-snug text-[var(--color-muted)]">
-                    Liste de participants — signature à l&apos;avance
+                    Préparez les signatures d&apos;un groupe à partir d&apos;un formulaire existant
                   </span>
                 </span>
               </Link>
@@ -167,10 +167,10 @@ export function DashboardCreateControl({
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium text-[var(--color-foreground)]/70">
-                    Créer un groupe
+                    Créer une session planifiée
                   </span>
                   <span className="mt-0.5 block text-[12px] leading-snug text-[var(--color-muted)]">
-                    Nécessite d&apos;abord une décharge
+                    Nécessite d&apos;abord un formulaire
                   </span>
                 </span>
               </div>

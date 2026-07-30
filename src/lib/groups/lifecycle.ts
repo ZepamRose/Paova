@@ -29,6 +29,32 @@ export function parseClosesOn(raw: string | null | undefined): string | null {
   return `${value}T23:59:59.999Z`;
 }
 
+/**
+ * Parse the `<input type="datetime-local">` value of a planned session.
+ *
+ * The browser hands back wall-clock time with no zone ("2025-10-14T09:30"),
+ * which is exactly what the organiser means — 09:30 where the group turns up.
+ * `new Date()` reads that as local time, so the stored instant matches what
+ * was typed for anyone in the same zone as the business.
+ */
+export function parseScheduledAt(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/** Value for `<input type="datetime-local">` from a stored scheduled_at. */
+export function scheduledAtInputValue(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /** Value for `<input type="date">` from a stored closes_at. */
 export function closesOnInputValue(iso: string | null | undefined): string {
   if (!iso) return "";

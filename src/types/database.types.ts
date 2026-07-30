@@ -182,6 +182,8 @@ export type Database = {
           role: string;
           status: string;
           invited_email: string | null;
+          invited_name: string | null;
+          display_name: string | null;
           invited_by: string | null;
           created_at: string;
         };
@@ -192,6 +194,8 @@ export type Database = {
           role: string;
           status?: string;
           invited_email?: string | null;
+          invited_name?: string | null;
+          display_name?: string | null;
           invited_by?: string | null;
           created_at?: string;
         };
@@ -202,6 +206,8 @@ export type Database = {
           role?: string;
           status?: string;
           invited_email?: string | null;
+          invited_name?: string | null;
+          display_name?: string | null;
           invited_by?: string | null;
           created_at?: string;
         };
@@ -327,6 +333,7 @@ export type Database = {
           public_token: string;
           status: string;
           kind: string;
+          scheduled_at: string | null;
           closes_at: string | null;
           archived_at: string | null;
           created_at: string;
@@ -339,6 +346,7 @@ export type Database = {
           public_token: string;
           status?: string;
           kind?: string;
+          scheduled_at?: string | null;
           closes_at?: string | null;
           archived_at?: string | null;
           created_at?: string;
@@ -351,6 +359,7 @@ export type Database = {
           public_token?: string;
           status?: string;
           kind?: string;
+          scheduled_at?: string | null;
           closes_at?: string | null;
           archived_at?: string | null;
           created_at?: string;
@@ -654,6 +663,7 @@ export type Database = {
           user_id: string;
           email: string | null;
           full_name: string | null;
+          last_sign_in_at: string | null;
         }[];
       };
       dashboard_group_stats: {

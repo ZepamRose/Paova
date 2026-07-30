@@ -5,8 +5,11 @@
   --color-foreground: #0a0a0a;
   --color-muted: #555e69;
   --color-border: #e2e4e8;
-  /* Slightly richer sage in light mode — same family as dark #6b8f71 */
-  --color-brand: #5e926c;
+  /* Brand green, from the official palette. The previous sage (#5e926c) only
+     reached 3.62:1 under white — below AA — so every primary CTA label was
+     under-contrasted. This one reads 4.93:1 and is the deeper, less washed-out
+     green the identity actually calls for. */
+  --color-brand: #2e7d6b;
   --color-surface: #ffffff;
   --color-surface-2: #eceef2;
   --color-on-brand: #ffffff;
@@ -17,7 +20,7 @@
 :root {
   color-scheme: light;
   background-color: var(--color-background);
-  --color-brand: #5e926c;
+  --color-brand: #2e7d6b;
   --color-warning-fg: #7a5a1e;
   --color-warning-bg: color-mix(in srgb, #b45309 8%, var(--color-background));
   --color-warning-border: color-mix(in srgb, #b45309 22%, var(--color-border));
@@ -36,7 +39,9 @@ html.dark {
   --color-foreground: #e5e7eb;
   --color-muted: #a8b2c0;
   --color-border: #232b36;
-  --color-brand: #6b8f71;
+  /* A touch lighter than the light-mode green so the CTA still separates from
+     the dark surface (3.79:1) while keeping 4.56:1 under its white label. */
+  --color-brand: #30836f;
   --color-surface: #141b26;
   --color-surface-2: #1e2735;
   --color-on-brand: #ffffff;

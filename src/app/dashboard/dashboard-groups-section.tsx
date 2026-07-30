@@ -4,17 +4,35 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { DashboardGroupRow, DashboardListView } from "@/lib/dashboard/types";
-import { formatRelativeFr } from "@/lib/dates";
+import { StatusBadge } from "@/components/status-badge";
 import { GroupIcon } from "@/components/groups/group-icon";
 import { GroupProgressBar } from "@/components/groups/group-progress";
-import { CopyLinkButton } from "./copy-link-button";
 import {
   DASHBOARD_PAGE_SIZE,
   DashboardListPagination,
 } from "./dashboard-list-pagination";
-import { unarchiveGroup } from "./groupes/actions";
+import { GroupActionsMenu } from "./group-actions-menu";
 
 const LIST_EASE = [0.22, 1, 0.36, 1] as const;
+
+const DATE_FMT = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+const TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** "Mardi 14 octobre • 09:30", ou null si la session n'est pas datée. */
+function formatSchedule(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = DATE_FMT.format(d);
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)} • ${TIME_FMT.format(d)}`;
+}
 const motionCls = "duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
 
 
@@ -25,6 +43,7 @@ export function DashboardGroupsSection({
   searchActive = false,
   appUrl,
   canCreateGroup = true,
+  canCreateGroups = true,
   canManageGroups = true,
 }: {
   groups: DashboardGroupRow[];
@@ -34,6 +53,9 @@ export function DashboardGroupsSection({
   appUrl: string;
   /** False when no active waiver exists — group creation is blocked. */
   canCreateGroup?: boolean;
+  /** Créer / animer une session — ouvert aux collaborateurs. */
+  canCreateGroups?: boolean;
+  /** Archiver / restaurer — propriétaires et administrateurs. */
   canManageGroups?: boolean;
 }) {
   const [page, setPage] = useState(1);
@@ -59,11 +81,8 @@ export function DashboardGroupsSection({
 
   const groupCard =
     "relative overflow-hidden border border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3.5%,var(--color-surface))] shadow-[var(--elev-3)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_10%,transparent)]";
-  const cardHover = `transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_5.5%,var(--color-surface))] hover:shadow-[var(--elev-hover)]`;
+  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_5.5%,var(--color-surface))] hover:shadow-[var(--elev-hover)]`;
   const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
-  const quietAction = `inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,background-color,transform] ${motionCls} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
-  /** Primary card action — open the group. */
-  const viewAction = `inline-flex h-11 items-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:h-8 sm:rounded-lg sm:px-3`;
 
   return (
     <section
@@ -83,7 +102,9 @@ export function DashboardGroupsSection({
               id="dashboard-groups-heading"
               className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.1rem]"
             >
-              Groupes de signature
+              {showArchived
+                ? "Sessions planifiées archivées"
+                : "Sessions planifiées"}
               {rows.length > 0 ? (
                 <span className="ml-1.5 tabular-nums font-medium text-[var(--color-muted)]">
                   {rows.length}
@@ -97,36 +118,27 @@ export function DashboardGroupsSection({
                 ? "Aucun résultat pour cette recherche."
                 : `${rows.length} résultat${rows.length > 1 ? "s" : ""}`
               : showArchived
-                ? "Masqués du tableau de bord — signatures conservées."
+                ? "Masquées du tableau de bord — signatures conservées."
                 : "Suivez la progression collective, signature après signature."}
           </p>
         </div>
-        {!showArchived && canManageGroups && canCreateGroup ? (
-          <Link
-            href="/dashboard/groupes/new"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-          >
-            <GroupIcon size={13} className="text-[var(--color-brand)]" />
-            Nouveau groupe
-          </Link>
-        ) : null}
       </div>
 
-      {!showArchived && !canCreateGroup && !searchActive ? (
+      {!showArchived && !canCreateGroup && !searchActive && canCreateGroups ? (
         <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_35%,var(--color-surface))] px-4 py-3.5">
           <p className="text-[13.5px] font-medium text-[var(--color-foreground)]">
-            Un groupe nécessite une décharge
+            Une session nécessite un formulaire
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
-            Commencez par créer une décharge. Vous pourrez ensuite créer un
-            groupe pour une classe, une équipe, une entreprise ou tout autre
+            Commencez par créer un formulaire. Vous pourrez ensuite créer une
+            session pour une classe, une équipe, une entreprise ou tout autre
             ensemble de participants.
           </p>
           <Link
             href="/dashboard/waivers/new"
             className="mt-3 inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-medium text-[var(--color-on-brand)] transition-[transform,filter] duration-[220ms] hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
           >
-            Créer une décharge
+            Créer un formulaire
           </Link>
         </div>
       ) : null}
@@ -152,25 +164,25 @@ export function DashboardGroupsSection({
             <div className="flex max-w-sm flex-col gap-1.5">
               <p className="text-[15px] font-semibold tracking-tight">
                 {searchActive
-                  ? "Aucun groupe trouvé"
+                  ? "Aucune session trouvée"
                   : showArchived
-                    ? "Aucun groupe archivé"
-                    : "Aucun groupe pour l’instant"}
+                    ? "Aucune session archivée"
+                    : "Aucune session pour l’instant"}
               </p>
               {!searchActive ? (
                 <p className="text-sm leading-relaxed text-[var(--color-muted)]">
                   {showArchived
-                    ? "Les groupes archivés apparaissent ici. Vous pourrez les désarchiver à tout moment."
-                    : "Créez un groupe pour envoyer une même décharge à plusieurs participants."}
+                    ? "Les sessions archivées apparaissent ici. Vous pourrez les désarchiver à tout moment."
+                    : "Créez une session pour envoyer un même formulaire à plusieurs participants."}
                 </p>
               ) : null}
             </div>
-            {!showArchived && !searchActive && canManageGroups && canCreateGroup ? (
+            {!showArchived && !searchActive && canCreateGroups && canCreateGroup ? (
               <Link
                 href="/dashboard/groupes/new"
                 className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
-                Créer un groupe
+                Créer une session planifiée
               </Link>
             ) : null}
           </motion.div>
@@ -188,7 +200,6 @@ export function DashboardGroupsSection({
               {visibleRows.map((g) => {
                 const closed = g.status === "closed";
                 const publicUrl = `${appUrl}/g/${g.public_token}`;
-                const createdRel = formatRelativeFr(g.created_at);
 
                 return (
                   <motion.li
@@ -208,74 +219,52 @@ export function DashboardGroupsSection({
 
                     <div className="flex flex-col gap-3 px-4 py-4 pl-[1.2rem] sm:gap-2.5 sm:px-4 sm:py-3.5 sm:pl-[1.15rem]">
                       <div className="flex items-start gap-3">
-                        <Link
-                          href={`/dashboard/groupes/${g.id}`}
-                          className="flex min-w-0 flex-1 items-start gap-3 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-                        >
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
                           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_18%,var(--color-surface))] text-[var(--color-brand)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_24%,transparent)]">
                             <GroupIcon size={17} />
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                               <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.3] tracking-tight text-[var(--color-foreground)] sm:truncate sm:text-[15px] sm:leading-normal">
-                                {g.name}
+                                {/* Stretched link — same pattern as the form cards. */}
+                                <Link
+                                  href={`/dashboard/groupes/${g.id}`}
+                                  className="outline-none after:absolute after:inset-0 after:rounded-[inherit] after:content-['']"
+                                >
+                                  {g.name}
+                                </Link>
                               </h3>
-                              <span className="hidden shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold leading-4 tracking-[0.02em] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_24%,transparent)] sm:inline-flex">
-                                Groupe
-                              </span>
-                              {closed ? (
-                                <span className="shrink-0 rounded-md bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-muted)]">
-                                  Fermé
-                                </span>
+                              {/* "Ouverte" n'apprenait rien : dans une liste de
+                                  sessions, tout est ouvert. Ce qui compte est
+                                  l'avancement, porté plus bas. Seuls les états
+                                  qui sortent de l'ordinaire restent ici. */}
+                              {showArchived || closed ? (
+                                <StatusBadge
+                                  status={showArchived ? "archived" : "inactive"}
+                                  className="shrink-0"
+                                />
                               ) : null}
                             </div>
-                            <p className="mt-1 truncate text-[12px] text-[var(--color-muted)] sm:mt-0.5 sm:text-[11.5px]">
-                              {g.template_title}
-                              {createdRel ? (
-                                <>
-                                  <span
-                                    aria-hidden
-                                    className="mx-1.5 text-[var(--color-muted)]/35"
-                                  >
-                                    ·
-                                  </span>
-                                  <span>Créé {createdRel}</span>
-                                </>
-                              ) : null}
+                            <p className="mt-1 truncate text-[12.5px] font-medium text-[var(--color-foreground)]/75 sm:mt-0.5">
+                              {formatSchedule(g.scheduled_at) ?? g.template_title}
                             </p>
+                            {formatSchedule(g.scheduled_at) ? (
+                              <p className="mt-0.5 truncate text-[11.5px] text-[var(--color-muted)]">
+                                {g.template_title}
+                              </p>
+                            ) : null}
                           </div>
-                        </Link>
+                        </div>
 
-                        <div className="flex shrink-0 items-center gap-0.5 pt-0.5">
-                          {showArchived ? (
-                            <form action={unarchiveGroup}>
-                              <input
-                                type="hidden"
-                                name="group_id"
-                                value={g.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="return_to"
-                                value="dashboard"
-                              />
-                              <button type="submit" className={quietAction}>
-                                Désarchiver
-                              </button>
-                            </form>
-                          ) : (
-                            <CopyLinkButton
-                              url={publicUrl}
-                              variant="icon"
-                              size="sm"
-                            />
-                          )}
-                          <Link
-                            href={`/dashboard/groupes/${g.id}`}
-                            className={viewAction}
-                          >
-                            Voir
-                          </Link>
+                        {/* Above the stretched link so it stays clickable. */}
+                        <div className="relative z-20 flex shrink-0 items-center gap-0.5 pt-0.5">
+                          <GroupActionsMenu
+                            id={g.id}
+                            name={g.name}
+                            publicUrl={publicUrl}
+                            archived={showArchived}
+                            canArchive={canManageGroups}
+                          />
                         </div>
                       </div>
 
@@ -300,7 +289,7 @@ export function DashboardGroupsSection({
               totalPages={totalPages}
               totalItems={rows.length}
               onChange={setPage}
-              label="groupes"
+              label="sessions"
             />
           </motion.div>
         )}

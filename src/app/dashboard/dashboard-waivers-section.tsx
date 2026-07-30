@@ -116,10 +116,13 @@ export function DashboardWaiversSection({
 
   const waiverCard =
     "border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04]";
-  const cardHover = `transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_18%,var(--color-border))] hover:shadow-[var(--elev-hover)]`;
+  /**
+   * The whole card is the target now, so the hover state has to say so: a
+   * clearer green edge plus the lift. Paired with the stretched link below,
+   * which is what actually makes the surface clickable.
+   */
+  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:shadow-[var(--elev-hover)] has-[a:focus-visible]:border-[color-mix(in_srgb,var(--color-brand)_55%,var(--color-border))]`;
   const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
-  /** Primary card action — open the waiver. */
-  const viewAction = `inline-flex h-11 items-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[transform,background-color,border-color,box-shadow,color] ${motionCls} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] sm:h-8 sm:rounded-lg sm:px-3`;
   const restoreBtn = `inline-flex h-11 items-center rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-medium text-[var(--color-on-brand)] sm:h-8 sm:rounded-lg sm:px-3 ${primaryBtn}`;
 
   return (
@@ -140,7 +143,7 @@ export function DashboardWaiversSection({
               id="dashboard-waivers-heading"
               className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.1rem]"
             >
-              Vos décharges
+              {showArchived ? "Formulaires archivés" : "Vos formulaires"}
               {rows.length > 0 ? (
                 <span className="ml-1.5 tabular-nums font-medium text-[var(--color-muted)]">
                   {rows.length}
@@ -170,7 +173,7 @@ export function DashboardWaiversSection({
             transition={{ duration: 0.18, ease: LIST_EASE }}
             className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_48%,var(--color-surface))] px-3.5 py-2.5 text-[13px] leading-relaxed text-[var(--color-muted)]"
           >
-            Ces décharges n&apos;acceptent plus de signatures. Restaurez-en une
+            Ces formulaires n&apos;acceptent plus de signatures. Restaurez-en un
             pour la remettre en ligne.
           </motion.div>
         ) : null}
@@ -196,16 +199,16 @@ export function DashboardWaiversSection({
             <div className="flex max-w-sm flex-col gap-1.5">
               <p className="text-[15px] font-semibold tracking-tight">
                 {searchActive
-                  ? "Aucune décharge trouvée"
+                  ? "Aucun formulaire trouvé"
                   : showArchived
-                    ? "Aucune décharge archivée"
-                    : "Aucune décharge pour l'instant"}
+                    ? "Aucun formulaire archivé"
+                    : "Aucun formulaire pour l'instant"}
               </p>
               {!searchActive ? (
                 <p className="text-sm leading-relaxed text-[var(--color-muted)]">
                   {showArchived
-                    ? "Les décharges archivées apparaissent ici. Vous pourrez les restaurer à tout moment."
-                    : "Créez votre première décharge en quelques secondes à partir d'un modèle prêt à l'emploi."}
+                    ? "Les formulaires archivés apparaissent ici. Vous pourrez les restaurer à tout moment."
+                    : "Créez votre premier formulaire en quelques secondes à partir d'un modèle prêt à l'emploi."}
                 </p>
               ) : null}
             </div>
@@ -214,7 +217,7 @@ export function DashboardWaiversSection({
                 href="/onboarding/premiere-decharge"
                 className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
-                Créer ma première décharge
+                Créer mon premier formulaire
               </Link>
             ) : null}
           </motion.div>
@@ -277,7 +280,7 @@ export function DashboardWaiversSection({
                       ? "Aucune signature"
                       : `${count} signature${count > 1 ? "s" : ""}`,
                   );
-                  metaParts.push(metaContext ?? `Créée ${created}`);
+                  if (metaContext) metaParts.push(metaContext);
                   if (
                     outsideHours &&
                     metaContext !== "Hors horaires — lien fermé"
@@ -309,7 +312,16 @@ export function DashboardWaiversSection({
                       <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-0.5">
                         <div className="min-w-0">
                           <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.3] tracking-tight text-[var(--color-foreground)] sm:truncate sm:text-[14.5px] sm:leading-normal sm:text-[15px]">
-                            {t.title}
+                            {/* Stretched link: the title stays the accessible
+                                name while the pseudo-element makes the entire
+                                card clickable. The actions menu sits above it
+                                on its own stacking context. */}
+                            <Link
+                              href={`/dashboard/waivers/${t.id}`}
+                              className="outline-none after:absolute after:inset-0 after:rounded-[inherit] after:content-['']"
+                            >
+                              {t.title}
+                            </Link>
                           </h3>
                           <div className="hidden items-center gap-2 sm:flex">
                             {!showArchived ? <StatusBadge status={rowStatus} /> : null}
@@ -360,38 +372,23 @@ export function DashboardWaiversSection({
                         </p>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-0.5 pt-0.5 sm:pt-0">
+                      {/* Above the stretched link so these stay clickable. */}
+                      <div className="relative z-20 flex shrink-0 items-center gap-0.5 pt-0.5 sm:pt-0">
                         {showArchived ? (
-                          <>
-                            <ToggleStatusForm
-                              id={t.id}
-                              label="Restaurer"
-                              pendingLabel="Restauration…"
-                              returnTo="dashboard"
-                              className={restoreBtn}
-                            />
-                            <Link
-                              href={`/dashboard/waivers/${t.id}`}
-                              className={viewAction}
-                            >
-                              Voir
-                            </Link>
-                          </>
+                          <ToggleStatusForm
+                            id={t.id}
+                            label="Restaurer"
+                            pendingLabel="Restauration…"
+                            returnTo="dashboard"
+                            className={restoreBtn}
+                          />
                         ) : (
-                          <>
-                            <Link
-                              href={`/dashboard/waivers/${t.id}`}
-                              className={viewAction}
-                            >
-                              Voir
-                            </Link>
-                            <WaiverActionsMenu
-                              id={t.id}
-                              title={t.title}
-                              submissionCount={count}
-                              publicUrl={publicUrl}
-                            />
-                          </>
+                          <WaiverActionsMenu
+                            id={t.id}
+                            title={t.title}
+                            submissionCount={count}
+                            publicUrl={publicUrl}
+                          />
                         )}
                       </div>
                     </div>
@@ -404,7 +401,7 @@ export function DashboardWaiversSection({
               totalPages={totalPages}
               totalItems={rows.length}
               onChange={setPage}
-              label="décharges"
+              label="formulaires"
             />
           </motion.div>
         )}

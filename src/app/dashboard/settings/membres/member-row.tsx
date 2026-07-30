@@ -2,15 +2,10 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { MemberActionsMenu } from "./member-actions-menu";
+import { RoleBadge, type RoleId } from "./roles";
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Propri\u00e9taire",
-  admin: "Administrateur",
-  employee: "Collaborateur",
-};
-
-function initialsFromIdentity(name: string | null, email: string | null): string {
-  const source = name?.trim() || email?.split("@")[0] || "?";
+function initialsFromIdentity(name: string | null): string {
+  const source = name?.trim() || "?";
   const parts = source.split(/[\s._\-]+/).filter(Boolean);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -18,12 +13,51 @@ function initialsFromIdentity(name: string | null, email: string | null): string
   return source.slice(0, 2).toUpperCase();
 }
 
-function statusLabel(status: string): string {
-  if (status === "invited") return "Invitation en attente";
-  if (status === "disabled") return "D\u00e9sactiv\u00e9";
-  return "Compte actif";
+function formatLastActivity(iso: string | null): string {
+  if (!iso) return "Jamais connecté";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Jamais connecté";
+
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffDay === 0) {
+    const h = d.getHours().toString().padStart(2, "0");
+    const m = d.getMinutes().toString().padStart(2, "0");
+    return `Aujourd'hui à ${h}:${m}`;
+  }
+  if (diffDay === 1) return "Hier";
+  if (diffDay < 7) return `Il y a ${diffDay} jours`;
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+  }).format(d);
 }
 
+/**
+ * Avatar carries the role colour — same three colours as everywhere else.
+ */
+const AVATAR_TONE: Record<RoleId, string> = {
+  owner:
+    "bg-emerald-500/14 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300",
+  admin: "bg-blue-500/14 text-blue-700 ring-blue-500/25 dark:text-blue-300",
+  employee:
+    "bg-violet-500/14 text-violet-700 ring-violet-500/25 dark:text-violet-300",
+};
+
+const CELL = "px-3 py-2 align-middle sm:px-4";
+
+/**
+ * One row of the team table.
+ *
+ * Columns: Nom · Rôle · Dernière activité · Actions
+ *
+ * Email is never shown in the table — only accessible via ⋮ → Voir l'adresse e-mail.
+ */
 export function MemberRow({
   businessId,
   id,
@@ -31,11 +65,12 @@ export function MemberRow({
   status,
   name,
   email,
+  lastLoginAt,
   isSelf,
   canManage,
   canAssignAdmin,
   loginUrl,
-  isLast = false,
+  showEmail,
   viewerIsOwner = false,
 }: {
   businessId: string;
@@ -44,128 +79,107 @@ export function MemberRow({
   status: string;
   name: string | null;
   email: string | null;
+  lastLoginAt: string | null;
   isSelf: boolean;
   canManage: boolean;
   canAssignAdmin: boolean;
   loginUrl: string;
-  isLast?: boolean;
-  /** Enables the ownership handover entry - owner only. */
+  /** Only the owner sees the email column on large screens. */
+  showEmail: boolean;
   viewerIsOwner?: boolean;
 }) {
   const reduced = useReducedMotion() ?? false;
   const isOwner = role === "owner";
   const isInvited = status === "invited";
   const isDisabled = status === "disabled";
+
   const canManageTarget =
-    canManage &&
-    !isOwner &&
-    !isSelf &&
-    (canAssignAdmin || role === "employee");
+    canManage && !isOwner && !isSelf && (canAssignAdmin || role === "employee");
+  const canRenameTarget = isSelf || canManageTarget;
+
   const displayName =
     name?.trim() ||
     (isSelf
       ? "Vous"
       : isInvited
         ? "Invitation en attente"
-        : "Membre de l'\u00e9quipe");
-  const emailLabel = email ?? "Adresse e-mail indisponible";
+        : "Membre de l'équipe");
+
+  const roleId = (["owner", "admin", "employee"] as const).includes(
+    role as RoleId,
+  )
+    ? (role as RoleId)
+    : "employee";
 
   return (
-    <motion.li
+    <motion.tr
       initial={reduced ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-      className={`group flex items-start justify-between gap-2.5 px-4 py-3.5 transition-colors duration-[180ms] sm:items-center sm:gap-4 sm:px-5 sm:py-[0.95rem] ${
-        isLast
-          ? ""
-          : "border-b border-[color-mix(in_srgb,var(--color-border)_52%,transparent)]"
-      } ${
-        isInvited
-          ? "bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface-2)_28%,transparent)]"
-          : isDisabled
-            ? "bg-[color-mix(in_srgb,var(--color-surface-2)_28%,transparent)]"
-            : ""
+      className={`border-b border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] transition-colors duration-[180ms] last:border-b-0 hover:bg-[color-mix(in_srgb,var(--color-surface-2)_35%,transparent)] ${
+        isDisabled ? "opacity-70" : ""
       }`}
     >
-      <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-        <span
-          aria-hidden
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.7rem] text-[11.5px] font-semibold tracking-tight ${
-            isOwner
-              ? "bg-[color-mix(in_srgb,var(--color-brand)_14%,var(--color-surface-2))] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_18%,transparent)]"
-              : isInvited || isDisabled
-                ? "bg-[var(--color-surface-2)] text-[var(--color-muted)]/75 ring-1 ring-[color-mix(in_srgb,var(--color-border)_55%,transparent)]"
-                : "bg-[var(--color-surface-2)] text-[var(--color-foreground)]/70 ring-1 ring-[color-mix(in_srgb,var(--color-border)_50%,transparent)]"
-          }`}
-        >
-          {initialsFromIdentity(name, email)}
-        </span>
-
-        <div className="min-w-0">
-          <p className="break-words text-[14px] font-medium tracking-tight text-[var(--color-foreground)]">
-            {displayName}
-            {isSelf && name?.trim() ? (
-              <span className="ml-1.5 text-[12.5px] font-normal text-[var(--color-muted)]">
-                vous
+      <td className={`${CELL} pl-4 sm:pl-5`}>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            aria-hidden
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tracking-tight ring-1 ${AVATAR_TONE[roleId]}`}
+          >
+            {initialsFromIdentity(name)}
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-[14px] font-medium tracking-tight text-[var(--color-foreground)]">
+                {displayName}
               </span>
-            ) : null}
-          </p>
-          <p className="mt-0.5 break-all text-[12.5px] leading-5 text-[var(--color-muted)]">
-            {emailLabel}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-[var(--color-muted)]">
-            <span
-              className={
-                isOwner
-                  ? "inline-flex h-6 items-center rounded-md border border-[color-mix(in_srgb,var(--color-brand)_26%,transparent)] bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface))] px-2 text-[11px] font-semibold tracking-tight text-[var(--color-brand)] sm:hidden"
-                  : "inline-flex h-6 items-center rounded-md bg-[var(--color-surface-2)] px-2 text-[11px] font-medium text-[var(--color-muted)] sm:hidden"
-              }
-            >
-              {ROLE_LABEL[role] ?? role}
+              {isSelf ? (
+                <span className="shrink-0 rounded-full bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--color-muted)]">
+                  Vous
+                </span>
+              ) : null}
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isInvited
-                    ? "bg-[color-mix(in_srgb,var(--color-brand)_50%,var(--color-muted))]"
-                    : isDisabled
-                      ? "bg-[var(--color-muted)]/55"
-                      : "bg-emerald-500/75"
-                }`}
-              />
-              {statusLabel(status)}
-            </span>
-          </div>
+          </span>
         </div>
-      </div>
+      </td>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <span
-          className={
-            isOwner
-              ? "hidden h-8 items-center rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_26%,transparent)] bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface))] px-2.5 text-[12px] font-semibold tracking-tight text-[var(--color-brand)] sm:inline-flex"
-              : "hidden h-8 max-w-[9.5rem] items-center truncate rounded-lg bg-[var(--color-surface-2)] px-2.5 text-[12px] font-medium text-[var(--color-muted)] sm:inline-flex"
-          }
-        >
-          {ROLE_LABEL[role] ?? role}
+      <td className={CELL}>
+        <RoleBadge role={roleId} showSummary={false} />
+      </td>
+
+      <td className={CELL}>
+        <span className="text-[12.5px] text-[var(--color-muted)]">
+          {isInvited
+            ? "Invitation en attente"
+            : formatLastActivity(lastLoginAt)}
         </span>
+      </td>
 
-        <MemberActionsMenu
-          businessId={businessId}
-          id={id}
-          role={role}
-          status={status}
-          name={name}
-          email={email}
-          canManageTarget={canManageTarget}
-          canAssignAdmin={canAssignAdmin}
-          loginUrl={loginUrl}
-          canTransferOwnership={
-            canManageTarget && viewerIsOwner && status === "active"
-          }
-        />
-      </div>
-    </motion.li>
+      <td className={`${CELL} pr-4 text-right sm:pr-5`}>
+        {canRenameTarget || canManageTarget || email ? (
+          <div className="flex justify-end">
+            <MemberActionsMenu
+              businessId={businessId}
+              id={id}
+              role={role}
+              status={status}
+              name={name}
+              email={showEmail ? email : null}
+              canManageTarget={canManageTarget}
+              canRenameTarget={canRenameTarget}
+              canAssignAdmin={canAssignAdmin}
+              loginUrl={loginUrl}
+              canTransferOwnership={
+                canManageTarget && viewerIsOwner && status === "active"
+              }
+            />
+          </div>
+        ) : (
+          <span aria-hidden className="text-[var(--color-muted)]/50">
+            —
+          </span>
+        )}
+      </td>
+    </motion.tr>
   );
 }

@@ -51,6 +51,7 @@ export function NewGroupForm({
   );
   const [rosterCount, setRosterCount] = useState(0);
   const [closesOn, setClosesOn] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
 
   const selected =
     (locked ? preselected : choices.find((c) => c.id === templateId)) ??
@@ -210,7 +211,25 @@ export function NewGroupForm({
           />
         </div>
 
-        <div className="border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4">
+        <div className="flex flex-col gap-4 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4 sm:flex-row sm:gap-5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-[var(--color-foreground)]">
+              Date et heure du groupe{" "}
+              <span className="font-normal text-[var(--color-muted)]">
+                (facultatif)
+              </span>
+            </span>
+            <input
+              name="scheduled_at"
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className={`${field} max-w-xs`}
+            />
+            <span className="text-[12px] text-[var(--color-muted)]">
+              Quand le groupe est attendu. Affiché sur la carte de la session.
+            </span>
+          </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--color-foreground)]">
               Date de clôture{" "}

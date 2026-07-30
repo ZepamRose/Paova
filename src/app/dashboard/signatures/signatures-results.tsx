@@ -27,7 +27,7 @@ export type SignatureResultRow = {
 };
 
 const AVATAR_TONES = [
-  { hue: "#5e926c" },
+  { hue: "#2e7d6b" },
   { hue: "#4f7cac" },
   { hue: "#8b6b4a" },
   { hue: "#6b5b95" },

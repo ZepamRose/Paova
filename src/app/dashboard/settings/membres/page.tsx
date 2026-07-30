@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getDashboardSession } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/auth/permissions";
@@ -8,6 +7,7 @@ import { DashboardEntrance } from "../../dashboard-entrance";
 import { InviteMemberForm } from "./invite-member-form";
 import { MemberRow } from "./member-row";
 import { MembersStatusBanner } from "./members-status-banner";
+import { RoleGuide } from "./roles";
 
 const ERROR_COPY: Record<string, string> = {
   invalid: "Requête invalide.",
@@ -16,7 +16,7 @@ const ERROR_COPY: Record<string, string> = {
   owner: "Impossible de modifier ou retirer le propriétaire.",
   insert: "Impossible d'envoyer l'invitation. Réessayez.",
   delete: "Impossible de retirer ce membre. Réessayez.",
-  update: "Impossible de mettre à jour le rôle. Réessayez.",
+  update: "Impossible de mettre à jour. Réessayez.",
   transfer: "Impossible de transférer la propriété. Réessayez.",
 };
 
@@ -25,6 +25,7 @@ const SUCCESS_COPY: Record<string, string> = {
   resent: "Invitation renvoyée.",
   removed: "Membre retiré de l'équipe.",
   updated: "Rôle mis à jour.",
+  renamed: "Nom mis à jour.",
   disabled: "Membre désactivé.",
   reactivated: "Membre réactivé.",
   transferred:
@@ -44,30 +45,15 @@ export default async function MembersPage({
   const { success, error } = await searchParams;
   const { supabase, user, membership } = await getDashboardSession();
 
-  const canView =
-    hasCapability(membership.role, "invite_employees") ||
-    hasCapability(membership.role, "manage_members");
-  if (!canView) {
-    redirect("/dashboard");
-  }
-
+  const canInvite = hasCapability(membership.role, "invite_employees");
   const canManage = hasCapability(membership.role, "manage_members");
   const canInviteAdmin = membership.role === "owner";
-  // Resend's sandbox sender only delivers to the account owner, so invites and
-  // magic links for anyone else are dropped. Surface it here rather than
-  // letting the owner discover it through a silent, broken login form.
   const usingSandboxSender = /@resend\.dev\b/i.test(env.resend.from);
   const canAssignAdmin = membership.role === "owner";
 
-  const { data: business } = await supabase
-    .from("business")
-    .select("name")
-    .eq("id", membership.businessId)
-    .maybeSingle();
-
   const { data: rows } = await supabase
     .from("business_member")
-    .select("id, role, status, invited_email, user_id, created_at")
+    .select("id, role, status, invited_email, invited_name, display_name, user_id, created_at")
     .eq("business_id", membership.businessId)
     .order("created_at", { ascending: true });
 
@@ -81,6 +67,7 @@ export default async function MembersPage({
             user_id: string;
             email: string | null;
             full_name: string | null;
+            last_sign_in_at: string | null;
           }[],
         };
 
@@ -91,7 +78,6 @@ export default async function MembersPage({
   const members = rows ?? [];
   const pendingCount = members.filter((m) => m.status === "invited").length;
   const disabledCount = members.filter((m) => m.status === "disabled").length;
-  const businessName = business?.name ?? "Votre établissement";
 
   const successMessage =
     (success && SUCCESS_COPY[success]) ||
@@ -101,14 +87,14 @@ export default async function MembersPage({
     success && WARNING_COPY[success] ? "warning" : "success";
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-5 py-8 pb-20 sm:gap-7 sm:px-6 sm:py-10 sm:pb-24">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-5 py-8 pb-20 sm:gap-7 sm:px-6 sm:py-10 sm:pb-24">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-brand)_11%,transparent),transparent_62%)]"
       />
 
       <DashboardEntrance step={0}>
-        <header className="flex flex-col gap-3.5">
+        <header className="flex flex-col gap-3">
           <Link
             href="/dashboard"
             className="group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,transform] duration-200 hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
@@ -123,15 +109,12 @@ export default async function MembersPage({
           </Link>
 
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Accès &amp; rôles
-            </p>
             <h1 className="mt-1.5 text-[1.7rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.95rem]">
-              Équipe
+              Accès &amp; rôles
             </h1>
             <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-[var(--color-muted)]">
-              {businessName} — qui peut faire signer, gérer l&apos;espace, ou
-              voir la facturation.
+              Gérez les personnes qui peuvent accéder à votre espace et
+              définissez leurs permissions.
             </p>
           </div>
         </header>
@@ -150,20 +133,12 @@ export default async function MembersPage({
         </p>
       ) : null}
 
-      {!canView ? (
-        <DashboardEntrance step={1}>
-          <p className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-5 py-5 text-[14px] leading-relaxed text-[var(--color-muted)] shadow-[var(--elev-1)]">
-            Seuls le propriétaire et les administrateurs peuvent gérer les
-            membres de l&apos;équipe.
-          </p>
-        </DashboardEntrance>
-      ) : (
-        <>
+      <>
           <DashboardEntrance step={1}>
             <section className="overflow-hidden rounded-[1.35rem] border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-2)]">
-              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-5 py-4">
+              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-5 py-3">
                 <h2 className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]">
-                  Membres
+                  Équipe
                 </h2>
                 <div className="flex items-center gap-2 text-[12.5px] text-[var(--color-muted)]">
                   {pendingCount > 0 ? (
@@ -178,47 +153,80 @@ export default async function MembersPage({
                     </span>
                   ) : null}
                   <span className="tabular-nums font-medium text-[var(--color-foreground)]/70">
-                    {members.length}
+                    {members.length} membre{members.length > 1 ? "s" : ""}
                   </span>
                 </div>
               </div>
 
               {members.length === 0 ? (
-                <p className="px-5 py-10 text-center text-[13.5px] text-[var(--color-muted)]">
+                <p className="px-5 py-8 text-center text-[13.5px] text-[var(--color-muted)]">
                   Aucun membre pour le moment.
                 </p>
               ) : (
-                <ul className="flex flex-col">
-                  {members.map((m, index) => (
-                    <MemberRow
-                      key={m.id}
-                      businessId={membership.businessId}
-                      id={m.id}
-                      role={m.role}
-                      status={m.status}
-                      name={
-                        m.user_id
-                          ? (directoryByUserId.get(m.user_id)?.full_name ?? null)
-                          : null
-                      }
-                      email={
-                        m.user_id
-                          ? (directoryByUserId.get(m.user_id)?.email ?? null)
-                          : m.invited_email
-                      }
-                      isSelf={m.user_id === user.id}
-                      canManage={canManage}
-                      canAssignAdmin={canAssignAdmin}
-                      loginUrl={`${getAppUrl()}/login?email=${encodeURIComponent(m.invited_email ?? "")}&next=${encodeURIComponent("/dashboard")}`}
-                      isLast={index === members.length - 1}
-                      viewerIsOwner={membership.role === "owner"}
-                    />
-                  ))}
-                </ul>
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)]">
+                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4 sm:pl-5">
+                        Nom
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
+                        Rôle
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:px-4">
+                        Dernière activité
+                      </th>
+                      <th scope="col" className="px-3 py-2 pr-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]/80 sm:pr-5 sm:px-4">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((m) => {
+                      const dir = m.user_id ? directoryByUserId.get(m.user_id) : null;
+                      const lastLoginAt = dir?.last_sign_in_at ?? null;
+                      return (
+                        <MemberRow
+                          key={m.id}
+                          businessId={membership.businessId}
+                          id={m.id}
+                          role={m.role}
+                          status={m.status}
+                          name={
+                            m.display_name ??
+                            m.invited_name ??
+                            (m.user_id
+                              ? (dir?.full_name ?? null)
+                              : null)
+                          }
+                          email={
+                            membership.role === "owner"
+                              ? m.user_id
+                                ? dir?.email ?? null
+                                : m.invited_email
+                              : null
+                          }
+                          lastLoginAt={lastLoginAt}
+                          isSelf={m.user_id === user.id}
+                          canManage={canManage}
+                          canAssignAdmin={canAssignAdmin}
+                          loginUrl={
+                            membership.role === "owner"
+                              ? `${getAppUrl()}/login?email=${encodeURIComponent(m.invited_email ?? "")}&next=${encodeURIComponent("/dashboard")}`
+                              : ""
+                          }
+                          showEmail={membership.role === "owner"}
+                          viewerIsOwner={membership.role === "owner"}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </section>
           </DashboardEntrance>
 
+          {canInvite ? (
+            <>
           <DashboardEntrance step={2}>
             {usingSandboxSender ? (
               <div
@@ -247,8 +255,25 @@ export default async function MembersPage({
               canInviteAdmin={canInviteAdmin}
             />
           </DashboardEntrance>
-        </>
-      )}
+
+          <DashboardEntrance step={3}>
+            <section aria-labelledby="roles-guide-heading">
+              <h2
+                id="roles-guide-heading"
+                className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]/80"
+              >
+                Ce que permet chaque rôle
+              </h2>
+              <p className="mb-4 text-[13px] leading-snug text-[var(--color-muted)]">
+                Choisissez le niveau d&apos;accès au moment de l&apos;invitation.
+                Il reste modifiable ensuite.
+              </p>
+              <RoleGuide />
+            </section>
+          </DashboardEntrance>
+            </>
+          ) : null}
+      </>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { AuthSessionRecovery } from "@/components/auth-session-recovery";
@@ -18,12 +18,29 @@ export const metadata: Metadata = {
   description:
     "Remplacez le papier : collectez les signatures, gardez les preuves et retrouvez chaque dossier en quelques secondes. Hébergement européen, conforme RGPD.",
   icons: {
+    // Order matters: browsers pick the last one they understand. The SVG comes
+    // last so modern browsers get the vector and older ones fall back to PNG.
     icon: [
-      { url: "/brand/PaovaFavicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/brand/PaovaIcon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/paova-mark.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/brand/PaovaFavicon-180.png", sizes: "180x180" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
+  manifest: "/site.webmanifest",
+};
+
+// Next 15 wants theme-color here, not in `metadata`. Two entries so the browser
+// chrome follows the user's theme instead of forcing the dark brand tone onto a
+// light UI — the values are the app's own --color-background tokens.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f6f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f16" },
+  ],
 };
 
 export default async function RootLayout({

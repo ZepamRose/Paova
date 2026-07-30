@@ -117,11 +117,11 @@ function DashboardPreview() {
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/PaovaIcon.svg"
+              src="/brand/paova-mark.svg"
               alt=""
-              width={16}
+              width={12}
               height={16}
-              className="h-4 w-4 shrink-0"
+              className="h-4 w-auto shrink-0"
             />
             <span className="truncate text-[13px] font-semibold tracking-tight">
               paova

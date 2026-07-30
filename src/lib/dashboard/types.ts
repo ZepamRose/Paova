@@ -19,6 +19,8 @@ export type DashboardGroupRow = {
   status: string;
   total: number;
   signed: number;
+  /** Quand le groupe est attendu. Null si la session n'est pas datée. */
+  scheduled_at: string | null;
   created_at: string;
   public_token: string;
 };

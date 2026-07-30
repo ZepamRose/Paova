@@ -1,7 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireActionCapability } from "@/lib/auth/session";
+import { hasCapability } from "@/lib/auth/permissions";
 import { sendMemberInvite } from "@/lib/email";
 import { buildMemberInviteLoginUrl } from "@/lib/auth/invite-link";
 import { logError } from "@/lib/observability/log";
@@ -22,7 +24,11 @@ function isNextRedirect(error: unknown): boolean {
 
 async function requireMembersCapability(
   businessId: string,
-  capability: "invite_employees" | "manage_members" | "transfer_ownership",
+  capability:
+    | "invite_employees"
+    | "manage_members"
+    | "transfer_ownership"
+    | "sign_customers",
 ) {
   try {
     return await requireActionCapability(capability, businessId);
@@ -35,6 +41,7 @@ async function requireMembersCapability(
 export async function inviteMember(formData: FormData) {
   const businessId = String(formData.get("business_id") ?? "");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const name = String(formData.get("name") ?? "").trim().slice(0, 80);
   const role = String(formData.get("role") ?? "");
 
   if (!businessId || !email || !isInvitableRole(role)) {
@@ -60,6 +67,7 @@ export async function inviteMember(formData: FormData) {
   const { error } = await supabase.from("business_member").insert({
     business_id: businessId,
     invited_email: email,
+    invited_name: name || null,
     role,
     status: "invited",
     invited_by: user.id,
@@ -80,6 +88,67 @@ export async function inviteMember(formData: FormData) {
   redirect(
     `/dashboard/settings/membres?success=${emailSent ? "invited" : "invited_no_email"}`,
   );
+}
+
+/**
+ * Rename a member, within this business only.
+ *
+ * Writes `display_name` on the membership rather than the person's auth
+ * profile: the same account may sit in several businesses, and a typo fixed
+ * here has no business following them elsewhere. Clearing the field falls back
+ * to the auth name, then to the email — so a rename can always be undone.
+ */
+export async function renameMember(formData: FormData) {
+  const businessId = String(formData.get("business_id") ?? "");
+  const memberId = String(formData.get("member_id") ?? "");
+  const name = String(formData.get("display_name") ?? "").trim().slice(0, 80);
+  if (!businessId || !memberId) {
+    redirect(`/dashboard/settings/membres?error=invalid`);
+  }
+
+  // Renommer n'exige aucune capacité quand on se renomme soi-même : c'est le
+  // nom qu'on porte, pas un levier d'administration. Sur quelqu'un d'autre, la
+  // règle habituelle s'applique.
+  const { supabase, user, membership: ctx } = await requireMembersCapability(
+    businessId,
+    "sign_customers",
+  );
+
+  const { data: target } = await supabase
+    .from("business_member")
+    .select("role, user_id")
+    .eq("id", memberId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  if (!target) {
+    redirect(`/dashboard/settings/membres?error=invalid`);
+  }
+
+  const isSelf = target.user_id != null && target.user_id === user.id;
+  if (!isSelf) {
+    if (!hasCapability(ctx.role, "manage_members")) {
+      redirect(`/dashboard/settings/membres?error=forbidden`);
+    }
+    // Même plafond que les autres actions : un administrateur ne touche ni un
+    // propriétaire, ni un autre administrateur.
+    if (ctx.role === "admin" && target.role !== "employee") {
+      redirect(`/dashboard/settings/membres?error=forbidden`);
+    }
+  }
+
+  const { error } = await supabase
+    .from("business_member")
+    .update({ display_name: name || null })
+    .eq("id", memberId)
+    .eq("business_id", businessId);
+
+  if (error) {
+    redirect(`/dashboard/settings/membres?error=update`);
+  }
+
+  revalidatePath("/dashboard/settings/membres");
+  redirect(`/dashboard/settings/membres?success=renamed`);
 }
 
 export async function removeMember(formData: FormData) {

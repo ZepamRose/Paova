@@ -10,6 +10,7 @@ import {
 import {
   ensureGroupAccepting,
   parseClosesOn,
+  parseScheduledAt,
 } from "@/lib/groups/lifecycle";
 import { sendGroupReminder } from "@/lib/email";
 import { env } from "@/lib/env";
@@ -18,7 +19,9 @@ import { logError } from "@/lib/observability/log";
 
 const REMINDER_COOLDOWN_MS = 30 * 60 * 1000;
 
-async function requireBusiness(capability?: "manage_groups") {
+async function requireBusiness(
+  capability?: "create_groups" | "manage_groups",
+) {
   const { requireActionCapability, getDashboardSession } = await import(
     "@/lib/auth/session"
   );
@@ -43,11 +46,14 @@ function normalizeEmail(raw: string | null | undefined): string | null {
 }
 
 export async function createSigningGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const name = String(formData.get("name") ?? "").trim();
   const templateId = String(formData.get("template_id") ?? "").trim();
   const rosterRaw = String(formData.get("roster") ?? "");
   const closesAt = parseClosesOn(String(formData.get("closes_on") ?? ""));
+  const scheduledAt = parseScheduledAt(
+    String(formData.get("scheduled_at") ?? ""),
+  );
 
   if (!name || !templateId) {
     redirect(
@@ -81,6 +87,7 @@ export async function createSigningGroup(formData: FormData) {
       public_token: token,
       status: "open",
       kind: "roster",
+      scheduled_at: scheduledAt,
       closes_at: closesAt,
     })
     .select("id")
@@ -124,7 +131,7 @@ export async function createSigningGroup(formData: FormData) {
  * each arrival enters their name and signs.
  */
 export async function createExpressGroup(formData: FormData) {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const templateId = String(formData.get("template_id") ?? "").trim();
   const nameRaw = String(formData.get("name") ?? "").trim();
   const name = (nameRaw || defaultExpressGroupName()).slice(0, 120);
@@ -197,7 +204,7 @@ export async function addGroupMembers(
   _prevState: AddMembersState,
   formData: FormData,
 ): Promise<AddMembersState> {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const rosterRaw = String(formData.get("roster") ?? "");
   const singleName = String(formData.get("full_name") ?? "").trim();
@@ -251,7 +258,7 @@ export async function addGroupMembers(
 }
 
 export async function updateGroupSettings(formData: FormData) {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const nextCloses = parseClosesOn(String(formData.get("closes_on") ?? ""));
@@ -305,7 +312,7 @@ export async function updateGroupMember(
   _prev: UpdateMemberState,
   formData: FormData,
 ): Promise<UpdateMemberState> {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
@@ -363,7 +370,7 @@ export async function sendGroupReminders(
   _prev: RemindState,
   formData: FormData,
 ): Promise<RemindState> {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
   const force = String(formData.get("force") ?? "") === "1";
@@ -467,7 +474,7 @@ export async function sendGroupReminders(
 }
 
 export async function setGroupStatus(formData: FormData) {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   if (status !== "open" && status !== "closed") {
@@ -546,7 +553,7 @@ export async function unarchiveGroup(formData: FormData) {
 }
 
 export async function deleteGroupMember(formData: FormData) {
-  const { supabase, business } = await requireBusiness("manage_groups");
+  const { supabase, business } = await requireBusiness("create_groups");
   const groupId = String(formData.get("group_id") ?? "").trim();
   const memberId = String(formData.get("member_id") ?? "").trim();
 
