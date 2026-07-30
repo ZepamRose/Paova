@@ -196,10 +196,13 @@ export function MemberRow({
           ) : (
             <>
               {activity.isOnline ? (
-                <span
-                  aria-hidden
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
-                />
+                <span className="relative inline-flex h-1.5 w-1.5 shrink-0">
+                  <span
+                    className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40"
+                    style={{ animationDuration: "2s" }}
+                  />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
               ) : null}
               <span
                 className={
