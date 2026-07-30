@@ -123,15 +123,15 @@ export async function searchSubmissions(
   const groupArgs = groupRpcArgs(n.groupId);
 
   const { data, error } = await client.rpc("search_submissions_for_owner", {
-    p_query: n.q,
-    p_template_id: n.templateId,
-    p_from: n.from,
-    p_to: n.to,
-    p_status: n.status,
+    p_query: n.q ?? undefined,
+    p_template_id: n.templateId ?? undefined,
+    p_from: n.from ?? undefined,
+    p_to: n.to ?? undefined,
+    p_status: n.status ?? undefined,
     p_limit: n.limit,
     p_offset: n.offset,
-    p_group_id: groupArgs.p_group_id,
-    p_group_mode: groupArgs.p_group_mode,
+    p_group_id: groupArgs.p_group_id ?? undefined,
+    p_group_mode: groupArgs.p_group_mode ?? undefined,
     p_business_id: businessId,
   });
 

@@ -221,18 +221,40 @@ export function MemberActionsMenu({
                 </button>
               ) : null}
 
-              {email ? (
+              {email && !showingEmail ? (
                 <button
                   type="button"
                   role="menuitem"
                   className={menuItem}
                   onClick={() => {
-                    setOpen(false);
                     setShowingEmail(true);
                   }}
                 >
-                  {showingEmail ? "Masquer l'adresse e-mail" : "Voir l'adresse e-mail"}
+                  Voir l&apos;adresse e-mail
                 </button>
+              ) : null}
+
+              {email && showingEmail ? (
+                <>
+                  <div className="mx-3 my-2 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface-2)] px-3 py-2">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                      Adresse e-mail
+                    </p>
+                    <p className="mt-1 break-all text-[13px] font-medium text-[var(--color-foreground)]">
+                      {email}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => {
+                      setShowingEmail(false);
+                    }}
+                  >
+                    Masquer l&apos;adresse e-mail
+                  </button>
+                </>
               ) : null}
 
               {email ? (

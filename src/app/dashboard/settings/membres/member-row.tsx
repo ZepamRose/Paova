@@ -17,31 +17,61 @@ function hhmm(d: Date): string {
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
-function formatLastActivity(iso: string | null): string {
-  if (!iso) return "Jamais connecté";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "Jamais connecté";
+/**
+ * Format activity timestamp with presence awareness.
+ * Prefers last_seen_at (heartbeat) over last_sign_in_at when available.
+ */
+function formatLastActivity(
+  lastSeenAt: string | null,
+  lastSignInAt: string | null,
+): { label: string; isOnline: boolean } {
+  // Use the most recent timestamp available
+  const timestamp = lastSeenAt || lastSignInAt;
+  if (!timestamp) return { label: "Jamais connecté", isOnline: false };
+
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime()))
+    return { label: "Jamais connecté", isOnline: false };
 
   const now = new Date();
-  // Compare calendar dates in local time so "today" and "yesterday" match
-  // what the user sees on their clock, not UTC midnight boundaries.
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+
+  // Online: last activity < 5 min ago
+  if (diffMin < 5) return { label: "En ligne", isOnline: true };
+
+  // Recent: 5-60 min
+  if (diffMin < 60)
+    return { label: `Vu il y a ${diffMin} min`, isOnline: false };
+
+  // Compare calendar dates in local time
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffDays = Math.floor(
-    (todayStart.getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) /
+    (todayStart.getTime() -
+      new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) /
       86_400_000,
   );
 
-  if (diffDays <= 0) return `Aujourd'hui à ${hhmm(d)}`;
-  if (diffDays === 1) return `Hier à ${hhmm(d)}`;
-  if (diffDays < 7) return `Il y a ${diffDays} jours`;
-  if (diffDays < 14) return "Il y a une semaine";
-  if (diffDays < 31) return `Il y a ${Math.floor(diffDays / 7)} semaines`;
+  if (diffDays <= 0)
+    return { label: `Aujourd'hui à ${hhmm(d)}`, isOnline: false };
+  if (diffDays === 1) return { label: `Hier à ${hhmm(d)}`, isOnline: false };
+  if (diffDays < 7)
+    return { label: `Il y a ${diffDays} jours`, isOnline: false };
+  if (diffDays < 14) return { label: "Il y a une semaine", isOnline: false };
+  if (diffDays < 31)
+    return {
+      label: `Il y a ${Math.floor(diffDays / 7)} semaines`,
+      isOnline: false,
+    };
 
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: diffDays > 365 ? "numeric" : undefined,
-  }).format(d);
+  return {
+    label: new Intl.DateTimeFormat("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: diffDays > 365 ? "numeric" : undefined,
+    }).format(d),
+    isOnline: false,
+  };
 }
 
 /**
@@ -72,6 +102,7 @@ export function MemberRow({
   name,
   email,
   lastLoginAt,
+  lastSeenAt,
   isSelf,
   canManage,
   canAssignAdmin,
@@ -86,6 +117,7 @@ export function MemberRow({
   name: string | null;
   email: string | null;
   lastLoginAt: string | null;
+  lastSeenAt: string | null;
   isSelf: boolean;
   canManage: boolean;
   canAssignAdmin: boolean;
@@ -116,6 +148,8 @@ export function MemberRow({
   )
     ? (role as RoleId)
     : "employee";
+
+  const activity = formatLastActivity(lastSeenAt, lastLoginAt);
 
   return (
     <motion.tr
@@ -154,10 +188,30 @@ export function MemberRow({
       </td>
 
       <td className={CELL}>
-        <span className="text-[12.5px] text-[var(--color-muted)]">
-          {isInvited
-            ? "Invitation en attente"
-            : formatLastActivity(lastLoginAt)}
+        <span className="flex items-center gap-1.5 text-[12.5px]">
+          {isInvited ? (
+            <span className="text-[var(--color-muted)]">
+              Invitation en attente
+            </span>
+          ) : (
+            <>
+              {activity.isOnline ? (
+                <span
+                  aria-hidden
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                />
+              ) : null}
+              <span
+                className={
+                  activity.isOnline
+                    ? "font-medium text-emerald-600 dark:text-emerald-400"
+                    : "text-[var(--color-muted)]"
+                }
+              >
+                {activity.label}
+              </span>
+            </>
+          )}
         </span>
       </td>
 

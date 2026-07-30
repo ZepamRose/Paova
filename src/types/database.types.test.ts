@@ -70,8 +70,8 @@ describe("database types stay in sync with migrations", () => {
       "dashboard_group_stats",
       "dashboard_signature_days",
       "template_proof_version_counts",
-      "business_member_emails",
       "business_member_directory",
+      "update_member_activity",
     ];
     const declared = declaredFunctions(sql);
 
@@ -81,7 +81,7 @@ describe("database types stay in sync with migrations", () => {
         `${rpc} is called from the app but never created in a migration`,
       );
       assert.ok(
-        new RegExp(`\\b${rpc}:\\s*\\{`).test(types),
+        new RegExp(`\\b${rpc}:\\s*(?:\\{|\\|)`).test(types),
         `${rpc} exists in SQL but is missing from the Functions block of database.types.ts`,
       );
     }

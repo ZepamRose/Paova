@@ -8,6 +8,7 @@ import { InviteMemberForm } from "./invite-member-form";
 import { MemberRow } from "./member-row";
 import { MembersStatusBanner } from "./members-status-banner";
 import { RoleGuide } from "./roles";
+import { MembersActivityHeartbeat } from "./members-activity-heartbeat";
 
 const ERROR_COPY: Record<string, string> = {
   invalid: "Requête invalide.",
@@ -68,6 +69,7 @@ export default async function MembersPage({
             email: string | null;
             full_name: string | null;
             last_sign_in_at: string | null;
+            last_seen_at: string | null;
           }[],
         };
 
@@ -88,6 +90,8 @@ export default async function MembersPage({
 
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-5 py-8 pb-20 sm:gap-7 sm:px-6 sm:py-10 sm:pb-24">
+      <MembersActivityHeartbeat businessId={membership.businessId} />
+
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-brand)_11%,transparent),transparent_62%)]"
@@ -206,6 +210,7 @@ export default async function MembersPage({
                               : null
                           }
                           lastLoginAt={lastLoginAt}
+                          lastSeenAt={dir?.last_seen_at ?? null}
                           isSelf={m.user_id === user.id}
                           canManage={canManage}
                           canAssignAdmin={canAssignAdmin}
