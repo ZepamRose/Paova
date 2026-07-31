@@ -6,8 +6,8 @@ function Spinner({ className = "" }: { className?: string }) {
   return (
     <svg
       className={`animate-spin ${className}`}
-      width="14"
-      height="14"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
@@ -54,7 +54,7 @@ export function PendingSubmitButton({
       style={style}
     >
       {pending ? (
-        <span className="inline-flex items-center justify-center gap-1.5">
+        <span className="inline-flex items-center justify-center gap-2">
           <Spinner />
           <span className="whitespace-nowrap">{pendingLabel}</span>
         </span>

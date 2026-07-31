@@ -80,9 +80,9 @@ export function DashboardGroupsSection({
   }, [page, safePage]);
 
   const groupCard =
-    "relative overflow-hidden border border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3.5%,var(--color-surface))] shadow-[var(--elev-3)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_10%,transparent)]";
-  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_5.5%,var(--color-surface))] hover:shadow-[var(--elev-hover)]`;
-  const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
+    "relative overflow-hidden border border-[color-mix(in_srgb,var(--color-brand)_22%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] shadow-[var(--elev-3)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)]";
+  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[1.5px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] hover:shadow-[var(--elev-hover)]`;
+  const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.98]`;
 
   return (
     <section
@@ -136,7 +136,7 @@ export function DashboardGroupsSection({
           </p>
           <Link
             href="/dashboard/waivers/new"
-            className="mt-3 inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-medium text-[var(--color-on-brand)] transition-[transform,filter] duration-[220ms] hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            className="mt-3 inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-medium tracking-[-0.01em] text-[var(--color-on-brand)] transition-[transform,filter] duration-[150ms] hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
           >
             Créer un formulaire
           </Link>
@@ -271,7 +271,7 @@ export function DashboardGroupsSection({
                       {/* Progress well — collective tracking signal */}
                       <Link
                         href={`/dashboard/groupes/${g.id}`}
-                        className="block rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_7%,var(--color-surface))] px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[background-color,ring-color] duration-[220ms] hover:bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                        className="block rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[background-color,ring-color] duration-[150ms] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                       >
                         <GroupProgressBar
                           variant="dashboard"

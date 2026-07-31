@@ -4,11 +4,11 @@ import {
 } from "@/lib/templates";
 
 const STYLES: Record<TemplateStatus, string> = {
-  open: "bg-[color-mix(in_srgb,var(--color-brand)_14%,var(--color-surface))] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_26%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_8%,transparent)]",
+  open: "bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_22%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-brand)_8%,transparent)]",
   inactive:
-    "bg-[color-mix(in_srgb,var(--color-foreground)_5%,var(--color-surface))] text-[color-mix(in_srgb,var(--color-foreground)_62%,var(--color-muted))] ring-1 ring-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))]",
+    "bg-[color-mix(in_srgb,var(--color-foreground)_6%,var(--color-surface))] text-[color-mix(in_srgb,var(--color-foreground)_62%,var(--color-muted))] ring-1 ring-[color-mix(in_srgb,var(--color-border)_70%,transparent)]",
   expired:
-    "bg-[color-mix(in_srgb,#b45309_14%,var(--color-surface))] text-[color-mix(in_srgb,#92400e_92%,var(--color-foreground))] ring-1 ring-[color-mix(in_srgb,#b45309_32%,transparent)] dark:bg-[color-mix(in_srgb,#fbbf24_12%,var(--color-surface))] dark:text-[color-mix(in_srgb,#fbbf24_88%,var(--color-muted))] dark:ring-[color-mix(in_srgb,#fbbf24_30%,transparent)]",
+    "bg-[color-mix(in_srgb,#b45309_12%,var(--color-surface))] text-[color-mix(in_srgb,#92400e_92%,var(--color-foreground))] ring-1 ring-[color-mix(in_srgb,#b45309_28%,transparent)] dark:bg-[color-mix(in_srgb,#fbbf24_12%,var(--color-surface))] dark:text-[color-mix(in_srgb,#fbbf24_88%,var(--color-muted))] dark:ring-[color-mix(in_srgb,#fbbf24_28%,transparent)]",
   archived:
     "bg-[color-mix(in_srgb,var(--color-surface-2)_88%,var(--color-surface))] text-[var(--color-muted)] ring-1 ring-[color-mix(in_srgb,var(--color-border)_70%,transparent)]",
 };
@@ -24,7 +24,7 @@ function StatusIcon({ status }: { status: TemplateStatus }) {
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     "aria-hidden": true as const,
-    className: "opacity-80",
+    className: "opacity-85",
   };
 
   switch (status) {
@@ -74,7 +74,7 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold leading-4 tracking-[0.02em] ${STYLES[status]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.01em] ${STYLES[status]} ${className}`}
     >
       {showDot ? <StatusIcon status={status} /> : null}
       {TEMPLATE_STATUS_LABELS[status]}
@@ -86,7 +86,7 @@ export function StatusBadge({
 export function OutsideHoursBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-4 tracking-tight text-[var(--color-muted)] ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10.5px] font-medium leading-none tracking-tight text-[var(--color-muted)] ${className}`}
     >
       <svg
         width="10"
@@ -98,7 +98,7 @@ export function OutsideHoursBadge({ className = "" }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden
-        className="opacity-60"
+        className="opacity-70"
       >
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />

@@ -115,15 +115,15 @@ export function DashboardWaiversSection({
   }, [page, safePage]);
 
   const waiverCard =
-    "border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04]";
+    "border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04]";
   /**
    * The whole card is the target now, so the hover state has to say so: a
    * clearer green edge plus the lift. Paired with the stretched link below,
    * which is what actually makes the surface clickable.
    */
-  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[2px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:shadow-[var(--elev-hover)] has-[a:focus-visible]:border-[color-mix(in_srgb,var(--color-brand)_55%,var(--color-border))]`;
-  const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.985]`;
-  const restoreBtn = `inline-flex h-11 items-center rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-medium text-[var(--color-on-brand)] sm:h-8 sm:rounded-lg sm:px-3 ${primaryBtn}`;
+  const cardHover = `cursor-pointer transition-[transform,box-shadow,border-color,background-color] ${motionCls} hover:-translate-y-[1.5px] hover:border-[color-mix(in_srgb,var(--color-brand)_45%,var(--color-border))] hover:shadow-[var(--elev-hover)] has-[a:focus-visible]:border-[color-mix(in_srgb,var(--color-brand)_55%,var(--color-border))]`;
+  const primaryBtn = `shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,box-shadow,filter] ${motionCls} hover:-translate-y-px hover:brightness-[1.04] hover:shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_20px_-8px_color-mix(in_srgb,var(--color-brand)_48%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.98]`;
+  const restoreBtn = `inline-flex h-11 items-center rounded-xl bg-[var(--color-brand)] px-3.5 text-[13.5px] font-medium tracking-[-0.01em] text-[var(--color-on-brand)] sm:h-8 sm:rounded-lg sm:px-3 ${primaryBtn}`;
 
   return (
     <section
