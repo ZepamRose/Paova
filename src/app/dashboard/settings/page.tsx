@@ -35,7 +35,7 @@ export default async function SettingsPage({
 
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-5 px-5 py-7 sm:gap-5 sm:px-6 sm:py-8">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-5 py-7 sm:gap-6 sm:px-8 sm:py-9 lg:px-10">
       <header className="flex flex-col gap-1.5">
         <Link
           href="/dashboard"

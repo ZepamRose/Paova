@@ -34,8 +34,8 @@ export const ROLES: Record<
     scope: "Accès complet",
     icon: ShieldCheck,
     badge:
-      "bg-emerald-500/12 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300",
-    dot: "bg-emerald-500",
+      "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-700/30 dark:bg-emerald-500/12 dark:text-emerald-300 dark:ring-emerald-500/25",
+    dot: "bg-emerald-700 dark:bg-emerald-500",
     can: [
       "Gère l'équipe et les rôles",
       "Crée, modifie et supprime tout",
@@ -48,8 +48,9 @@ export const ROLES: Record<
     summary: "Gère l'équipe et les formulaires",
     scope: "Gestion avancée",
     icon: Users,
-    badge: "bg-blue-500/12 text-blue-700 ring-blue-500/25 dark:text-blue-300",
-    dot: "bg-blue-500",
+    badge:
+      "bg-blue-100 text-blue-800 ring-1 ring-blue-700/30 dark:bg-blue-500/12 dark:text-blue-300 dark:ring-blue-500/25",
+    dot: "bg-blue-700 dark:bg-blue-500",
     can: [
       "Crée et modifie formulaires et sessions",
       "Invite des membres et change les rôles",
@@ -63,8 +64,8 @@ export const ROLES: Record<
     scope: "Accès limité",
     icon: Eye,
     badge:
-      "bg-violet-500/12 text-violet-700 ring-violet-500/25 dark:text-violet-300",
-    dot: "bg-violet-500",
+      "bg-purple-100 text-purple-800 ring-1 ring-purple-700/30 dark:bg-violet-500/12 dark:text-violet-300 dark:ring-violet-500/25",
+    dot: "bg-purple-700 dark:bg-violet-500",
     can: [
       "Fait signer les clients",
       "Prépare une session planifiée à partir d'un formulaire existant",

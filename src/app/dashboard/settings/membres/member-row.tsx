@@ -79,10 +79,11 @@ function formatLastActivity(
  */
 const AVATAR_TONE: Record<RoleId, string> = {
   owner:
-    "bg-emerald-500/14 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300",
-  admin: "bg-blue-500/14 text-blue-700 ring-blue-500/25 dark:text-blue-300",
+    "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-700/30 dark:bg-emerald-500/14 dark:text-emerald-300 dark:ring-emerald-500/25",
+  admin:
+    "bg-blue-100 text-blue-800 ring-1 ring-blue-700/30 dark:bg-blue-500/14 dark:text-blue-300 dark:ring-blue-500/25",
   employee:
-    "bg-violet-500/14 text-violet-700 ring-violet-500/25 dark:text-violet-300",
+    "bg-purple-100 text-purple-800 ring-1 ring-purple-700/30 dark:bg-violet-500/14 dark:text-violet-300 dark:ring-violet-500/25",
 };
 
 const CELL = "px-3 py-[7px] align-middle sm:px-4";

@@ -140,6 +140,11 @@ export default async function GroupeDetailPage({
     margin: 1,
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
+  const qrDataUrlA4 = await QRCode.toDataURL(publicUrl, {
+    width: 1200,
+    margin: 2,
+    color: { dark: "#0a0a0a", light: "#ffffff" },
+  });
 
   const statusLabel =
     status === "archived"
@@ -149,7 +154,7 @@ export default async function GroupeDetailPage({
         : "Fermé";
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-5 px-5 py-8 sm:gap-5 sm:px-6 sm:py-9">
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 px-5 py-8 sm:gap-6 sm:px-8 sm:py-10 lg:px-10">
       <header className="flex flex-col gap-3">
         <Link
           href="/dashboard/groupes"
@@ -311,7 +316,9 @@ export default async function GroupeDetailPage({
               <span className={labelCaps}>QR code</span>
               <QrPreview
                 dataUrl={qrDataUrl}
+                dataUrlA4={qrDataUrlA4}
                 filename={`groupe-${group.public_token}.png`}
+                filenameA4={`groupe-${group.public_token}-a4.png`}
                 downloadClassName={`${btnSecondary} h-9 w-full justify-center text-[13px]`}
               />
             </div>

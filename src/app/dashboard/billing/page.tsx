@@ -86,7 +86,7 @@ export default async function BillingPage({
   const nearLimit = !pro && usedThisMonth >= FREE_MONTHLY_LIMIT * 0.8;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-7 px-5 py-7 sm:gap-8 sm:px-6 sm:py-9">
+    <main className="mx-auto flex min-h-screen max-w-dashboard flex-col gap-7 px-5 py-7 sm:gap-8 sm:px-8 sm:py-9 lg:px-10">
       <header className="flex flex-col gap-3">
         <Link
           href="/dashboard"

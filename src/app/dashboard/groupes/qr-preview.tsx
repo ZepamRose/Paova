@@ -11,11 +11,15 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 /** Same click-to-zoom QR pattern as the décharge detail page, adapted for groups. */
 export function QrPreview({
   dataUrl,
+  dataUrlA4,
   filename,
+  filenameA4,
   downloadClassName,
 }: {
   dataUrl: string;
+  dataUrlA4?: string;
   filename: string;
+  filenameA4?: string;
   downloadClassName: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -82,6 +86,43 @@ export function QrPreview({
         className={downloadClassName}
       />
 
+      {dataUrlA4 && filenameA4 ? (
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const a = document.createElement("a");
+              a.href = dataUrlA4;
+              a.download = filenameA4;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            } catch (error) {
+              console.error("Failed to download A4 QR code:", error);
+            }
+          }}
+          className={`${downloadClassName} gap-1.5 border-dashed`}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M12 18v-6" />
+            <path d="m9 15 3 3 3-3" />
+          </svg>
+          Format A4
+        </button>
+      ) : null}
+
       {mounted
         ? createPortal(
             <AnimatePresence>
@@ -144,12 +185,48 @@ export function QrPreview({
                       />
                     </div>
 
-                    <div className="mt-5 flex justify-center">
+                    <div className="mt-5 flex flex-col gap-2">
                       <QrDownloadButton
                         dataUrl={dataUrl}
                         filename={filename}
                         className={downloadClassName}
                       />
+                      {dataUrlA4 && filenameA4 ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const a = document.createElement("a");
+                              a.href = dataUrlA4;
+                              a.download = filenameA4;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                            } catch (error) {
+                              console.error("Failed to download A4 QR code:", error);
+                            }
+                          }}
+                          className={`${downloadClassName} gap-1.5 border-dashed`}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <path d="M14 2v6h6" />
+                            <path d="M12 18v-6" />
+                            <path d="m9 15 3 3 3-3" />
+                          </svg>
+                          Format A4 (impression)
+                        </button>
+                      ) : null}
                     </div>
                   </motion.div>
                 </motion.div>

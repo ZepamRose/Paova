@@ -69,7 +69,7 @@ export default async function GroupesPage({
     "duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]";
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-5 py-10 sm:px-6 sm:py-12">
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-5 py-10 sm:px-8 sm:py-12 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link

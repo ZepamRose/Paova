@@ -446,6 +446,11 @@ export default async function WaiverDetailPage({
     margin: 1,
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
+  const qrDataUrlA4 = await QRCode.toDataURL(publicUrl, {
+    width: 1200,
+    margin: 2,
+    color: { dark: "#0a0a0a", light: "#ffffff" },
+  });
 
   const lastSignedAt = latestSubmission?.signed_at ?? null;
   const activity = deriveTemplateActivity(auditEvents ?? []);
@@ -728,7 +733,9 @@ export default async function WaiverDetailPage({
               <QrPreview
                 templateId={template.id}
                 dataUrl={qrDataUrl}
+                dataUrlA4={qrDataUrlA4}
                 filename={`qr-${template.public_slug}.png`}
+                filenameA4={`qr-${template.public_slug}-a4.png`}
                 downloadClassName={`${btnSecondary} h-9 w-full justify-center text-[13px]`}
               />
             </div>

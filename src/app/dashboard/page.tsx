@@ -1,14 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Settings, Users } from "lucide-react";
 import { env } from "@/lib/env";
 import { isPro, currentMonthStartISO } from "@/lib/plan";
 import { getDashboardSession } from "@/lib/auth/session";
 import { listActiveMemberships } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { formatRelativeFr } from "@/lib/dates";
-import { BrandLogo } from "@/components/brand-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   effectiveTemplateStatus,
   isTemplateStatus,
@@ -16,9 +12,7 @@ import {
 import type { DashboardAttentionItem } from "@/lib/dashboard/types";
 import { DashboardHome } from "./dashboard-home";
 import { DashboardBusinessHero } from "./dashboard-business-hero";
-import { DashboardCreateControl } from "./dashboard-create-control";
-import { BusinessSwitcher } from "./business-switcher";
-import { DashboardMobileMenu } from "./dashboard-mobile-menu";
+import { DashboardHeader } from "./dashboard-header";
 
 
 export default async function DashboardPage() {
@@ -234,111 +228,28 @@ export default async function DashboardPage() {
   const lastActivityRelative = formatRelativeFr(lastActivityIso);
 
   const appUrl = env.appUrl;
-  const motion =
-    "duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]";
-  const utilityItem = `inline-flex h-8 items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-surface-2))] px-2.5 text-[12.5px] font-medium tracking-tight text-[var(--color-foreground)]/75 shadow-[var(--elev-1)] transition-[color,background-color,border-color,box-shadow] ${motion} hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`;
 
   const signatureCountRecord = Object.fromEntries(signatureCountByTemplate);
   const lastSignedRecord = Object.fromEntries(lastSignedByTemplate);
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-5 px-4 py-4 sm:gap-5 sm:px-6 sm:py-8">
+    <main className="relative mx-auto flex min-h-screen max-w-dashboard flex-col gap-5 px-5 py-5 sm:gap-6 sm:px-8 sm:py-9 lg:px-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(80%_60%_at_50%_-10%,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(75%_55%_at_50%_-8%,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent)]"
       />
 
-      <header className="flex min-w-0 items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-border)_32%,transparent)] pb-3 sm:gap-4 sm:pb-2.5">
-        <BrandLogo href="/dashboard" size="sm" />
-
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
-            <BusinessSwitcher
-              currentBusinessId={membership.businessId}
-              options={switcherOptions}
-            />
-          <nav aria-label="Compte" className="flex items-center gap-1">
-            {/* Ouvert à tous les membres : la page est en lecture seule pour
-                qui ne peut pas administrer. */}
-            <Link
-              href="/dashboard/settings/membres"
-              className={utilityItem}
-              aria-label="Accès & rôles"
-            >
-              <Users
-                size={14}
-                strokeWidth={1.85}
-                className="text-[var(--color-muted)]"
-                aria-hidden
-              />
-              <span className="hidden sm:inline">{"Accès & rôles"}</span>
-            </Link>
-            {canEditBusiness ? (
-              <Link
-                href="/dashboard/settings"
-                className={utilityItem}
-                aria-label="Réglages"
-              >
-                <Settings
-                  size={14}
-                  strokeWidth={1.85}
-                  className="text-[var(--color-muted)]"
-                  aria-hidden
-                />
-                <span className="hidden sm:inline">Réglages</span>
-              </Link>
-            ) : null}
-            {/* Facturation retirée de la navigation pendant la bêta. La route
-                /dashboard/billing et ses permissions restent intactes. */}
-            <ThemeToggle variant="ghost" />
-          </nav>
-
-          <span
-            className="mx-0.5 hidden h-4 w-px bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] sm:block"
-            aria-hidden
-          />
-
-          {canManageWaivers || canCreateGroups ? (
-            <DashboardCreateControl
-              canManageWaivers={canManageWaivers}
-              canCreateGroups={canCreateGroups}
-              canCreateGroup={
-                canCreateGroups && activeTemplatesList.length > 0
-              }
-            />
-          ) : null}
-
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className={`px-1.5 text-[12px] text-[var(--color-muted)]/70 transition-colors ${motion} hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
-            >
-              {"Déconnexion"}
-            </button>
-          </form>
-          </div>
-
-          <div className="flex items-center gap-2 sm:hidden">
-            {canManageWaivers || canCreateGroups ? (
-              <DashboardCreateControl
-                canManageWaivers={canManageWaivers}
-                canCreateGroups={canCreateGroups}
-                canCreateGroup={
-                  canCreateGroups && activeTemplatesList.length > 0
-                }
-              />
-            ) : null}
-            <DashboardMobileMenu
-              currentBusinessId={membership.businessId}
-              businesses={switcherOptions}
-              businessName={business.name}
-              role={membership.role}
-              canManageMembers={true}
-              canEditBusiness={canEditBusiness}
-            />
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        currentBusinessId={membership.businessId}
+        businessName={business.name}
+        businesses={switcherOptions}
+        role={membership.role}
+        viewerName={viewerName}
+        canEditBusiness={canEditBusiness}
+        canManageWaivers={canManageWaivers}
+        canCreateGroups={canCreateGroups}
+        canCreateGroup={canCreateGroups && activeTemplatesList.length > 0}
+      />
 
       <DashboardBusinessHero
         name={business.name}

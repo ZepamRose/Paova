@@ -127,12 +127,12 @@ export function DashboardWaiversSection({
 
   return (
     <section
-      className="flex flex-col gap-4 sm:gap-5"
+      className="flex flex-col gap-5 sm:gap-6"
       aria-labelledby="dashboard-waivers-heading"
     >
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span
               className="flex h-5 w-5 items-center justify-center text-[var(--color-muted)]"
               aria-hidden
@@ -141,7 +141,7 @@ export function DashboardWaiversSection({
             </span>
             <h2
               id="dashboard-waivers-heading"
-              className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.1rem]"
+              className="text-[1.08rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.15rem]"
             >
               {showArchived ? "Formulaires archivés" : "Vos formulaires"}
               {rows.length > 0 ? (

@@ -1,5 +1,6 @@
 import { getDashboardSession } from "@/lib/auth/session";
 import { DashboardActivityHeartbeat } from "./dashboard-activity-heartbeat";
+import { CommandPaletteWrapper } from "@/components/command-palette-wrapper";
 
 /**
  * Ensures every dashboard request claims pending invites and resolves a
@@ -15,6 +16,7 @@ export default async function DashboardLayout({
   return (
     <>
       <DashboardActivityHeartbeat />
+      <CommandPaletteWrapper />
       {children}
     </>
   );

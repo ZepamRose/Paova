@@ -89,7 +89,7 @@ export default async function MembersPage({
     success && WARNING_COPY[success] ? "warning" : "success";
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-5 py-8 pb-20 sm:gap-7 sm:px-6 sm:py-10 sm:pb-24">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-5 py-8 pb-20 sm:gap-7 sm:px-8 sm:py-10 sm:pb-24 lg:px-10">
       <MembersLiveRefresh businessId={membership.businessId} />
 
       <div

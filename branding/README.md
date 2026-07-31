@@ -198,6 +198,41 @@ proportion, regénérer depuis `fonts/Newsreader[opsz,wght].ttf` avec les valeur
 ci-dessus plutôt que déplacer des tracés à la main. Le symbole ne doit jamais
 être édité dans le logotype : éditer `paova-mark.svg` et regénérer.
 
+## Email Magic Link — Configuration Supabase
+
+Le template `email-magic-link.supabase.html` est un modèle documentaire pour le Magic Link envoyé par Supabase Auth.
+
+### Configuration requise
+
+**IMPORTANT** : Ce fichier n'est jamais utilisé directement par l'application. Il doit être configuré manuellement dans le tableau de bord Supabase.
+
+1. Aller dans **Supabase Dashboard → Authentication → Email Templates → Magic Link**
+2. Copier le contenu de `branding/email-magic-link.supabase.html`
+3. Coller dans l'éditeur Supabase
+4. Sauvegarder
+
+### Logo dans l'email
+
+Le template utilise le logotype PNG hébergé à `https://paova.app/brand/paova-logotype@2x.png`.
+
+**Pourquoi PNG et non SVG ?** Les clients email (Gmail, Outlook, Apple Mail) bloquent les SVG inline pour des raisons de sécurité. Le PNG garantit la compatibilité maximale.
+
+Le fichier source est `public/brand/paova-logotype@2x.png` (720×206px, copié depuis `branding/exports/paova-logotype@2x.png`). Next.js le sert automatiquement à `/brand/paova-logotype@2x.png` en production.
+
+### Modifications apportées
+
+**Problèmes résolus :**
+- Logo ne s'affichait pas dans Gmail/Outlook (SVG inline → PNG hébergé)
+- Lien technique Supabase visible (supprimé, remplacé par message de contact support)
+
+**Améliorations premium :**
+- Logotype officiel dans le header
+- Subtitle "BIENVENUE SUR PAOVA"
+- Bouton avec coins arrondis (14px) et ombre emerald
+- Icône shield SVG dans le bloc Sécurité
+- Footer avec contact@paova.app
+- Espacements équilibrés pour composition premium
+
 ## `paova-mark.svg` — symbole
 
 Géométrie **validée et figée**. Les deux contours `#pbowl` et `#pstem` sont

@@ -63,14 +63,14 @@ export function DashboardHome({
   const canCreateGroup = active.length > 0;
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-5">
+    <div className="flex flex-col gap-6 sm:gap-6">
       {!q ? (
         <DashboardAttention items={attentionItems} />
       ) : null}
 
       <DashboardEntrance
         step={2}
-        className="flex flex-col gap-2.5 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_22%,var(--color-background))] p-2.5 sm:p-3"
+        className="flex flex-col gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_22%,var(--color-background))] p-3 sm:p-3.5 lg:p-4"
       >
         {/* Search alone. The Actives/Archivées switch is gone — archives now
             live behind the header tile, so this list only ever shows live
@@ -88,7 +88,7 @@ export function DashboardHome({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un formulaire ou une session…"
-              className="h-[42px] w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)] py-2 pl-9 pr-9 text-[13.5px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--color-muted)]/70 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+              className="h-[44px] w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)] py-2 pl-9 pr-9 text-[14px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--color-muted)]/70 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
               aria-label="Rechercher"
             />
             {query ? (

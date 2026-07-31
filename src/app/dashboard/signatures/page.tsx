@@ -121,7 +121,7 @@ export default async function SignaturesSearchPage({
   }
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-2.5 px-5 py-5 sm:gap-3 sm:px-6 sm:py-6">
+    <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-3 px-5 py-6 sm:gap-4 sm:px-8 sm:py-7 lg:px-10">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent_72%)]"
         aria-hidden

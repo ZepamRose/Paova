@@ -9,7 +9,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 /** Instant feedback while dashboard pages load on the server. */
 export default function DashboardLoading() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex min-h-screen max-w-dashboard flex-col gap-8 px-8 py-12">
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
         <Skeleton className="h-7 w-28" />
         <div className="flex gap-2">

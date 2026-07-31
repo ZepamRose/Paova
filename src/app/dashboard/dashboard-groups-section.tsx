@@ -86,12 +86,12 @@ export function DashboardGroupsSection({
 
   return (
     <section
-      className="flex flex-col gap-4 sm:gap-5"
+      className="flex flex-col gap-5 sm:gap-6"
       aria-labelledby="dashboard-groups-heading"
     >
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span
               className="flex h-6 w-6 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]"
               aria-hidden
@@ -100,7 +100,7 @@ export function DashboardGroupsSection({
             </span>
             <h2
               id="dashboard-groups-heading"
-              className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.1rem]"
+              className="text-[1.08rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.15rem]"
             >
               {showArchived
                 ? "Sessions planifiées archivées"

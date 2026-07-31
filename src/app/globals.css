@@ -15,6 +15,12 @@
   --color-on-brand: #ffffff;
   --font-sans: var(--font-paova), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Premium dashboard layout widths — inspired by Linear & Vercel.
+     Progressive scale for different content types, optimized for
+     13", 15/16", 24", and 27" displays. */
+  --width-dashboard: 1360px;   /* Main dashboard: generous, breathing room */
+  --width-dashboard-wide: 1440px;  /* Extra-wide variant for data-heavy views */
 }
 
 :root {
@@ -309,6 +315,15 @@ body[data-navigating="true"] a {
   border-color: var(--color-brand);
   background: var(--color-surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+/* Premium dashboard layout utilities */
+.max-w-dashboard {
+  max-width: var(--width-dashboard);
+}
+
+.max-w-dashboard-wide {
+  max-width: var(--width-dashboard-wide);
 }
 
 @media (prefers-reduced-motion: reduce) {

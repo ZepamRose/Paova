@@ -94,7 +94,7 @@ export default async function ArchivesPage() {
   const isEmpty = archivedWaivers.length === 0 && archivedGroups.length === 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
       <header className="flex flex-col gap-3">
         <Link
           href="/dashboard"
