@@ -148,8 +148,8 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
         }}
       />
 
-      <div className="relative flex flex-col gap-3.5 p-4 sm:p-4.5 lg:p-5">
-        <DashboardEntrance step={0} className="flex flex-col gap-3">
+      <div className="relative flex flex-col gap-4 p-4 sm:p-4.5 lg:p-5">
+        <DashboardEntrance step={0} className="flex flex-col gap-4">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-0.5">
@@ -176,18 +176,54 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
             </div>
           </div>
 
-          {/* Metrics */}
+          {/* Primary message — cerveau comprend AVANT les chiffres */}
+          {actionMessage ? (
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: -3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
+            >
+              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
+                {actionMessage}
+              </p>
+            </motion.div>
+          ) : totalActivities === 0 ? (
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: -3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
+            >
+              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
+                Aucune activité prévue aujourd&apos;hui.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: -3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
+            >
+              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
+                Tout est prêt pour aujourd&apos;hui.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Metrics — secondaires */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
             <motion.div
               initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.10, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
             >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
                 Activités
               </span>
-              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
                 {totalActivities}
               </span>
             </motion.div>
@@ -195,13 +231,13 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
             <motion.div
               initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.07, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.13, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
             >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
                 Personnes
               </span>
-              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
                 {totalPeople}
               </span>
             </motion.div>
@@ -209,13 +245,13 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
             <motion.div
               initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.10, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.16, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
             >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
-                Validées
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
+                Signées
               </span>
-              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
                 {totalSigned}
               </span>
             </motion.div>
@@ -223,37 +259,25 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
             <motion.div
               initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.13, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.19, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
             >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
-                Restantes
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
+                À signer
               </span>
               <span
-                className={`text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] ${
+                className={`text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] ${
                   totalPending > 0
                     ? status.state === "urgent"
                       ? "text-[#ef4444]"
                       : "text-[#f59e0b]"
-                    : "text-[var(--color-foreground)]"
+                    : "text-[var(--color-foreground)]/90"
                 }`}
               >
                 {totalPending}
               </span>
             </motion.div>
           </div>
-
-          {/* Action message */}
-          {actionMessage ? (
-            <motion.p
-              initial={reduced ? false : { opacity: 0, y: -3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.16, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="rounded-lg bg-[var(--color-surface-2)]/45 px-3 py-2 text-[12.5px] leading-snug text-[var(--color-foreground)]/80"
-            >
-              {actionMessage}
-            </motion.p>
-          ) : null}
         </DashboardEntrance>
       </div>
     </section>

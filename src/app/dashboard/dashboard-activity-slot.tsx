@@ -58,15 +58,15 @@ export function DashboardHero({ groups }: { groups: DashboardGroupRow[] }) {
     status = "urgent";
     const plural = urgentSessions.length > 1;
     message = `${plural ? "Des sessions se terminent" : "Une session se termine"} dans moins de 30 minutes`;
-    submessage = `${totalPending} validation${totalPending > 1 ? "s" : ""} encore nécessaire${totalPending > 1 ? "s" : ""} avant la fin.`;
+    submessage = `${totalPending} signature${totalPending > 1 ? "s" : ""} encore nécessaire${totalPending > 1 ? "s" : ""} avant la fin.`;
   } else if (totalPending > 0) {
     status = "attention";
     const sessionPlural = sessionsWithPending.length > 1;
-    message = `${totalPending} validation${totalPending > 1 ? "s restent" : " reste"} en attente`;
+    message = `${totalPending} signature${totalPending > 1 ? "s restent" : " reste"} en attente`;
     submessage = `${sessionsWithPending.length} session${sessionPlural ? "s nécessitent" : " nécessite"} votre intervention.`;
   } else if (activeSessions.length > 0) {
     status = "complete";
-    message = "Toutes les validations sont réunies";
+    message = "Toutes les signatures sont réunies";
     submessage = `${activeSessions.length} session${activeSessions.length > 1 ? "s actives" : " active"} — tout est prêt.`;
   } else {
     status = "calm";
@@ -180,40 +180,40 @@ export function DashboardAttention({
   if (items.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-2" aria-label="À traiter">
+    <section className="flex flex-col gap-2.5" aria-label="À traiter">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-[var(--color-muted)]/70">
+        <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-[var(--color-muted)]">
           À traiter
         </p>
-        <p className="text-[11px] font-semibold tabular-nums text-[var(--color-muted)]/65">
+        <p className="text-[11.5px] font-bold tabular-nums text-[var(--color-muted)]/75">
           {items.length}
         </p>
       </div>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col gap-2">
         {items.map((item) => {
           const Icon = ICON[item.kind];
           return (
             <li key={item.id}>
               <Link
                 href={item.href}
-                className="group flex items-center gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-3 py-2.5 shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                className="group flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_75%,transparent)] bg-[var(--color-surface)] px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.02] transition-[transform,box-shadow,border-color,background-color] duration-[160ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-surface)_98%,var(--color-brand))] hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] hover:ring-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] dark:ring-white/[0.03] dark:hover:ring-white/[0.06]"
               >
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${ICON_STYLE[item.kind]}`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${ICON_STYLE[item.kind]}`}
                 >
-                  <Icon size={13} strokeWidth={2} aria-hidden />
+                  <Icon size={14} strokeWidth={2.2} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                  <span className="block truncate text-[13.5px] font-bold leading-tight tracking-tight text-[var(--color-foreground)]">
                     {item.title}
                   </span>
-                  <span className="block truncate text-[11px] leading-snug text-[var(--color-muted)]/80">
+                  <span className="block truncate text-[12px] leading-snug text-[var(--color-muted)]">
                     {item.meta}
                   </span>
                 </span>
                 <span
                   aria-hidden
-                  className="shrink-0 text-[var(--color-muted)]/40 transition-[color,transform] duration-[140ms] group-hover:translate-x-0.5 group-hover:text-[var(--color-brand)]"
+                  className="shrink-0 text-[var(--color-muted)]/35 transition-[color,transform] duration-[160ms] group-hover:translate-x-0.5 group-hover:text-[var(--color-brand)]"
                 >
                   →
                 </span>

@@ -278,6 +278,7 @@ export function DashboardHeader({
               ? "bg-[color-mix(in_srgb,var(--color-brand)_9%,transparent)] text-[var(--color-brand)] border border-[color-mix(in_srgb,var(--color-brand)_20%,transparent)]"
               : "text-[var(--color-foreground)]/68 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] border border-transparent"
           }`}
+          aria-current={isSessionsActive ? "page" : undefined}
         >
           <CalendarClock size={15} strokeWidth={1.85} aria-hidden />
           Sessions
@@ -290,6 +291,7 @@ export function DashboardHeader({
               ? "bg-[color-mix(in_srgb,var(--color-brand)_9%,transparent)] text-[var(--color-brand)] border border-[color-mix(in_srgb,var(--color-brand)_20%,transparent)]"
               : "text-[var(--color-foreground)]/68 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] border border-transparent"
           }`}
+          aria-current={isTemplatesActive ? "page" : undefined}
         >
           <FileText size={15} strokeWidth={1.85} aria-hidden />
           Modèles

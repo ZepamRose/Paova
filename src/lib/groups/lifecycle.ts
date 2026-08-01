@@ -34,14 +34,43 @@ export function parseClosesOn(raw: string | null | undefined): string | null {
  *
  * The browser hands back wall-clock time with no zone ("2025-10-14T09:30"),
  * which is exactly what the organiser means — 09:30 where the group turns up.
- * `new Date()` reads that as local time, so the stored instant matches what
- * was typed for anyone in the same zone as the business.
+ *
+ * CRITICAL: We must parse this as LOCAL time, not UTC.
+ * `new Date("2025-10-14T09:30")` interprets it as UTC, which shifts the time
+ * by the timezone offset. Instead, we parse the components and construct the
+ * Date object explicitly in local time.
+ *
+ * UPDATE: The client now sends a full ISO timestamp with timezone info,
+ * so we can just parse it directly. If it's still in the old format (no timezone),
+ * we fall back to the old parsing logic for backward compatibility.
  */
 export function parseScheduledAt(raw: string | null | undefined): string | null {
   const value = (raw ?? "").trim();
   if (!value) return null;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
-  const d = new Date(value);
+
+  // If the value already contains timezone info (Z or +/-offset), parse directly
+  if (value.includes("Z") || /[+-]\d{2}:\d{2}$/.test(value)) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+
+  // Legacy: Match ISO datetime format without timezone: YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute, second] = match;
+
+  // Construct Date with local time components (month is 0-indexed)
+  const d = new Date(
+    parseInt(year, 10),
+    parseInt(month, 10) - 1,
+    parseInt(day, 10),
+    parseInt(hour, 10),
+    parseInt(minute, 10),
+    second ? parseInt(second, 10) : 0
+  );
+
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }

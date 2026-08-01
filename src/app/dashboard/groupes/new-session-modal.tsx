@@ -155,8 +155,21 @@ export function NewSessionModal({
   const nameError = nameTouched && name.trim().length === 0;
 
   // Compute combined datetime ISO for backend
+  // IMPORTANT: Construire un objet Date en heure LOCALE puis convertir en ISO
+  // pour que le serveur reçoive le bon timestamp UTC
   const startTimeISO = date && time
-    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${time}:00`
+    ? (() => {
+        const [hours, minutes] = time.split(":").map(Number);
+        const localDate = new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate(),
+          hours,
+          minutes,
+          0
+        );
+        return localDate.toISOString();
+      })()
     : "";
 
   const cardVariants = reduced

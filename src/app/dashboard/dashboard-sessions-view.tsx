@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Calendar, Clock, Users, CheckCircle2, CalendarClock, AlertCircle, AlertTriangle, Plus, QrCode, Loader2, X } from "lucide-react";
+import { Calendar, Clock, Users, CheckCircle2, CalendarClock, AlertCircle, AlertTriangle, Plus, Loader2, X, ArrowRight } from "lucide-react";
 import type { DashboardGroupRow } from "@/lib/dashboard/types";
 import { GroupProgressBar } from "@/components/groups/group-progress";
 import {
@@ -19,123 +19,269 @@ import { CompletedSessionModal } from "./completed-session-modal";
  * PAOVA V2 - Sessions View
  */
 
-// ─── QR inline depuis la card ────────────────────────────────────────────────
+// ─── Session Quick View Modal ────────────────────────────────────────────────
 
-function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionName: string }) {
-  const [open, setOpen] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+type SessionQuickViewProps = {
+  session: DashboardGroupRow;
+  variant: "ongoing" | "upcoming";
+  appUrl: string;
+  open: boolean;
+  onClose: () => void;
+};
+
+const ease = "ease-[cubic-bezier(0.22,1,0.36,1)]";
+const motion = `duration-[180ms] ${ease}`;
+
+function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: SessionQuickViewProps) {
   const [mounted, setMounted] = useState(false);
-
-  const close = useCallback(() => setOpen(false), []);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [loadingQr, setLoadingQr] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  async function handleOpen(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.nativeEvent.stopImmediatePropagation();
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
-    // Ouvrir le modal immédiatement
-    setOpen(true);
+  const pending = session.total - session.signed;
+  const timeInfo = getSessionTimeInfo(session.start_time, session.end_time, session.duration_minutes);
 
-    // Charger le QR en arrière-plan si pas encore chargé
-    if (!qrDataUrl) {
-      setLoading(true);
+  // Déterminer l'urgence
+  const now = Date.now();
+  const endMs = timeInfo.endTime ? timeInfo.endTime.getTime() : null;
+  const remainingMs = endMs ? Math.max(0, endMs - now) : null;
+  const remainingMinutes = remainingMs ? remainingMs / 60000 : null;
+  const isUrgent = remainingMinutes !== null && remainingMinutes > 0 && remainingMinutes <= 30 && pending > 0;
+  const isCompleting = remainingMinutes !== null && remainingMinutes > 30 && remainingMinutes <= 120 && pending > 0;
+
+  // Charger le QR si nécessaire
+  useEffect(() => {
+    if (!open || variant !== "ongoing" || qrDataUrl) return;
+
+    async function loadQr() {
+      setLoadingQr(true);
       try {
         const QRCode = (await import("qrcode")).default;
-        const url = await QRCode.toDataURL(publicUrl, {
-          width: 280,
+        const url = await QRCode.toDataURL(`${appUrl}/g/${session.public_token}`, {
+          width: 240,
           margin: 1,
           color: { dark: "#0a0a0a", light: "#ffffff" },
         });
         setQrDataUrl(url);
       } finally {
-        setLoading(false);
+        setLoadingQr(false);
       }
     }
-  }
+    loadQr();
+  }, [open, variant, qrDataUrl, appUrl, session.public_token]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  if (!open || !mounted) return null;
 
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  const modalContent = open && mounted ? (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`QR code — ${sessionName}`}
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.target === e.currentTarget) close();
-      }}
-      style={{ background: "rgba(0, 0, 0, 0.9)", backdropFilter: "blur(4px)" }}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          close();
-        }}
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        aria-label="Fermer"
-      >
-        <X size={20} aria-hidden />
-      </button>
-      <div
-        className="flex flex-col items-center gap-5 rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      >
-        <p className="max-w-[240px] text-center text-[14px] font-semibold tracking-tight text-gray-900">
-          {sessionName}
+  const statusContent = variant === "ongoing" ? (
+    pending > 0 ? (
+      <div className={`flex items-start gap-3 rounded-xl p-4 ${
+        isUrgent
+          ? "bg-[color-mix(in_srgb,#dc2626_6%,var(--color-surface))]"
+          : isCompleting
+          ? "bg-[color-mix(in_srgb,#d97706_5%,var(--color-surface))]"
+          : "bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
+      }`}>
+        <div className="shrink-0 mt-0.5">
+          {isUrgent ? (
+            <AlertCircle size={18} strokeWidth={2.2} className="text-[#dc2626]" />
+          ) : isCompleting ? (
+            <AlertTriangle size={18} strokeWidth={2.2} className="text-[#d97706]" />
+          ) : (
+            <Clock size={18} strokeWidth={2.2} className="text-[var(--color-brand)]" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className={`text-[14px] font-medium leading-snug ${
+            isUrgent ? "text-[#dc2626]" : isCompleting ? "text-[#d97706]" : "text-[var(--color-brand)]"
+          }`}>
+            {pending === 1 ? "1 signature manquante" : `${pending} signatures manquantes`}
+          </p>
+          {timeInfo.timeUntilEnd && timeInfo.timeUntilEnd > 0 && (
+            <p className="text-[13px] text-[var(--color-muted)]">
+              Temps restant : {getTimeUntilText(timeInfo.timeUntilEnd)}
+            </p>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div className="flex items-start gap-3 rounded-xl bg-[color-mix(in_srgb,#059669_4%,var(--color-surface))] p-4">
+        <div className="shrink-0 mt-0.5">
+          <CheckCircle2 size={18} strokeWidth={2.2} className="text-[#059669]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
+            Toutes les signatures sont recueillies
+          </p>
+          <p className="mt-1 text-[13px] text-[var(--color-muted)]">
+            La session est prête
+          </p>
+        </div>
+      </div>
+    )
+  ) : (
+    <div className="flex items-start gap-3 rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] p-4">
+      <div className="shrink-0 mt-0.5">
+        <Clock size={18} strokeWidth={2.2} className="text-[var(--color-brand)]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
+          Session à venir
         </p>
-        {loading ? (
-          <div className="flex h-[280px] w-[280px] items-center justify-center">
-            <Loader2 size={32} strokeWidth={2} className="animate-spin text-gray-400" />
-          </div>
-        ) : qrDataUrl ? (
-          <div className="overflow-hidden rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrDataUrl} alt={`QR code — ${sessionName}`} width={280} height={280} />
-          </div>
-        ) : null}
-        <p className="max-w-[240px] truncate text-center font-mono text-[12px] text-gray-400">
-          {publicUrl}
-        </p>
+        {timeInfo.timeUntilStart && timeInfo.timeUntilStart > 0 && (
+          <p className="mt-1 text-[13px] text-[var(--color-muted)]">
+            Débute {getTimeUntilText(timeInfo.timeUntilStart)}
+          </p>
+        )}
       </div>
     </div>
-  ) : null;
+  );
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={handleOpen}
-        aria-label="Afficher le QR code"
-        className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-2 py-1 text-[11px] font-semibold text-[var(--color-foreground)]/70 shadow-[var(--elev-1)] transition-[background-color,border-color,transform] duration-140 hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand)]"
-      >
-        <QrCode size={11} strokeWidth={2} aria-hidden />
-        QR
-      </button>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-md animate-in zoom-in-95 duration-200">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/5 dark:ring-white/10">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4">
+            <div className="flex-1 min-w-0">
+              <h2
+                id="modal-title"
+                className="text-[16px] font-bold leading-tight tracking-tight text-[var(--color-foreground)]"
+              >
+                {session.name}
+              </h2>
+              <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
+                {session.template_title}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)] transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+              aria-label="Fermer"
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
 
-      {mounted ? createPortal(modalContent, document.body) : null}
-    </>
+          {/* Content */}
+          <div className="px-6 pb-6 space-y-4">
+            {/* Status */}
+            {statusContent}
+
+            {/* Horaires */}
+            {(timeInfo.startTime || timeInfo.endTime) && (
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
+                  Horaires
+                </p>
+                <div className="space-y-1">
+                  {timeInfo.startTime && (
+                    <p className="text-[13px] text-[var(--color-foreground)]">
+                      <span className="text-[var(--color-muted)]">Début :</span>{" "}
+                      {formatSessionDate(timeInfo.startTime)} · {timeInfo.endTime ? formatTimeRange(timeInfo.startTime, timeInfo.endTime).split(" - ")[0] : timeInfo.startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                  {timeInfo.endTime && (
+                    <p className="text-[13px] text-[var(--color-foreground)]">
+                      <span className="text-[var(--color-muted)]">Fin :</span>{" "}
+                      {timeInfo.endTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      {timeInfo.durationMinutes && (
+                        <span className="text-[var(--color-muted)]"> · {formatSessionDuration(timeInfo.durationMinutes)}</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Progression */}
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
+                Progression
+              </p>
+              <div className="flex items-baseline gap-2 mb-2 text-[14px]">
+                <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                  {session.signed}
+                </span>
+                <span className="text-[var(--color-muted)]/40">/</span>
+                <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                  {session.total}
+                </span>
+                <span className="text-[13px] text-[var(--color-muted)]">
+                  signature{session.total > 1 ? "s" : ""}
+                </span>
+              </div>
+              <GroupProgressBar
+                signed={session.signed}
+                total={session.total}
+                variant="default"
+              />
+            </div>
+
+            {/* QR Code pour sessions en cours */}
+            {variant === "ongoing" && pending > 0 && (
+              <div>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
+                  QR Code
+                </p>
+                <div className="flex items-center justify-center rounded-xl bg-white p-4">
+                  {loadingQr ? (
+                    <div className="flex h-[200px] w-[200px] items-center justify-center">
+                      <Loader2 size={32} strokeWidth={2} className="animate-spin text-gray-400" />
+                    </div>
+                  ) : qrDataUrl ? (
+                    <div className="overflow-hidden rounded-lg">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrDataUrl} alt={`QR code — ${session.name}`} width={200} height={200} />
+                    </div>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-center font-mono text-[11px] text-[var(--color-muted)]">
+                  {appUrl}/g/{session.public_token}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 border-t border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] px-6 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`inline-flex h-9 items-center justify-center rounded-lg px-4 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80 transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.98]`}
+            >
+              Fermer
+            </button>
+            <Link
+              href={`/dashboard/groupes/${session.id}`}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-sm transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_90%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.98]`}
+            >
+              Voir la session
+              <ArrowRight size={14} strokeWidth={2} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -144,11 +290,12 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
 type SessionCardProps = {
   session: DashboardGroupRow;
   variant?: "ongoing" | "upcoming" | "completed";
-  appUrl?: string;
+  appUrl: string;
 };
 
 function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps) {
   const [completedModalOpen, setCompletedModalOpen] = useState(false);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const pending = session.total - session.signed;
 
   // Utiliser les nouveaux champs de temps
@@ -176,10 +323,10 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       ? "border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
       : "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3.5%,var(--color-surface))]",
     upcoming: "border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)]",
-    completed: "border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] bg-[var(--color-surface)] opacity-45",
+    completed: "border-[color-mix(in_srgb,#059669_18%,var(--color-border))] bg-[color-mix(in_srgb,#059669_2.5%,var(--color-surface))] opacity-75",
   };
 
-  const cardPadding = variant === "completed" ? "p-2" : variant === "upcoming" ? "p-2.5" : "p-3";
+  const cardPadding = variant === "completed" ? "p-2.5" : variant === "upcoming" ? "p-2.5" : "p-3";
 
   // Pour les sessions completed, utiliser un bouton au lieu d'un lien
   const cardContent = (
@@ -200,8 +347,8 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
               : "text-[var(--color-brand)]"
           }`}>
             {pending === 1
-              ? "1 validation en attente"
-              : `${pending} validations en attente`}
+              ? "1 signature manquante"
+              : `${pending} signatures manquantes`}
           </p>
         </div>
       )}
@@ -211,14 +358,22 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         <div className="flex-1 min-w-0">
           <h3 className={`truncate leading-tight tracking-tight ${
             variant === "completed"
-              ? "text-[12.5px] font-medium text-[var(--color-foreground)]"
+              ? "text-[13px] font-semibold text-[var(--color-foreground)]"
               : variant === "ongoing"
               ? "text-[15px] font-bold text-[var(--color-foreground)]"
               : "text-[13.5px] font-semibold text-[var(--color-foreground)]"
           }`}>
             {session.name}
           </h3>
-          {variant !== "completed" && (
+          {variant === "completed" ? (
+            <p className="mt-1 text-[11px] text-[var(--color-muted)]">
+              {session.signed >= session.total && session.total > 0
+                ? `${session.total} signature${session.total > 1 ? 's' : ''} · Session prête`
+                : session.status === "closed"
+                ? `Fermée · ${session.signed}/${session.total} signature${session.total > 1 ? 's' : ''}`
+                : `Clôturée · ${session.signed}/${session.total} signature${session.total > 1 ? 's' : ''}`}
+            </p>
+          ) : (
             <p className={`mt-0.5 truncate ${
               variant === "ongoing"
                 ? "text-[11px] text-[var(--color-muted)]/75"
@@ -229,14 +384,11 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
           )}
         </div>
 
-        {variant === "ongoing" && pending > 0 && appUrl && (
-          <CardQrButton
-            publicUrl={`${appUrl}/g/${session.public_token}`}
-            sessionName={session.name}
-          />
-        )}
         {variant === "ongoing" && session.status === "open" && pending === 0 && (
           <CheckCircle2 size={15} strokeWidth={2.2} className="text-[var(--color-brand)] shrink-0 mt-0.5" />
+        )}
+        {variant === "completed" && (
+          <CheckCircle2 size={14} strokeWidth={2.2} className="text-[#059669] shrink-0 mt-0.5" />
         )}
       </div>
 
@@ -351,12 +503,22 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
   }
 
   return (
-    <Link
-      href={`/dashboard/groupes/${session.id}`}
-      className={`group block rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
-    >
-      {cardContent}
-    </Link>
+    <>
+      <button
+        type="button"
+        onClick={() => setQuickViewOpen(true)}
+        className={`group block w-full text-left rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
+      >
+        {cardContent}
+      </button>
+      <SessionQuickViewModal
+        session={session}
+        variant={variant}
+        appUrl={appUrl}
+        open={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+      />
+    </>
   );
 }
 
@@ -369,16 +531,44 @@ export function DashboardSessionsView({
 }) {
   const now = new Date();
 
+  // Définir les limites de "aujourd'hui" en heure locale
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+
+  // Définir "demain"
+  const tomorrowEnd = new Date(todayEnd);
+  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+
   // Classifier les sessions en utilisant les champs temporels V2.
   // Priorité : start_time (V2) > scheduled_at (V1 legacy)
 
-  /** Retourne true si la session est à venir (pas encore commencée). */
-  function isSessionUpcoming(g: DashboardGroupRow): boolean {
+  /** Retourne true si la session est en cours maintenant. */
+  function isSessionOngoing(g: DashboardGroupRow): boolean {
     if (g.status !== "open") return false;
-    // Préférer start_time (V2), sinon scheduled_at (V1)
+    const timeInfo = getSessionTimeInfo(g.start_time, g.end_time, g.duration_minutes);
+    // En cours = a commencé ET (pas de fin OU pas encore finie)
+    return timeInfo.isOngoing || !!(timeInfo.startTime && timeInfo.startTime <= now && !timeInfo.isPast);
+  }
+
+  /** Retourne true si la session est prévue aujourd'hui mais pas encore commencée. */
+  function isSessionTodayUpcoming(g: DashboardGroupRow): boolean {
+    if (g.status !== "open") return false;
     const timeRef = g.start_time ?? g.scheduled_at;
     if (!timeRef) return false;
-    return new Date(timeRef) > now;
+    const t = new Date(timeRef);
+    // La session est aujourd'hui ET dans le futur
+    return t >= todayStart && t < todayEnd && t > now;
+  }
+
+  /** Retourne true si la session est à venir (demain et après). */
+  function isSessionUpcoming(g: DashboardGroupRow): boolean {
+    if (g.status !== "open") return false;
+    const timeRef = g.start_time ?? g.scheduled_at;
+    if (!timeRef) return false;
+    const t = new Date(timeRef);
+    // La session est après aujourd'hui
+    return t >= todayEnd;
   }
 
   /** Retourne true si la session est terminée (tous signés, fermée, ou end_time dépassé). */
@@ -390,18 +580,11 @@ export function DashboardSessionsView({
     return false;
   }
 
-  // Séparer les sessions en cours en deux catégories
-  const ongoingSessions = groups.filter(g =>
-    g.status === "open" &&
-    !isSessionUpcoming(g) &&
-    !isSessionCompleted(g)
-  );
-
-  // Action requise : signatures manquantes
-  const actionRequired = ongoingSessions
-    .filter(g => g.total > 0 && g.signed < g.total)
+  // 1. Sessions EN COURS (commencées, pas terminées)
+  const ongoingSessions = groups
+    .filter(g => isSessionOngoing(g) && !isSessionCompleted(g))
     .sort((a, b) => {
-      // Les plus urgentes en premier : moins de temps restant, plus de signatures manquantes
+      // Trier par urgence/temps restant
       const aTimeInfo = getSessionTimeInfo(a.start_time, a.end_time, a.duration_minutes);
       const bTimeInfo = getSessionTimeInfo(b.start_time, b.end_time, b.duration_minutes);
 
@@ -411,56 +594,59 @@ export function DashboardSessionsView({
       const aRemaining = Math.max(0, aEndMs - now.getTime());
       const bRemaining = Math.max(0, bEndMs - now.getTime());
 
-      // Trier par temps restant croissant
-      if (aRemaining !== bRemaining) {
-        return aRemaining - bRemaining;
-      }
+      if (aRemaining !== bRemaining) return aRemaining - bRemaining;
 
-      // Si même urgence, trier par nombre de signatures manquantes décroissant
+      // Si même urgence, trier par signatures manquantes
       const aPending = a.total - a.signed;
       const bPending = b.total - b.signed;
       return bPending - aPending;
     });
 
-  // Prêtes : toutes les signatures obtenues
-  const readySessions = ongoingSessions
-    .filter(g => g.total > 0 && g.signed >= g.total);
+  // 2. Sessions À VENIR AUJOURD'HUI (pas encore commencées)
+  const todayUpcoming = groups
+    .filter(g => isSessionTodayUpcoming(g) && !isSessionCompleted(g))
+    .sort((a, b) => {
+      const aTime = a.start_time ?? a.scheduled_at ?? "";
+      const bTime = b.start_time ?? b.scheduled_at ?? "";
+      return aTime.localeCompare(bTime);
+    });
 
+  // 3. Sessions DEMAIN ET APRÈS
   const upcomingSessions = groups
     .filter(isSessionUpcoming)
     .sort((a, b) => {
-      // Trier par heure de début croissante
       const aTime = a.start_time ?? a.scheduled_at ?? "";
       const bTime = b.start_time ?? b.scheduled_at ?? "";
       return aTime.localeCompare(bTime);
     })
-    .slice(0, 4);
+    .slice(0, 6);
 
+  // 4. Sessions TERMINÉES AUJOURD'HUI
   const completedSessions = groups
     .filter(isSessionCompleted)
     .slice(0, 4);
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1. Action requise - PRIORITÉ MAXIMUM */}
-      {actionRequired.length > 0 && (
+      {/* 1. EN COURS — Sessions actives maintenant */}
+      {ongoingSessions.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_16%,transparent)] text-[var(--color-brand)]">
-              <AlertCircle size={16} strokeWidth={2.2} />
+              <CalendarClock size={16} strokeWidth={2.2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
-                Action requise
+              <h2 className="text-[15.5px] font-bold tracking-tight text-[var(--color-foreground)]">
+                En cours
               </h2>
-              <span className="text-[12px] font-semibold tabular-nums text-[var(--color-brand)]">
-                {actionRequired.length}
+              <span className="text-[12.5px] font-bold tabular-nums text-[var(--color-brand)]">
+                {ongoingSessions.length}
               </span>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {actionRequired.map(session => (
+            {ongoingSessions.map(session => (
               <SessionCard
                 key={session.id}
                 session={session}
@@ -472,29 +658,29 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* 2. Prêtes - Signatures complètes */}
-      {readySessions.length > 0 && (
+      {/* 2. AUJOURD'HUI — À venir aujourd'hui */}
+      {todayUpcoming.length > 0 && (
         <section>
           <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]">
-              <CheckCircle2 size={14} strokeWidth={2} />
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_10%,transparent)] text-[var(--color-brand)]">
+              <Clock size={14} strokeWidth={2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[13.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
-                Prêtes
+              <h2 className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                Aujourd&apos;hui
               </h2>
-              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
-                {readySessions.length}
+              <span className="text-[11.5px] font-medium tabular-nums text-[var(--color-muted)]/70">
+                {todayUpcoming.length}
               </span>
             </div>
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {readySessions.map(session => (
+            {todayUpcoming.map(session => (
               <SessionCard
                 key={session.id}
                 session={session}
-                variant="ongoing"
+                variant="upcoming"
                 appUrl={appUrl}
               />
             ))}
@@ -502,18 +688,18 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* 3. À venir - Plus discrètes */}
+      {/* 3. DEMAIN ET APRÈS */}
       {upcomingSessions.length > 0 && (
         <section>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)] text-[var(--color-muted)]">
-              <CalendarClock size={13} strokeWidth={2} />
+              <Calendar size={13} strokeWidth={2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[12.5px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
-                À venir
+              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
+                Demain et après
               </h2>
-              <span className="text-[10.5px] font-medium tabular-nums text-[var(--color-muted)]/60">
+              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/65">
                 {upcomingSessions.length}
               </span>
             </div>
@@ -532,18 +718,18 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* 4. Terminées aujourd'hui - Très discrètes */}
+      {/* 4. Terminées aujourd'hui — Journal d'activité */}
       {completedSessions.length > 0 && (
-        <section>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_6%,transparent)] text-[var(--color-muted)]/70">
-              <CheckCircle2 size={12} strokeWidth={2} />
+        <section className="pt-3 mt-4 border-t border-[color-mix(in_srgb,var(--color-border)_35%,transparent)]">
+          <div className="mb-2.5 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,#059669_12%,transparent)] text-[#059669]">
+              <CheckCircle2 size={13} strokeWidth={2.2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[12px] font-medium tracking-tight text-[var(--color-foreground)]/75">
+              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
                 Terminées aujourd&apos;hui
               </h2>
-              <span className="text-[10px] font-medium tabular-nums text-[var(--color-muted)]/55">
+              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
                 {completedSessions.length}
               </span>
             </div>
@@ -563,23 +749,23 @@ export function DashboardSessionsView({
       )}
 
       {/* État vide */}
-      {actionRequired.length === 0 && readySessions.length === 0 && upcomingSessions.length === 0 && completedSessions.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-muted)_7%,transparent)]">
-            <Calendar size={22} strokeWidth={1.8} className="text-[var(--color-muted)]" />
+      {ongoingSessions.length === 0 && todayUpcoming.length === 0 && upcomingSessions.length === 0 && completedSessions.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)]">
+            <Calendar size={24} strokeWidth={1.8} className="text-[var(--color-muted)]" />
           </div>
-          <p className="text-[14px] font-semibold text-[var(--color-foreground)]">
+          <p className="text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
             Aucune session aujourd&apos;hui
           </p>
-          <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-muted)]">
             Créez une nouvelle session pour commencer
           </p>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('open-new-session-modal'))}
-            className="mt-3.5 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-4 text-[12.5px] font-semibold text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[var(--elev-2)]"
+            className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter,box-shadow] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
           >
-            <Plus size={14} strokeWidth={2.2} aria-hidden />
+            <Plus size={15} strokeWidth={2.2} aria-hidden />
             Nouvelle session
           </button>
         </div>
