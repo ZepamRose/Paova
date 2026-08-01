@@ -428,6 +428,21 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         {session.name}
       </h3>
 
+      {/* Décharge */}
+      {variant !== "completed" && (
+        <p className="mt-0.5 truncate text-[11px] text-[var(--color-muted)]/70">
+          {session.template_title}
+        </p>
+      )}
+
+      {/* Horaires pour sessions avec timing */}
+      {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
+        <div className="mt-1.5 flex items-center gap-1 text-[10.5px] text-[var(--color-muted)]/60">
+          <Clock size={10} strokeWidth={1.9} />
+          <span>{formatTimeRange(timeInfo.startTime, timeInfo.endTime)}</span>
+        </div>
+      )}
+
       {/* État temporel */}
       {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
         <div className="mt-1.5">
@@ -441,7 +456,7 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
 
       {/* Progression uniquement */}
       {variant !== "completed" && (
-        <div className="mt-2">
+        <div className="mt-2.5">
           <div className="mb-1 flex items-baseline gap-1.5 text-[11px]">
             <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
               {session.signed}
@@ -464,11 +479,11 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
 
       {/* Completed sessions - minimal info */}
       {variant === "completed" && (
-        <div className="mt-1 flex items-center gap-1.5">
-          <CheckCircle2 size={12} strokeWidth={2.2} className="text-[#059669]" />
-          <span className="text-[11px] text-[var(--color-muted)]">
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <CheckCircle2 size={11} strokeWidth={2.2} className="text-[#059669]" />
+          <span className="text-[10.5px] text-[var(--color-muted)]">
             {session.signed >= session.total && session.total > 0
-              ? "Terminée"
+              ? `${session.signed} signature${session.signed > 1 ? 's' : ''}`
               : "Fermée"}
           </span>
         </div>
@@ -646,7 +661,7 @@ export function DashboardSessionsView({
             </span>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {ongoingSessions.map(session => (
               <SessionCard
                 key={session.id}
@@ -671,7 +686,7 @@ export function DashboardSessionsView({
             </span>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {todayUpcoming.map(session => (
               <SessionCard
                 key={session.id}
@@ -706,7 +721,7 @@ export function DashboardSessionsView({
           </button>
 
           {upcomingExpanded && (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {upcomingSessions.map(session => (
                 <SessionCard
                   key={session.id}

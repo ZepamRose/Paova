@@ -9,7 +9,7 @@ function getStatusMessage(
 ): { message: string; color: string; icon: typeof CheckCircle2 } {
   if (todayGroups.length === 0) {
     return {
-      message: "Aucune activité prévue aujourd'hui",
+      message: "Aucune activité prévue",
       color: "text-[var(--color-muted)]",
       icon: CheckCircle2,
     };
@@ -17,7 +17,7 @@ function getStatusMessage(
 
   if (totalPending === 0) {
     return {
-      message: "Tout est sous contrôle aujourd'hui",
+      message: "Tout est sous contrôle",
       color: "text-[#10b981]",
       icon: CheckCircle2,
     };
@@ -36,7 +36,7 @@ function getStatusMessage(
   if (hasUrgent) {
     const count = todayGroups.filter((g) => g.total > 0 && g.signed < g.total).length;
     return {
-      message: count === 1 ? "1 session demande votre attention" : `${count} sessions demandent votre attention`,
+      message: count === 1 ? "1 session nécessite votre attention" : `${count} sessions nécessitent votre attention`,
       color: "text-[#ef4444]",
       icon: AlertCircle,
     };
@@ -71,6 +71,7 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
     return g.status === "open";
   });
 
+  const totalActivities = todayGroups.length;
   const totalPeople = todayGroups.reduce((sum, g) => sum + g.total, 0);
   const totalSigned = todayGroups.reduce((sum, g) => sum + g.signed, 0);
   const totalPending = totalPeople - totalSigned;
@@ -81,7 +82,7 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
   return (
     <section
       aria-label="État du jour"
-      className="relative overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] px-5 py-4 shadow-sm"
+      className="relative overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] shadow-sm"
     >
       {/* Subtle gradient */}
       <div
@@ -93,14 +94,64 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
         }}
       />
 
-      <div className="relative flex items-center gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,transparent)]`}>
-          <StatusIcon size={18} strokeWidth={2.2} className={status.color} aria-hidden />
+      <div className="relative px-5 py-4">
+        {/* Header row */}
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-muted)]/60">
+              Aujourd&apos;hui
+            </p>
+            <p className="mt-0.5 text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
+              {now.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-[var(--color-surface-2)]/50 px-2.5 py-1.5">
+            <StatusIcon size={14} strokeWidth={2.2} className={status.color} aria-hidden />
+            <span className={`text-[13px] font-semibold ${status.color}`}>
+              {status.message}
+            </span>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className={`text-[15px] font-semibold leading-snug tracking-tight ${status.color}`}>
-            {status.message}
-          </p>
+
+        {/* Metrics row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--color-muted)]/50">
+              Sessions
+            </span>
+            <span className="text-[1.25rem] font-semibold tabular-nums leading-none text-[var(--color-foreground)]">
+              {totalActivities}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--color-muted)]/50">
+              Signées
+            </span>
+            <span className="text-[1.25rem] font-semibold tabular-nums leading-none text-[var(--color-foreground)]">
+              {totalSigned} / {totalPeople}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--color-muted)]/50">
+              En attente
+            </span>
+            <span
+              className={`text-[1.25rem] font-semibold tabular-nums leading-none ${
+                totalPending > 0
+                  ? status.color
+                  : "text-[var(--color-foreground)]"
+              }`}
+            >
+              {totalPending}
+            </span>
+          </div>
         </div>
       </div>
     </section>
