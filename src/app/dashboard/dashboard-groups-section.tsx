@@ -12,6 +12,7 @@ import {
   DashboardListPagination,
 } from "./dashboard-list-pagination";
 import { GroupActionsMenu } from "./group-actions-menu";
+import { NewSessionModal } from "./groupes/new-session-modal";
 
 const LIST_EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -45,6 +46,7 @@ export function DashboardGroupsSection({
   canCreateGroup = true,
   canCreateGroups = true,
   canManageGroups = true,
+  templateChoices = [],
 }: {
   groups: DashboardGroupRow[];
   archivedGroups: DashboardGroupRow[];
@@ -57,8 +59,10 @@ export function DashboardGroupsSection({
   canCreateGroups?: boolean;
   /** Archiver / restaurer — propriétaires et administrateurs. */
   canManageGroups?: boolean;
+  templateChoices?: Array<{ id: string; title: string }>;
 }) {
   const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
   const reduced = useReducedMotion() ?? false;
   const showArchived = listView === "archived";
   const rows = showArchived ? archivedGroups : groups;
@@ -177,12 +181,13 @@ export function DashboardGroupsSection({
               ) : null}
             </div>
             {!showArchived && !searchActive && canCreateGroups && canCreateGroup ? (
-              <Link
-                href="/dashboard/groupes/new"
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
                 className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
                 Créer ma première session
-              </Link>
+              </button>
             ) : null}
           </motion.div>
           ) : null
@@ -293,6 +298,12 @@ export function DashboardGroupsSection({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <NewSessionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        choices={templateChoices}
+      />
     </section>
   );
 }

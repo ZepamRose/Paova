@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
 
 type OnboardingStep = {
   id: string;
   label: string;
   completed: boolean;
-  href?: string;
 };
 
 export function DashboardOnboardingHero({
@@ -38,13 +36,11 @@ export function DashboardOnboardingHero({
       id: "waiver",
       label: "Créer votre première décharge",
       completed: hasWaivers,
-      href: canManageWaivers ? "/dashboard/waivers/new" : undefined,
     },
     {
       id: "session",
       label: "Créer votre première session",
       completed: hasSessions,
-      href: canCreateGroups && hasWaivers ? "/dashboard/groupes/new" : undefined,
     },
     {
       id: "signature",
@@ -53,13 +49,13 @@ export function DashboardOnboardingHero({
     },
   ];
 
-  const nextStep = steps.find((s) => !s.completed);
   const completedCount = steps.filter((s) => s.completed).length;
 
   let title = "Bienvenue sur Paova 👋";
   let subtitle = "Votre espace est prêt. Il ne reste plus que quelques étapes pour commencer.";
   let ctaLabel = "Créer ma première décharge";
   let ctaHref = "/dashboard/waivers/new";
+  let ctaType: "link" | "button" | "none" = "link";
   let ctaDisabled = false;
   let ctaDisabledReason = "";
 
@@ -67,7 +63,7 @@ export function DashboardOnboardingHero({
     title = "Première décharge créée ✓";
     subtitle = "Il ne reste plus que :";
     ctaLabel = "Créer ma première session";
-    ctaHref = "/dashboard/groupes/new";
+    ctaType = canCreateGroups ? "button" : "none";
     ctaDisabled = !canCreateGroups;
     ctaDisabledReason = "Permission insuffisante";
   } else if (hasSessions && !hasSignatures) {
@@ -75,9 +71,11 @@ export function DashboardOnboardingHero({
     subtitle = "Dernière étape :";
     ctaLabel = "Ouvrir ma session";
     ctaHref = "/dashboard/groupes";
+    ctaType = "link";
   }
 
   if (!canManageWaivers && !hasWaivers) {
+    ctaType = "none";
     ctaDisabled = true;
     ctaDisabledReason = "Seuls les propriétaires et administrateurs peuvent créer des décharges";
   }
@@ -128,13 +126,21 @@ export function DashboardOnboardingHero({
           ))}
         </div>
 
-        {nextStep && nextStep.href && !ctaDisabled ? (
-          <Link
+        {ctaType === "link" && !ctaDisabled ? (
+          <a
             href={ctaHref}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[14px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
           >
             {ctaLabel}
-          </Link>
+          </a>
+        ) : ctaType === "button" && !ctaDisabled ? (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-new-session-modal'))}
+            className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[14px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
+          >
+            {ctaLabel}
+          </button>
         ) : ctaDisabled ? (
           <div className="flex flex-col gap-2">
             <button

@@ -36,6 +36,7 @@ export function DashboardHome({
   lastSignedByTemplate,
   canCreateGroups,
   canManageGroups,
+  templateChoices = [],
 }: {
   attentionItems: DashboardAttentionItem[];
   active: DashboardWaiverRow[];
@@ -45,6 +46,7 @@ export function DashboardHome({
   lastSignedByTemplate: Record<string, string>;
   canCreateGroups: boolean;
   canManageGroups: boolean;
+  templateChoices?: Array<{ id: string; title: string }>;
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -130,6 +132,7 @@ export function DashboardHome({
               canCreateGroup={active.length > 0}
               canCreateGroups={canCreateGroups}
               canManageGroups={canManageGroups}
+              templateChoices={templateChoices}
             />
           </DashboardEntrance>
 

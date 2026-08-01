@@ -144,7 +144,14 @@ export function DashboardHeader({
   canCreateGroup: boolean;
   templateChoices?: TemplateChoice[];
 }) {
+  const [newSessionModalOpen, setNewSessionModalOpen] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleOpenModal = () => setNewSessionModalOpen(true);
+    window.addEventListener('open-new-session-modal', handleOpenModal);
+    return () => window.removeEventListener('open-new-session-modal', handleOpenModal);
+  }, []);
 
   // Determine active section
   const isSessionsActive = pathname === "/dashboard" || pathname.startsWith("/dashboard/groupes");
@@ -201,7 +208,13 @@ export function DashboardHeader({
             />
 
             {canCreateGroups && templateChoices.length > 0 ? (
-              <NewSessionModal choices={templateChoices} />
+              <>
+                <NewSessionModal
+                  choices={templateChoices}
+                  open={newSessionModalOpen}
+                  onOpenChange={setNewSessionModalOpen}
+                />
+              </>
             ) : canManageWaivers || canCreateGroups ? (
               <DashboardCreateControl
                 canManageWaivers={canManageWaivers}
@@ -215,7 +228,13 @@ export function DashboardHeader({
 
           <div className="flex items-center gap-2 sm:hidden">
             {canCreateGroups && templateChoices.length > 0 ? (
-              <NewSessionModal choices={templateChoices} />
+              <>
+                <NewSessionModal
+                  choices={templateChoices}
+                  open={newSessionModalOpen}
+                  onOpenChange={setNewSessionModalOpen}
+                />
+              </>
             ) : canManageWaivers || canCreateGroups ? (
               <DashboardCreateControl
                 canManageWaivers={canManageWaivers}

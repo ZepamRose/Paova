@@ -138,10 +138,14 @@ export function DashboardCreateControl({
 
             {canCreateGroups ? (
               canCreateGroup ? (
-              <Link
+              <button
+                type="button"
                 role="menuitem"
-                href="/dashboard/groupes/new"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  // Trigger the modal from parent
+                  window.dispatchEvent(new CustomEvent('open-new-session-modal'));
+                }}
                 className="flex gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-2)]"
               >
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] text-[var(--color-brand)]">
@@ -155,7 +159,7 @@ export function DashboardCreateControl({
                     Collectez plusieurs signatures pour un même événement
                   </span>
                 </span>
-              </Link>
+              </button>
             ) : (
               <div
                 role="menuitem"

@@ -239,6 +239,7 @@ export default async function DashboardPage() {
         lastSignedByTemplate={lastSignedRecord}
         canCreateGroups={canCreateGroups}
         canManageGroups={canManageGroups}
+        templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
       />
     </main>
   );

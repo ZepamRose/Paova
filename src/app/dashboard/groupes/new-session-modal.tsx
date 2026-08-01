@@ -97,8 +97,19 @@ function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
-export function NewSessionModal({ choices }: { choices: TemplateChoice[] }) {
-  const [open, setOpen] = useState(false);
+export function NewSessionModal({
+  choices,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  choices: TemplateChoice[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+
   const [name, setName] = useState("");
   const [templateId, setTemplateId] = useState(choices[0]?.id ?? "");
   const [date, setDate] = useState<Date | null>(null);
@@ -108,7 +119,7 @@ export function NewSessionModal({ choices }: { choices: TemplateChoice[] }) {
   const reduced = useReducedMotion() ?? false;
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   const handleClose = useCallback(() => {
     close();
@@ -155,14 +166,16 @@ export function NewSessionModal({ choices }: { choices: TemplateChoice[] }) {
   return (
     <>
       {/* ── Bouton déclencheur ─────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-      >
-        <Plus size={14} strokeWidth={2.2} aria-hidden />
-        Nouvelle session
-      </button>
+      {controlledOpen === undefined && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[var(--elev-2)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+        >
+          <Plus size={14} strokeWidth={2.2} aria-hidden />
+          Nouvelle session
+        </button>
+      )}
 
       {/* ── Modal ─────────────────────────────────────────────────────── */}
       <AnimatePresence>

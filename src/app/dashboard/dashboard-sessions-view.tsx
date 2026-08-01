@@ -446,13 +446,14 @@ export function DashboardSessionsView({
           <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
             Créez une nouvelle session pour commencer
           </p>
-          <Link
-            href="/dashboard/groupes/new"
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-new-session-modal'))}
             className="mt-3.5 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-4 text-[12.5px] font-semibold text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[var(--elev-2)]"
           >
             <Plus size={14} strokeWidth={2.2} aria-hidden />
             Nouvelle session
-          </Link>
+          </button>
         </div>
       )}
     </div>

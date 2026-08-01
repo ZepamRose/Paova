@@ -804,14 +804,18 @@ export default async function WaiverDetailPage({
               {canManageGroups ? (
                 <div className="mt-3 flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/dashboard/groupes/new?template=${template.id}`}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = '/dashboard';
+                      setTimeout(() => window.dispatchEvent(new CustomEvent('open-new-session-modal')), 100);
+                    }}
                     className={btnSecondary}
                   >
                     {groupsForTemplate.length > 0
                       ? "Nouvelle session"
                       : "Créer une session"}
-                  </Link>
+                  </button>
                   {groupsForTemplate.length > 4 ? (
                     <Link
                       href="/dashboard/groupes"

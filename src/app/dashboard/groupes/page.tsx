@@ -9,6 +9,7 @@ import {
 } from "@/components/groups/group-progress";
 import { unarchiveGroup } from "./actions";
 
+/** This page is kept for direct access but should not be linked from UI */
 export default async function GroupesPage({
   searchParams,
 }: {
@@ -99,12 +100,16 @@ export default async function GroupesPage({
           </p>
         </div>
         {!showArchived && canManageGroups ? (
-          <Link
-            href="/dashboard/groupes/new"
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/dashboard';
+              setTimeout(() => window.dispatchEvent(new CustomEvent('open-new-session-modal')), 100);
+            }}
             className={`inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}
           >
             Créer une session
-          </Link>
+          </button>
         ) : null}
       </header>
 
@@ -122,12 +127,16 @@ export default async function GroupesPage({
               : "Une session regroupe plusieurs participants qui signent le même formulaire (ex : cours, événement, sortie scolaire)."}
           </p>
           {!showArchived && canManageGroups ? (
-            <Link
-              href="/dashboard/groupes/new"
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/dashboard';
+                setTimeout(() => window.dispatchEvent(new CustomEvent('open-new-session-modal')), 100);
+              }}
               className={`mt-6 inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}
             >
               Créer ma première session
-            </Link>
+            </button>
           ) : null}
         </div>
       ) : (
