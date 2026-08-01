@@ -65,7 +65,7 @@ export function QrPreview({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={dataUrl}
-          alt="QR code du groupe"
+          alt="QR code de la session"
           className="h-[11rem] w-[11rem] transition-transform duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.01]"
         />
         <span

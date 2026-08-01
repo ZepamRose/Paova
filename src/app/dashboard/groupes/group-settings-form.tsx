@@ -42,7 +42,7 @@ export function GroupSettingsForm({
       <input type="hidden" name="group_id" value={groupId} />
       <label className="flex flex-col gap-1">
         <span className="text-[12px] font-medium tracking-tight">
-          Nom du groupe
+          Nom de la session
         </span>
         <input
           name="name"

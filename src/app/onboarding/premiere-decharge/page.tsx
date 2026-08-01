@@ -87,6 +87,11 @@ export default async function FirstWaiverOnboardingPage({
         <h1 className="text-2xl font-semibold tracking-tight">
           Créez votre première décharge
         </h1>
+        <div className="max-w-lg rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] px-3.5 py-2.5">
+          <p className="text-[13px] leading-relaxed text-[var(--color-foreground)]">
+            💡 Une décharge est le document légal que vos participants signeront avant votre activité (décharge de responsabilité, autorisation parentale, conditions générales...).
+          </p>
+        </div>
         <p className="max-w-lg text-sm text-[var(--color-muted)]">
           Choisissez le contexte qui correspond à votre activité. Vous pourrez
           tout modifier ensuite.

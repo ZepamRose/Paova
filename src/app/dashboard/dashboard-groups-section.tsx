@@ -131,7 +131,7 @@ export function DashboardGroupsSection({
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
             Commencez par créer un modèle de formulaire. Vous pourrez ensuite créer des
-            sessions pour vos différents groupes de participants.
+            sessions pour vos différents participants.
           </p>
           <Link
             href="/dashboard/waivers/new"
@@ -172,7 +172,7 @@ export function DashboardGroupsSection({
                 <p className="text-sm leading-relaxed text-[var(--color-muted)]">
                   {showArchived
                     ? "Les sessions archivées apparaissent ici. Vous pourrez les désarchiver à tout moment."
-                    : "Créez une session pour envoyer un même formulaire à plusieurs participants."}
+                    : "Une session regroupe plusieurs participants qui signent le même formulaire (ex : cours, événement, sortie scolaire)."}
                 </p>
               ) : null}
             </div>
@@ -181,7 +181,7 @@ export function DashboardGroupsSection({
                 href="/dashboard/groupes/new"
                 className={`inline-flex min-h-11 items-center rounded-xl bg-[var(--color-brand)] px-5 py-2.5 text-sm font-medium text-[var(--color-on-brand)] ${primaryBtn}`}
               >
-                Créer une session planifiée
+                Créer ma première session
               </Link>
             ) : null}
           </motion.div>

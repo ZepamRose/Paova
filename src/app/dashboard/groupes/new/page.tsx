@@ -92,10 +92,10 @@ export default async function NewGroupePage({
           </span>
           <div className="min-w-0">
             <h1 className="text-[1.5rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.625rem]">
-              Nouveau groupe
+              Nouvelle session
             </h1>
             <p className="mt-1 max-w-lg text-[14px] leading-snug text-[var(--color-muted)]">
-              Liste à l&apos;avance, signature avant le jour J ou sur place.
+              Organisez les signatures pour un cours, un événement ou un groupe.
             </p>
           </div>
         </div>
@@ -113,20 +113,20 @@ export default async function NewGroupePage({
       {choices.length === 0 ? (
         <div className="rounded-[1.25rem] border border-[color-mix(in_srgb,var(--color-brand)_16%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] px-6 py-8 sm:px-8 sm:py-9">
           <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-brand)]">
-            Un groupe nécessite une décharge
+            Une session nécessite un formulaire
           </p>
           <p className="mt-2 text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]">
-            Commencez par créer une décharge.
+            Commencez par créer un formulaire.
           </p>
           <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-[var(--color-muted)]">
-            Vous pourrez ensuite créer un groupe pour une classe, une équipe,
-            une entreprise ou tout autre ensemble de participants.
+            Vous pourrez ensuite créer une session pour une classe, une équipe,
+            un événement ou tout autre ensemble de participants.
           </p>
           <Link
             href="/dashboard/waivers/new"
             className="mt-5 inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter] duration-[220ms] hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
           >
-            Créer une décharge
+            Créer un formulaire
           </Link>
         </div>
       ) : (

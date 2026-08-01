@@ -45,7 +45,7 @@ export default async function OnboardingPage({
           type="text"
           name="name"
           required
-          placeholder="Ex. Escape Room Lyon"
+          placeholder="Ex. Studio Yoga Marseille · Club Escalade Lyon · École de Surf"
           className="rounded-lg border border-[var(--color-border)] px-4 py-2.5 text-sm outline-none focus:border-[var(--color-brand)]"
         />
 

@@ -264,7 +264,7 @@ export function SubmissionsList({
                         </p>
                         {group ? (
                           <span
-                            title={`Signé via le groupe « ${group.name} »`}
+                            title={`Signé via la session « ${group.name} »`}
                             className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] px-1.5 py-[1px] text-[10px] font-medium text-[color-mix(in_srgb,var(--color-brand)_75%,var(--color-foreground))]"
                           >
                             <GroupIcon size={10} />

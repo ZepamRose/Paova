@@ -73,7 +73,7 @@ export function ExpressGroupForm({
 
       <PendingSubmitButton
         className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[14px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter] hover:-translate-y-px hover:brightness-[1.03] disabled:opacity-70"
-        idle="Lancer le groupe express"
+        idle="Lancer la session express"
         pendingLabel="Création…"
       />
 

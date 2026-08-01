@@ -82,19 +82,19 @@ export default async function GroupesPage({
             >
               ←
             </span>
-            {showArchived ? "Groupes" : "Tableau de bord"}
+            {showArchived ? "Sessions" : "Tableau de bord"}
           </Link>
           <div className="mt-3 flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface-2))] text-[var(--color-brand)]">
               <GroupIcon size={17} />
             </span>
             <h1 className="text-[1.625rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-2xl">
-              {showArchived ? "Groupes archivés" : "Groupes"}
+              {showArchived ? "Sessions archivées" : "Sessions"}
             </h1>
           </div>
           <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-[var(--color-muted)]">
             {showArchived
-              ? "Groupes masqués du tableau de bord. Leurs signatures restent conservées."
+              ? "Sessions masquées du tableau de bord. Leurs signatures restent conservées."
               : "Une même décharge pour plusieurs participants. Suivez les signatures en un coup d'œil."}
           </p>
         </div>
@@ -103,7 +103,7 @@ export default async function GroupesPage({
             href="/dashboard/groupes/new"
             className={`inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] shadow-[var(--elev-1)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}
           >
-            Créer un groupe
+            Créer une session
           </Link>
         ) : null}
       </header>
@@ -114,19 +114,19 @@ export default async function GroupesPage({
             <GroupIcon size={24} />
           </div>
           <h2 className="mt-5 text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]">
-            {showArchived ? "Aucun groupe archivé" : "Aucun groupe"}
+            {showArchived ? "Aucune session archivée" : "Aucune session"}
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-[var(--color-muted)]">
             {showArchived
-              ? "Les groupes que vous archivez apparaîtront ici."
-              : "Créez un groupe pour envoyer une même décharge à plusieurs participants."}
+              ? "Les sessions que vous archivez apparaîtront ici."
+              : "Une session regroupe plusieurs participants qui signent le même formulaire (ex : cours, événement, sortie scolaire)."}
           </p>
           {!showArchived && canManageGroups ? (
             <Link
               href="/dashboard/groupes/new"
               className={`mt-6 inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)] transition-[transform,filter] ${motion} hover:-translate-y-px hover:brightness-[1.03]`}
             >
-              Créer un groupe
+              Créer ma première session
             </Link>
           ) : null}
         </div>
@@ -211,7 +211,7 @@ export default async function GroupesPage({
           href="/dashboard/groupes?view=archived"
           className="self-center text-[13px] font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
         >
-          Voir les groupes archivés ({archivedGroups.length})
+          Voir les sessions archivées ({archivedGroups.length})
         </Link>
       ) : null}
     </main>

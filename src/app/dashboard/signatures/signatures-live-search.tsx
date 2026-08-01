@@ -699,7 +699,7 @@ export function SignaturesLiveSearch({
                       role="radio"
                       aria-checked={selected}
                       disabled={disabled}
-                      title={disabled ? "Aucun groupe créé" : undefined}
+                      title={disabled ? "Aucune session créée" : undefined}
                       onClick={() => setGroupScope(option.id)}
                       className={`flex-1 ${segmentBtn(selected)} ${
                         disabled ? "pointer-events-none opacity-35" : ""
@@ -788,7 +788,7 @@ export function SignaturesLiveSearch({
                     )}
                     title={
                       lockedGroup
-                        ? `Exporte uniquement les signatures du groupe « ${lockedGroup.name} »`
+                        ? `Exporte uniquement les signatures de la session « ${lockedGroup.name} »`
                         : "Exporte exactement les signatures actuellement affichées, selon les filtres en cours"
                     }
                     disabled={!canExport}

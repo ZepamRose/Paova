@@ -68,12 +68,10 @@ export default async function ExpressGroupePage({
           </span>
           <div className="min-w-0">
             <h1 className="text-[1.5rem] font-semibold tracking-tight sm:text-[1.625rem]">
-              Groupe express
+              Session express
             </h1>
             <p className="mt-1.5 text-[14px] leading-snug text-[var(--color-muted)]">
-              Option secondaire : session sans liste, QR immédiat. Pour une
-              réservation ou un appel à l&apos;avance, préférez un groupe avec
-              liste.
+              Session sans liste préalable, QR code immédiat. Pour un événement avec liste, préférez une session planifiée.
             </p>
           </div>
         </div>
@@ -92,13 +90,13 @@ export default async function ExpressGroupePage({
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-6">
           <p className="text-[14px] font-medium">Aucune décharge ouverte</p>
           <p className="mt-1 text-[13px] text-[var(--color-muted)]">
-            Créez ou réouvrez une décharge pour lancer un groupe express.
+            Créez ou réouvrez un formulaire pour lancer une session express.
           </p>
           <Link
             href="/dashboard/waivers/new"
             className="mt-4 inline-flex h-10 items-center rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-medium text-[var(--color-on-brand)]"
           >
-            Créer une décharge
+            Créer un formulaire
           </Link>
         </div>
       ) : (
@@ -118,7 +116,7 @@ export default async function ExpressGroupePage({
           }
           className="font-medium text-[var(--color-foreground)] underline-offset-2 hover:underline"
         >
-          Créer un groupe avec liste
+          Créer une session planifiée
         </Link>
       </p>
     </main>

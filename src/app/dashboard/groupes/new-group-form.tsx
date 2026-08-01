@@ -100,23 +100,23 @@ export function NewGroupForm({
       <section className={`${card} flex flex-col gap-5`}>
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
-            Le groupe
+            La session
           </h2>
           <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">
-            Nom interne et décharge que chacun signera.
+            Nom interne et formulaire que chacun signera.
           </p>
         </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-[var(--color-foreground)]">
-            Nom
+            Nom de la session
           </span>
           <input
             name="name"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex. Classe CM2 — Sortie 12 mai"
+            placeholder="Ex. Cours de yoga lundi · Atelier poterie samedi · Stage été 2026"
             className={field}
           />
         </label>
@@ -191,7 +191,7 @@ export function NewGroupForm({
             Liste & clôture
           </h2>
           <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">
-            Facultatif — vous pourrez aussi compléter après création.
+            Facultatif — vous pourrez ajouter les participants après création.
           </p>
         </div>
 
@@ -217,7 +217,7 @@ export function NewGroupForm({
         <div className="flex flex-col gap-4 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4 sm:flex-row sm:gap-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--color-foreground)]">
-              Date et heure du groupe{" "}
+              Date et heure de la session{" "}
               <span className="font-normal text-[var(--color-muted)]">
                 (facultatif)
               </span>
@@ -230,7 +230,7 @@ export function NewGroupForm({
               className={`${field} max-w-xs`}
             />
             <span className="text-[12px] text-[var(--color-muted)]">
-              Quand le groupe est attendu. Affiché sur la carte de la session.
+              Quand a lieu votre activité. Affiché sur la carte.
             </span>
           </label>
           <label className="flex flex-col gap-1.5">
@@ -330,7 +330,7 @@ export function NewGroupForm({
             disabled={!canSubmit}
             className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[14px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter,opacity] duration-200 hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45"
           >
-            Créer le groupe
+            Créer la session
           </button>
           <Link
             href={cancelHref}

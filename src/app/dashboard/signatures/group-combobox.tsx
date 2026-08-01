@@ -254,7 +254,7 @@ export function GroupCombobox({
         ref={popoverRef}
         id={panelId}
         role="listbox"
-        aria-label="Choisir un groupe"
+        aria-label="Choisir une session"
         initial={
           reduced
             ? false
@@ -282,7 +282,7 @@ export function GroupCombobox({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKeyDown}
-            placeholder="Rechercher un groupe…"
+            placeholder="Rechercher une session…"
             className="h-8 w-full rounded-lg border border-transparent bg-[var(--color-surface-2)]/60 pl-7 pr-2.5 text-[13px] outline-none placeholder:text-[var(--color-muted)]/70 focus:border-[color-mix(in_srgb,var(--color-brand)_35%,var(--color-border))]"
           />
         </div>
@@ -294,7 +294,7 @@ export function GroupCombobox({
         >
           {flatItems.length === 0 ? (
             <p className="px-2.5 py-3 text-center text-[12.5px] text-[var(--color-muted)]">
-              Aucun groupe trouvé.
+              Aucune session trouvée.
             </p>
           ) : (
             <>

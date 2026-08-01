@@ -809,15 +809,15 @@ export default async function WaiverDetailPage({
                     className={btnSecondary}
                   >
                     {groupsForTemplate.length > 0
-                      ? "Nouveau groupe"
-                      : "Créer un groupe"}
+                      ? "Nouvelle session"
+                      : "Créer une session"}
                   </Link>
                   {groupsForTemplate.length > 4 ? (
                     <Link
                       href="/dashboard/groupes"
                       className="text-[12.5px] font-semibold text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
                     >
-                      Voir tous les groupes
+                      Voir toutes les sessions
                     </Link>
                   ) : null}
                 </div>
@@ -825,7 +825,7 @@ export default async function WaiverDetailPage({
                   href={`/dashboard/groupes/express?template=${template.id}`}
                   className="inline-flex w-fit items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-foreground)]/75 underline-offset-2 transition-colors hover:text-[var(--color-brand)] hover:underline"
                 >
-                  Groupe express
+                  Session express
                   <span className="font-normal text-[var(--color-muted)]">
                     · sans liste
                   </span>

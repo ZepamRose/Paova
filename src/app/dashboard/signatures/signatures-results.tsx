@@ -162,7 +162,7 @@ function SignatureCard({
             {group ? (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-2))] px-1.5 py-[1px] text-[10px] font-medium text-[color-mix(in_srgb,var(--color-brand)_75%,var(--color-foreground))]"
-                title={`Fait partie du groupe « ${group.name} »`}
+                title={`Fait partie de la session « ${group.name} »`}
               >
                 <GroupIcon size={10} />
                 <span className="max-w-[8rem] truncate">{group.name}</span>

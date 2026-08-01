@@ -152,7 +152,7 @@ export function DashboardCreateControl({
                     Créer une session planifiée
                   </span>
                   <span className="mt-0.5 block text-[12px] leading-snug text-[var(--color-muted)]">
-                    Préparez les signatures d&apos;un groupe à partir d&apos;un formulaire existant
+                    Collectez plusieurs signatures pour un même événement
                   </span>
                 </span>
               </Link>

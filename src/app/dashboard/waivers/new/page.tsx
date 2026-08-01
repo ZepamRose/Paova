@@ -18,7 +18,7 @@ export default async function NewWaiverPage({
       : null;
 
   const backHref = returnTo ?? "/dashboard";
-  const backLabel = returnTo ? "Nouveau groupe" : "Tableau de bord";
+  const backLabel = returnTo ? "Nouvelle session" : "Tableau de bord";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-5 py-10 sm:gap-9 sm:px-6 sm:py-12">
@@ -41,7 +41,7 @@ export default async function NewWaiverPage({
           </h1>
           <p className="max-w-lg text-[14px] leading-relaxed text-[var(--color-muted)] sm:text-[15px]">
             {returnTo
-              ? "Créez la décharge de votre groupe. Vous reviendrez directement à la création du groupe une fois terminé."
+              ? "Créez le formulaire pour votre session. Vous reviendrez directement à la création de la session une fois terminé."
               : "Choisissez un contexte pour démarrer plus vite, puis ajustez le contenu. Vous pourrez ensuite partager le lien ou le QR code."}
           </p>
         </div>
