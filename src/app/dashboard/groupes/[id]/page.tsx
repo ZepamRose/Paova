@@ -36,13 +36,11 @@ import {
 
 const motion = "duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]";
 
-const btnSecondary = `inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-3.5 text-[13px] font-medium text-[var(--color-foreground)]/82 shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)]`;
+const btnSecondary = `inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_68%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-3 text-[12.5px] font-semibold text-[var(--color-foreground)]/80 shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)]`;
 
-const sectionLabel =
-  "text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-muted)]";
+const sectionLabel = "text-[10.5px] font-bold uppercase tracking-[0.11em] text-[var(--color-muted)]/80";
 
-const card =
-  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] p-5 shadow-[var(--elev-1)]";
+const card = "rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] p-4 shadow-[var(--elev-1)]";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -183,22 +181,22 @@ export default async function SessionDetailPage({
         : null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-4 px-4 py-7 sm:px-6 sm:py-8">
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
       <nav>
         <Link
           href="/dashboard"
-          className="group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,transform] hover:text-[var(--color-foreground)]"
+          className="group inline-flex w-fit items-center gap-1.5 text-[12.5px] font-medium text-[var(--color-muted)] transition-[color,transform] hover:text-[var(--color-foreground)]"
         >
           <span aria-hidden className="transition-transform group-hover:-translate-x-0.5">
             ←
           </span>
-          Tableau de bord
+          Sessions
         </Link>
       </nav>
 
-      {/* ── Header — statut d'abord, nom ensuite ────────────────────────── */}
+      {/* ── Header — statut d’abord, nom ensuite ────────────────────────── */}
       <header className="flex flex-col gap-3">
         {/* 1. Statut + countdown */}
         <SessionStatusBadge
@@ -210,33 +208,33 @@ export default async function SessionDetailPage({
 
         {/* 2. Nom */}
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-[1.4rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.5rem]">
+          <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--color-foreground)] sm:text-[1.45rem]">
             {group.name}
           </h1>
           {isExpress ? (
-            <span className="rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 text-[10.5px] font-semibold tracking-wide text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_22%,transparent)]">
+            <span className="rounded-md bg-[color-mix(in_srgb,var(--color-brand)_11%,transparent)] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_20%,transparent)]">
               Express
             </span>
           ) : null}
         </div>
 
         {/* 3. Décharge (lien) · plage horaire */}
-        <p className="text-[13px] text-[var(--color-muted)]">
+        <p className="text-[12.5px] text-[var(--color-muted)]">
           {template ? (
             <Link
               href={`/dashboard/waivers/${template.id}`}
-              className="font-medium text-[var(--color-foreground)]/75 underline-offset-2 hover:text-[var(--color-brand)] hover:underline"
+              className="font-semibold text-[var(--color-foreground)]/75 underline-offset-2 hover:text-[var(--color-brand)] hover:underline"
             >
               {template.title}
             </Link>
           ) : (
-            <span className="font-medium text-[var(--color-foreground)]/75">
+            <span className="font-semibold text-[var(--color-foreground)]/75">
               Décharge
             </span>
           )}
           {timeLabel ? (
             <>
-              <span className="mx-1.5 opacity-30">·</span>
+              <span className="mx-1.5 opacity-25">·</span>
               {timeLabel}
             </>
           ) : null}
@@ -249,7 +247,7 @@ export default async function SessionDetailPage({
         {sp.saved ? (
           <p
             role="status"
-            className="rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 py-2 text-[13px]"
+            className="rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_23%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_7%,var(--color-surface))] px-3 py-2 text-[12.5px]"
           >
             Paramètres enregistrés.
           </p>
@@ -259,7 +257,7 @@ export default async function SessionDetailPage({
         {sp.express ? (
           <p
             role="status"
-            className="rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 py-2 text-[13px]"
+            className="rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_23%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_7%,var(--color-surface))] px-3 py-2 text-[12.5px]"
           >
             Session express prête — affichez le QR.
           </p>
@@ -273,12 +271,12 @@ export default async function SessionDetailPage({
             <h2 className={sectionLabel}>
               En attente
               {waitingMembers.length > 0 ? (
-                <span className="ml-1.5 rounded-md bg-[var(--color-surface-2)] px-1.5 py-0.5 font-semibold tabular-nums text-[var(--color-foreground)]/70">
+                <span className="ml-1.5 rounded-md bg-[var(--color-surface-2)] px-1.5 py-0.5 font-bold tabular-nums text-[var(--color-foreground)]/70">
                   {waitingMembers.length}
                 </span>
               ) : null}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {/* QR — geste principal opérateur */}
               <SessionQrOverlay
                 qrDataUrl={qrDataUrl}
@@ -292,7 +290,7 @@ export default async function SessionDetailPage({
           </div>
 
           {waitingMembers.length === 0 ? (
-            <p className="mt-3 text-[13px] text-[var(--color-muted)]">
+            <p className="mt-2.5 text-[12.5px] text-[var(--color-muted)]">
               {total === 0
                 ? isExpress
                   ? "QR prêt — les participants signent ici au fur et à mesure."
@@ -300,7 +298,7 @@ export default async function SessionDetailPage({
                 : "Tous les participants ont signé."}
             </p>
           ) : (
-            <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--color-border)_60%,transparent)] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+            <ul className="mt-2.5 divide-y divide-[color-mix(in_srgb,var(--color-border)_55%,transparent)] overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)]">
               {waitingMembers.map((m) => (
                 <MemberRow
                   key={m.id}
@@ -321,7 +319,7 @@ export default async function SessionDetailPage({
           <div className="flex items-center justify-between gap-3">
             <h2 className={sectionLabel}>
               Signés
-              <span className="ml-1.5 rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 font-semibold tabular-nums text-[var(--color-brand)]">
+              <span className="ml-1.5 rounded-md bg-[color-mix(in_srgb,var(--color-brand)_11%,transparent)] px-1.5 py-0.5 font-bold tabular-nums text-[var(--color-brand)]">
                 {signedMembers.length}
               </span>
             </h2>
@@ -336,25 +334,25 @@ export default async function SessionDetailPage({
             ) : null}
           </div>
 
-          <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--color-border)_60%,transparent)] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+          <ul className="mt-2.5 divide-y divide-[color-mix(in_srgb,var(--color-border)_55%,transparent)] overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)]">
             {signedMembers.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between gap-3 bg-[var(--color-surface)] px-4 py-2.5"
+                className="flex items-center justify-between gap-3 bg-[var(--color-surface)] px-3.5 py-2 opacity-70"
               >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2">
                   <span
                     aria-hidden
-                    className="shrink-0 text-[var(--color-brand)] opacity-80"
+                    className="shrink-0 text-[var(--color-brand)] opacity-70"
                   >
                     ✓
                   </span>
-                  <p className="truncate text-[14px] font-medium text-[var(--color-foreground)]">
+                  <p className="truncate text-[13.5px] font-semibold text-[var(--color-foreground)]">
                     {m.full_name}
                   </p>
                 </div>
                 {m.signed_at ? (
-                  <span className="shrink-0 tabular-nums text-[12px] text-[var(--color-muted)]">
+                  <span className="shrink-0 tabular-nums text-[11.5px] text-[var(--color-muted)]">
                     {fmtTime(m.signed_at)}
                   </span>
                 ) : null}
@@ -367,21 +365,21 @@ export default async function SessionDetailPage({
       {/* ── Ajouter un participant ────────────────────────────────────────── */}
       {!isArchived && canManageGroups && !isExpress ? (
         <section className={card}>
-          <h2 className={`${sectionLabel} mb-3`}>Ajouter un participant</h2>
+          <h2 className={`${sectionLabel} mb-2.5`}>Ajouter un participant</h2>
           <AddParticipantForm groupId={group.id} />
-          <details className="group mt-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_40%,var(--color-surface))]">
-            <summary className="cursor-pointer list-none px-3.5 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
+          <details className="group mt-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_42%,var(--color-surface))]">
+            <summary className="cursor-pointer list-none px-3 py-2 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
-                <span className="text-[13px] font-medium text-[var(--color-foreground)]/70">
+                <span className="text-[12.5px] font-semibold text-[var(--color-foreground)]/70">
                   Import CSV
                 </span>
-                <span className="text-[11px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
+                <span className="text-[10.5px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
                   ▾
                 </span>
               </span>
             </summary>
-            <div className="border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-3.5 py-3">
-              <p className="mb-2.5 text-[12.5px] text-[var(--color-muted)]">
+            <div className="border-t border-[color-mix(in_srgb,var(--color-border)_42%,transparent)] px-3 py-2.5">
+              <p className="mb-2 text-[12px] text-[var(--color-muted)]">
                 Ajoutez plusieurs participants d&apos;un coup.
               </p>
               <AddRosterForm groupId={group.id} mode={rosterMode} />
@@ -392,26 +390,26 @@ export default async function SessionDetailPage({
 
       {/* ── Paramètres — déroulant, rôle gestion ──────────────────────────── */}
       {canManageGroups ? (
-        <details className="group rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-1)]">
-          <summary className="cursor-pointer list-none px-5 py-3.5 marker:content-none [&::-webkit-details-marker]:hidden">
+        <details className="group rounded-xl border border-[color-mix(in_srgb,var(--color-border)_58%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-1)]">
+          <summary className="cursor-pointer list-none px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
             <span className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2">
                 <Settings2
-                  size={14}
-                  strokeWidth={1.85}
+                  size={13}
+                  strokeWidth={2}
                   className="text-[var(--color-muted)]"
                   aria-hidden
                 />
-                <span className="text-[13px] font-medium text-[var(--color-foreground)]/80">
+                <span className="text-[12.5px] font-semibold text-[var(--color-foreground)]/80">
                   Paramètres
                 </span>
               </span>
-              <span className="text-[11px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
+              <span className="text-[10.5px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
                 ▾
               </span>
             </span>
           </summary>
-          <div className="border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-5 pb-5 pt-2">
+          <div className="border-t border-[color-mix(in_srgb,var(--color-border)_42%,transparent)] px-4 pb-4 pt-2">
             <GroupSettingsForm
               groupId={group.id}
               name={group.name}
@@ -426,7 +424,7 @@ export default async function SessionDetailPage({
       ) : null}
 
       {/* ── Footer actions ────────────────────────────────────────────────── */}
-      <footer className="flex flex-wrap items-center gap-2.5 border-t border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] pt-5">
+      <footer className="flex flex-wrap items-center gap-2 border-t border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] pt-4">
         {canExport && !isDone && signed > 0 ? (
           <GroupExportButtons
             groupId={group.id}
@@ -454,7 +452,7 @@ export default async function SessionDetailPage({
             <form action={archiveGroup}>
               <input type="hidden" name="group_id" value={group.id} />
               <PendingSubmitButton
-                className="text-[13px] font-medium text-[var(--color-muted)] transition-colors hover:text-[color-mix(in_srgb,#ef4444_70%,var(--color-foreground))] disabled:pointer-events-none disabled:opacity-70"
+                className="text-[12.5px] font-semibold text-[var(--color-muted)] transition-colors hover:text-[color-mix(in_srgb,#ef4444_70%,var(--color-foreground))] disabled:pointer-events-none disabled:opacity-70"
                 idle="Archiver"
                 pendingLabel="Archivage…"
               />

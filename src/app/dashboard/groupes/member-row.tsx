@@ -55,21 +55,19 @@ export function MemberRow({
   }, [editState.ok]);
 
   return (
-    <li className="bg-[var(--color-surface)] px-4 py-2.5">
+    <li className="bg-[var(--color-surface)] px-3.5 py-2">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-medium text-[var(--color-foreground)]">
+          <p className="truncate text-[13.5px] font-bold tracking-tight text-[var(--color-foreground)]">
             {member.full_name}
           </p>
-          <p className="truncate text-[12px] text-[var(--color-muted)]">
-            {signed
-              ? `Signé${member.signed_at ? ` · ${new Date(member.signed_at).toLocaleString("fr-FR")}` : ""}`
-              : "En attente"}
-            {member.dob ? ` · ${member.dob}` : ""}
-            {member.parent_email ? ` · ${member.parent_email}` : ""}
+          <p className="truncate text-[11.5px] text-[var(--color-muted)]">
+            {member.dob ? `${member.dob}` : ""}
+            {member.dob && member.parent_email ? " · " : ""}
+            {member.parent_email ? member.parent_email : ""}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* V1 relancer: copier le lien de session dans le presse-papiers */}
           {!signed && publicUrl ? (
             <CopyLinkButton
@@ -79,19 +77,10 @@ export function MemberRow({
               className="shrink-0"
             />
           ) : null}
-          <span
-            className={`rounded-md px-1.5 py-0.5 text-[10.5px] font-medium ${
-              signed
-                ? "bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] text-[var(--color-brand)]"
-                : "bg-[var(--color-surface-2)] text-[var(--color-muted)]"
-            }`}
-          >
-            {signed ? "Signé" : "En attente"}
-          </span>
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
-            className="text-[12px] text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
+            className="text-[11.5px] font-semibold text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)]"
           >
             {editing ? "Fermer" : "Modifier"}
           </button>
@@ -100,7 +89,7 @@ export function MemberRow({
               <input type="hidden" name="group_id" value={groupId} />
               <input type="hidden" name="member_id" value={member.id} />
               <PendingSubmitButton
-                className="text-[12px] font-medium text-[var(--color-brand)] transition-colors hover:brightness-95 disabled:pointer-events-none disabled:opacity-70"
+                className="text-[11.5px] font-bold text-[var(--color-brand)] transition-colors hover:brightness-95 disabled:pointer-events-none disabled:opacity-70"
                 idle="Relancer"
                 pendingLabel="…"
               />
@@ -111,7 +100,7 @@ export function MemberRow({
               <input type="hidden" name="group_id" value={groupId} />
               <input type="hidden" name="member_id" value={member.id} />
               <PendingSubmitButton
-                className="text-[12px] text-[var(--color-muted)] transition-colors hover:text-red-700 disabled:pointer-events-none disabled:opacity-70"
+                className="text-[11.5px] font-semibold text-[var(--color-muted)] transition-colors hover:text-red-700 disabled:pointer-events-none disabled:opacity-70"
                 idle="Retirer"
                 pendingLabel="…"
               />
@@ -121,25 +110,25 @@ export function MemberRow({
       </div>
 
       {remindState.error === "cooldown" ? (
-        <p className="mt-2 text-[12px] text-[var(--color-muted)]">
+        <p className="mt-1.5 text-[11.5px] text-[var(--color-muted)]">
           Relance déjà envoyée récemment. Réessayez dans 30 minutes.
         </p>
       ) : remindState.error === "send" ? (
-        <p className="mt-2 text-[12px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
+        <p className="mt-1.5 text-[11.5px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
           Envoi impossible. Vérifiez la configuration e-mail.
         </p>
       ) : remindState.sent ? (
-        <p className="mt-2 text-[12px] text-[var(--color-brand)]">
+        <p className="mt-1.5 text-[11.5px] text-[var(--color-brand)]">
           Relance envoyée.
         </p>
       ) : null}
 
       {editing ? (
-        <form action={editAction} className="mt-3 grid gap-2 sm:grid-cols-2">
+        <form action={editAction} className="mt-2.5 grid gap-2 sm:grid-cols-2">
           <input type="hidden" name="group_id" value={groupId} />
           <input type="hidden" name="member_id" value={member.id} />
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="text-[10.5px] font-semibold text-[var(--color-muted)]">
               Nom complet
             </span>
             <input
@@ -151,7 +140,7 @@ export function MemberRow({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="text-[10.5px] font-semibold text-[var(--color-muted)]">
               Date de naissance
             </span>
             <input
@@ -163,7 +152,7 @@ export function MemberRow({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="text-[10.5px] font-semibold text-[var(--color-muted)]">
               E-mail
             </span>
             <input
@@ -175,7 +164,7 @@ export function MemberRow({
             />
           </label>
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="text-[10.5px] font-semibold text-[var(--color-muted)]">
               Note
             </span>
             <input
@@ -186,16 +175,16 @@ export function MemberRow({
           </label>
           <div className="flex items-center gap-3 sm:col-span-2">
             <PendingSubmitButton
-              className="inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-medium text-[var(--color-on-brand)] disabled:opacity-70"
+              className="inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-semibold text-[var(--color-on-brand)] disabled:opacity-70"
               idle="Enregistrer"
               pendingLabel="…"
             />
             {editState.error === "required" ? (
-              <span className="text-[12px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
+              <span className="text-[11.5px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
                 Nom requis.
               </span>
             ) : editState.error === "save" ? (
-              <span className="text-[12px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
+              <span className="text-[11.5px] text-[color-mix(in_srgb,#92400e_90%,var(--color-muted))]">
                 Enregistrement impossible.
               </span>
             ) : null}
