@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Calendar, Clock, Users, CheckCircle2, CalendarClock, AlertCircle, AlertTriangle, Plus, Loader2, X, ArrowRight } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, AlertCircle, AlertTriangle, Plus, Loader2, X, ArrowRight, ChevronRight } from "lucide-react";
 import type { DashboardGroupRow } from "@/lib/dashboard/types";
 import { GroupProgressBar } from "@/components/groups/group-progress";
 import {
@@ -42,12 +42,21 @@ function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingPro
 
   // Si la session n'a pas encore commencé
   if (variant === "upcoming" || timeUntilStartMs > 0) {
+    const minutes = Math.floor(timeUntilStartMs / 60000);
+    const hours = Math.floor(minutes / 60);
+
+    let text = "";
+    if (hours > 0) {
+      text = `Dans ${hours} h`;
+    } else if (minutes > 0) {
+      text = `Dans ${minutes} min`;
+    } else {
+      text = "Commence bientôt";
+    }
+
     return (
-      <div className="flex items-center gap-1 text-[11px]">
-        <Clock size={11} strokeWidth={1.9} className="text-[var(--color-brand)]" />
-        <span className="font-semibold text-[var(--color-brand)]">
-          {getTimeUntilText(timeUntilStartMs)}
-        </span>
+      <div className="text-[11px] font-medium text-[var(--color-brand)]">
+        {text}
       </div>
     );
   }
@@ -62,26 +71,18 @@ function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingPro
   const seconds = totalSeconds % 60;
   const isUrgent = minutes < 10;
 
+  let text = "";
+  if (minutes > 0) {
+    text = `${minutes} min restante${minutes > 1 ? 's' : ''}`;
+  } else {
+    text = `${seconds} sec`;
+  }
+
   return (
-    <div className={`flex items-center gap-1.5 text-[12px] ${
-      isUrgent ? "font-semibold" : "font-medium"
+    <div className={`text-[11px] font-semibold ${
+      isUrgent ? "text-[#dc2626]" : "text-[var(--color-muted)]"
     }`}>
-      <Clock
-        size={12}
-        strokeWidth={2}
-        className={isUrgent ? "text-[#dc2626]" : "text-[var(--color-muted)]"}
-      />
-      <span className={isUrgent ? "text-[#dc2626]" : "text-[var(--color-foreground)]"}>
-        {minutes > 0 ? (
-          <>
-            {minutes} min restante{minutes > 1 ? 's' : ''}
-          </>
-        ) : (
-          <>
-            {seconds} sec
-          </>
-        )}
-      </span>
+      {text}
     </div>
   );
 }
@@ -402,128 +403,34 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
   const remainingMs = endMs ? Math.max(0, endMs - now) : null;
   const remainingMinutes = remainingMs ? remainingMs / 60000 : null;
   const isUrgent = remainingMinutes !== null && remainingMinutes > 0 && remainingMinutes <= 30 && pending > 0;
-  const isCompleting = remainingMinutes !== null && remainingMinutes > 30 && remainingMinutes <= 120 && pending > 0;
 
   // Styles selon le statut et variante
   const variantStyles = {
     ongoing: isUrgent
-      ? "border-[color-mix(in_srgb,#dc2626_32%,var(--color-border))] bg-[color-mix(in_srgb,#dc2626_6%,var(--color-surface))]"
-      : isCompleting
-      ? "border-[color-mix(in_srgb,#d97706_28%,var(--color-border))] bg-[color-mix(in_srgb,#d97706_5%,var(--color-surface))]"
+      ? "border-[color-mix(in_srgb,#dc2626_25%,var(--color-border))] bg-[color-mix(in_srgb,#dc2626_4%,var(--color-surface))]"
       : pending > 0
-      ? "border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
-      : "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3.5%,var(--color-surface))]",
-    upcoming: "border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)]",
-    completed: "border-[color-mix(in_srgb,#059669_18%,var(--color-border))] bg-[color-mix(in_srgb,#059669_2.5%,var(--color-surface))] opacity-75",
+      ? "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3%,var(--color-surface))]"
+      : "border-[color-mix(in_srgb,var(--color-brand)_15%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_2%,var(--color-surface))]",
+    upcoming: "border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] bg-[var(--color-surface)]",
+    completed: "border-[color-mix(in_srgb,#059669_15%,var(--color-border))] bg-[color-mix(in_srgb,#059669_2%,var(--color-surface))] opacity-70",
   };
 
-  const cardPadding = variant === "completed" ? "p-2.5" : variant === "upcoming" ? "p-2.5" : "p-3";
-
-  // Pour les sessions completed, utiliser un bouton au lieu d'un lien
   const cardContent = (
     <>
-      {/* Message d'action prioritaire — Sessions en cours seulement */}
-      {variant === "ongoing" && pending > 0 && (
-        <div className="mb-2 flex items-start gap-1.5">
-          {isUrgent ? (
-            <AlertCircle size={12} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#dc2626]" aria-hidden />
-          ) : isCompleting ? (
-            <AlertTriangle size={12} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#d97706]" aria-hidden />
-          ) : null}
-          <p className={`text-[12px] font-semibold leading-snug ${
-            isUrgent
-              ? "text-[#dc2626]"
-              : isCompleting
-              ? "text-[#d97706]"
-              : "text-[var(--color-brand)]"
-          }`}>
-            {pending === 1
-              ? "1 signature manquante"
-              : `${pending} signatures manquantes`}
-          </p>
-        </div>
-      )}
+      {/* Nom de la session */}
+      <h3 className={`truncate font-semibold leading-tight tracking-tight ${
+        variant === "completed"
+          ? "text-[13px] text-[var(--color-foreground)]/90"
+          : variant === "ongoing"
+          ? "text-[14px] text-[var(--color-foreground)]"
+          : "text-[13px] text-[var(--color-foreground)]"
+      }`}>
+        {session.name}
+      </h3>
 
-      {/* Titre — hiérarchie forte pour ongoing */}
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex-1 min-w-0">
-          <h3 className={`truncate leading-tight tracking-tight ${
-            variant === "completed"
-              ? "text-[13px] font-semibold text-[var(--color-foreground)]"
-              : variant === "ongoing"
-              ? "text-[15px] font-bold text-[var(--color-foreground)]"
-              : "text-[13.5px] font-semibold text-[var(--color-foreground)]"
-          }`}>
-            {session.name}
-          </h3>
-          {variant === "completed" ? (
-            <p className="mt-1 text-[11px] text-[var(--color-muted)]">
-              {session.signed >= session.total && session.total > 0
-                ? `${session.total} signature${session.total > 1 ? 's' : ''} · Session prête`
-                : session.status === "closed"
-                ? `Fermée · ${session.signed}/${session.total} signature${session.total > 1 ? 's' : ''}`
-                : `Clôturée · ${session.signed}/${session.total} signature${session.total > 1 ? 's' : ''}`}
-            </p>
-          ) : (
-            <p className={`mt-0.5 truncate ${
-              variant === "ongoing"
-                ? "text-[11px] text-[var(--color-muted)]/75"
-                : "text-[10.5px] text-[var(--color-muted)]/70"
-            }`}>
-              {session.template_title}
-            </p>
-          )}
-        </div>
-
-        {variant === "ongoing" && session.status === "open" && pending === 0 && (
-          <CheckCircle2 size={15} strokeWidth={2.2} className="text-[var(--color-brand)] shrink-0 mt-0.5" />
-        )}
-        {variant === "completed" && (
-          <CheckCircle2 size={14} strokeWidth={2.2} className="text-[#059669] shrink-0 mt-0.5" />
-        )}
-      </div>
-
-      {/* Informations temporelles — minimales pour upcoming et completed */}
-      {variant !== "completed" && (timeInfo.startTime || timeInfo.endTime) && (
-        <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1.5 ${
-          variant === "ongoing"
-            ? "text-[11px] text-[var(--color-muted)]/70"
-            : "text-[10.5px] text-[var(--color-muted)]/65"
-        }`}>
-          {variant === "upcoming" && timeInfo.startTime && (() => {
-            const today = new Date();
-            const isToday =
-              timeInfo.startTime.getDate() === today.getDate() &&
-              timeInfo.startTime.getMonth() === today.getMonth() &&
-              timeInfo.startTime.getFullYear() === today.getFullYear();
-            return !isToday ? (
-              <div className="flex items-center gap-1">
-                <Calendar size={11} strokeWidth={1.9} />
-                <span className="capitalize">{formatSessionDate(timeInfo.startTime)}</span>
-              </div>
-            ) : null;
-          })()}
-
-          {timeInfo.startTime && timeInfo.endTime && (
-            <>
-              <div className="flex items-center gap-1">
-                <Clock size={11} strokeWidth={1.9} />
-                <span>{formatTimeRange(timeInfo.startTime, timeInfo.endTime)}</span>
-              </div>
-              {variant === "ongoing" && timeInfo.durationMinutes && (
-                <>
-                  <span className="text-[var(--color-muted)]/35">·</span>
-                  <span>{formatSessionDuration(timeInfo.durationMinutes)}</span>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Live countdown pour sessions avec horaires */}
+      {/* État temporel */}
       {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
-        <div className="mb-1.5">
+        <div className="mt-1.5">
           <LiveTimeRemaining
             startTime={timeInfo.startTime}
             endTime={timeInfo.endTime}
@@ -532,38 +439,39 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         </div>
       )}
 
-      {/* Stats et progression — visuellement forte pour ongoing, masquées pour completed */}
+      {/* Progression uniquement */}
       {variant !== "completed" && (
-        <>
-          <div className={`flex items-center gap-1.5 ${variant === "ongoing" ? "mb-1.5" : "mb-1"}`}>
-            <div className={`flex items-center gap-1.5 ${
-              variant === "ongoing" ? "text-[12.5px]" : "text-[11.5px]"
-            }`}>
-              <Users size={12} strokeWidth={1.9} className="text-[var(--color-muted)]/80" />
-              <span className={`tabular-nums ${
-                variant === "ongoing"
-                  ? "font-semibold text-[var(--color-foreground)]"
-                  : "font-medium text-[var(--color-foreground)]/90"
-              }`}>
-                {session.signed}
-              </span>
-              <span className="text-[var(--color-muted)]/60">/</span>
-              <span className={`tabular-nums ${
-                variant === "ongoing"
-                  ? "font-semibold text-[var(--color-foreground)]"
-                  : "font-medium text-[var(--color-foreground)]/90"
-              }`}>
-                {session.total}
-              </span>
-            </div>
+        <div className="mt-2">
+          <div className="mb-1 flex items-baseline gap-1.5 text-[11px]">
+            <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+              {session.signed}
+            </span>
+            <span className="text-[var(--color-muted)]/40">/</span>
+            <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+              {session.total}
+            </span>
+            <span className="text-[var(--color-muted)]/70">
+              signature{session.total > 1 ? "s" : ""}
+            </span>
           </div>
-
           <GroupProgressBar
             signed={session.signed}
             total={session.total}
             variant="default"
           />
-        </>
+        </div>
+      )}
+
+      {/* Completed sessions - minimal info */}
+      {variant === "completed" && (
+        <div className="mt-1 flex items-center gap-1.5">
+          <CheckCircle2 size={12} strokeWidth={2.2} className="text-[#059669]" />
+          <span className="text-[11px] text-[var(--color-muted)]">
+            {session.signed >= session.total && session.total > 0
+              ? "Terminée"
+              : "Fermée"}
+          </span>
+        </div>
       )}
     </>
   );
@@ -574,7 +482,7 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         <button
           type="button"
           onClick={() => setCompletedModalOpen(true)}
-          className={`group block w-full text-left rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
+          className={`group block w-full text-left rounded-lg border p-2.5 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
         >
           {cardContent}
         </button>
@@ -600,7 +508,9 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       <button
         type="button"
         onClick={() => setQuickViewOpen(true)}
-        className={`group block w-full text-left rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
+        className={`group block w-full text-left rounded-lg border shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${
+          variant === "ongoing" ? "p-3" : "p-2.5"
+        }`}
       >
         {cardContent}
       </button>
@@ -624,6 +534,8 @@ export function DashboardSessionsView({
 }) {
   const now = new Date();
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
 
   // Définir les limites de "aujourd'hui" en heure locale
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -721,25 +633,20 @@ export function DashboardSessionsView({
   const remainingCompleted = completedSessions.length - 4;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* 1. EN COURS — Sessions actives maintenant */}
       {ongoingSessions.length > 0 && (
         <section>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_16%,transparent)] text-[var(--color-brand)]">
-              <CalendarClock size={16} strokeWidth={2.2} />
+          <div className="mb-2.5 flex items-center gap-2">
+            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+              En cours
+            </h2>
+            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/60">
+              {ongoingSessions.length}
             </span>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-[15.5px] font-bold tracking-tight text-[var(--color-foreground)]">
-                En cours
-              </h2>
-              <span className="text-[12.5px] font-bold tabular-nums text-[var(--color-brand)]">
-                {ongoingSessions.length}
-              </span>
-            </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {ongoingSessions.map(session => (
               <SessionCard
                 key={session.id}
@@ -756,20 +663,15 @@ export function DashboardSessionsView({
       {todayUpcoming.length > 0 && (
         <section>
           <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_10%,transparent)] text-[var(--color-brand)]">
-              <Clock size={14} strokeWidth={2} />
+            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+              Aujourd&apos;hui
+            </h2>
+            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/60">
+              {todayUpcoming.length}
             </span>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">
-                Aujourd&apos;hui
-              </h2>
-              <span className="text-[11.5px] font-medium tabular-nums text-[var(--color-muted)]/70">
-                {todayUpcoming.length}
-              </span>
-            </div>
           </div>
 
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {todayUpcoming.map(session => (
               <SessionCard
                 key={session.id}
@@ -782,77 +684,89 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* 3. DEMAIN ET APRÈS */}
+      {/* 3. DEMAIN ET APRÈS — Collapsible */}
       {upcomingSessions.length > 0 && (
         <section>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)] text-[var(--color-muted)]">
-              <Calendar size={13} strokeWidth={2} />
+          <button
+            type="button"
+            onClick={() => setUpcomingExpanded(!upcomingExpanded)}
+            className="mb-2.5 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
+          >
+            <ChevronRight
+              size={14}
+              strokeWidth={2}
+              className={`text-[var(--color-muted)] transition-transform ${upcomingExpanded ? 'rotate-90' : ''}`}
+            />
+            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80">
+              Demain et après
+            </h2>
+            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
+              {upcomingSessions.length}
             </span>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
-                Demain et après
-              </h2>
-              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/65">
-                {upcomingSessions.length}
-              </span>
-            </div>
-          </div>
+          </button>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {upcomingSessions.map(session => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                variant="upcoming"
-                appUrl={appUrl}
-              />
-            ))}
-          </div>
+          {upcomingExpanded && (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {upcomingSessions.map(session => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  variant="upcoming"
+                  appUrl={appUrl}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
-      {/* 4. Terminées aujourd'hui — Journal d'activité */}
+      {/* 4. ACTIVITÉ RÉCENTE — Collapsible */}
       {completedSessions.length > 0 && (
-        <section className="pt-3 mt-4 border-t border-[color-mix(in_srgb,var(--color-border)_35%,transparent)]">
-          <div className="mb-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,#059669_12%,transparent)] text-[#059669]">
-                <CheckCircle2 size={13} strokeWidth={2.2} />
-              </span>
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
-                  Terminées aujourd&apos;hui
-                </h2>
-                <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
-                  {completedSessions.length}
-                </span>
+        <section className="pt-4 mt-4 border-t border-[color-mix(in_srgb,var(--color-border)_30%,transparent)]">
+          <button
+            type="button"
+            onClick={() => setActivityExpanded(!activityExpanded)}
+            className="mb-2.5 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
+          >
+            <ChevronRight
+              size={14}
+              strokeWidth={2}
+              className={`text-[var(--color-muted)] transition-transform ${activityExpanded ? 'rotate-90' : ''}`}
+            />
+            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80">
+              Activité récente
+            </h2>
+            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
+              {completedSessions.length}
+            </span>
+          </button>
+
+          {activityExpanded && (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {completedToShow.map(session => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    variant="completed"
+                    appUrl={appUrl}
+                  />
+                ))}
               </div>
-            </div>
-          </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {completedToShow.map(session => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                variant="completed"
-                appUrl={appUrl}
-              />
-            ))}
-          </div>
-
-          {/* Lien pour afficher toutes les sessions */}
-          {remainingCompleted > 0 && !showAllCompleted && (
-            <div className="mt-3 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowAllCompleted(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-              >
-                Voir les {remainingCompleted} autre{remainingCompleted > 1 ? 's' : ''}
-              </button>
-            </div>
+              {/* Lien pour afficher toutes les sessions */}
+              {remainingCompleted > 0 && !showAllCompleted && (
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCompleted(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                  >
+                    Voir les {remainingCompleted} autre{remainingCompleted > 1 ? 's' : ''}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
@@ -864,7 +778,7 @@ export function DashboardSessionsView({
             <Calendar size={24} strokeWidth={1.8} className="text-[var(--color-muted)]" />
           </div>
           <p className="text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
-            Aucune session aujourd&apos;hui
+            Aucune session
           </p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-muted)]">
             Créez une nouvelle session pour commencer

@@ -1,46 +1,25 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import { CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { DashboardGroupRow } from "@/lib/dashboard/types";
-import {
-  DASHBOARD_ENTRANCE_DURATION,
-  DASHBOARD_ENTRANCE_EASE,
-  DashboardEntrance,
-} from "./dashboard-entrance";
 
-type TodayStatus = {
-  state: "ready" | "attention" | "urgent";
-  icon: typeof CheckCircle2;
-  label: string;
-  color: string;
-  bgColor: string;
-  ringColor: string;
-};
-
-function getTodayStatus(
+function getStatusMessage(
   todayGroups: DashboardGroupRow[],
   totalPending: number
-): TodayStatus {
+): { message: string; color: string; icon: typeof CheckCircle2 } {
   if (todayGroups.length === 0) {
     return {
-      state: "ready",
-      icon: CheckCircle2,
-      label: "Aucune activité prévue",
+      message: "Aucune activité prévue aujourd'hui",
       color: "text-[var(--color-muted)]",
-      bgColor: "bg-[color-mix(in_srgb,var(--color-foreground)_8%,transparent)]",
-      ringColor: "ring-[color-mix(in_srgb,var(--color-foreground)_12%,transparent)]",
+      icon: CheckCircle2,
     };
   }
 
   if (totalPending === 0) {
     return {
-      state: "ready",
-      icon: CheckCircle2,
-      label: "Tout est prêt",
+      message: "Tout est sous contrôle aujourd'hui",
       color: "text-[#10b981]",
-      bgColor: "bg-[color-mix(in_srgb,#10b981_11%,transparent)]",
-      ringColor: "ring-[color-mix(in_srgb,#10b981_18%,transparent)]",
+      icon: CheckCircle2,
     };
   }
 
@@ -55,53 +34,23 @@ function getTodayStatus(
   });
 
   if (hasUrgent) {
+    const count = todayGroups.filter((g) => g.total > 0 && g.signed < g.total).length;
     return {
-      state: "urgent",
-      icon: AlertCircle,
-      label: "Action urgente requise",
+      message: count === 1 ? "1 session demande votre attention" : `${count} sessions demandent votre attention`,
       color: "text-[#ef4444]",
-      bgColor: "bg-[color-mix(in_srgb,#ef4444_11%,transparent)]",
-      ringColor: "ring-[color-mix(in_srgb,#ef4444_18%,transparent)]",
+      icon: AlertCircle,
     };
   }
 
+  const count = todayGroups.filter((g) => g.total > 0 && g.signed < g.total).length;
   return {
-    state: "attention",
-    icon: Clock,
-    label: "Attention requise",
+    message: count === 1 ? "1 session en attente" : `${count} sessions en attente`,
     color: "text-[#f59e0b]",
-    bgColor: "bg-[color-mix(in_srgb,#f59e0b_11%,transparent)]",
-    ringColor: "ring-[color-mix(in_srgb,#f59e0b_18%,transparent)]",
+    icon: AlertCircle,
   };
 }
 
-function getActionMessage(
-  todayGroups: DashboardGroupRow[],
-  totalPending: number
-): string | null {
-  if (todayGroups.length === 0) return null;
-  if (totalPending === 0) return null;
-
-  const groupsWithPending = todayGroups.filter(
-    (g) => g.total > 0 && g.signed < g.total
-  );
-
-  if (groupsWithPending.length === 1) {
-    const g = groupsWithPending[0];
-    const pending = g.total - g.signed;
-    return `${g.name} attend ${pending} signature${pending > 1 ? "s" : ""}.`;
-  }
-
-  if (groupsWithPending.length > 1) {
-    return `${groupsWithPending.length} activités nécessitent encore votre intervention.`;
-  }
-
-  return null;
-}
-
 export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) {
-  const reduced = useReducedMotion() ?? false;
-
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart);
@@ -110,7 +59,6 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
   const todayGroups = groups.filter((g) => {
     if (g.status === "archived") return false;
 
-    // Préférer start_time (V2), sinon scheduled_at (V1 legacy)
     if (g.start_time) {
       const t = new Date(g.start_time);
       return t >= todayStart && t < todayEnd;
@@ -120,165 +68,40 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) 
       return t >= todayStart && t < todayEnd;
     }
 
-    // Session ouverte sans horaire = active aujourd'hui
     return g.status === "open";
   });
 
-  const totalActivities = todayGroups.length;
   const totalPeople = todayGroups.reduce((sum, g) => sum + g.total, 0);
   const totalSigned = todayGroups.reduce((sum, g) => sum + g.signed, 0);
   const totalPending = totalPeople - totalSigned;
 
-  const status = getTodayStatus(todayGroups, totalPending);
-  const actionMessage = getActionMessage(todayGroups, totalPending);
+  const status = getStatusMessage(todayGroups, totalPending);
   const StatusIcon = status.icon;
 
   return (
     <section
-      aria-label="Aperçu du jour"
-      className="relative overflow-hidden rounded-[1.25rem] border border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-2)] ring-1 ring-black/[0.015] dark:ring-white/[0.035]"
+      aria-label="État du jour"
+      className="relative overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] px-5 py-4 shadow-sm"
     >
       {/* Subtle gradient */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-60"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           background:
-            "radial-gradient(72% 58% at 11% -6%, color-mix(in srgb, var(--color-brand) 10%, transparent), transparent 60%)",
+            "radial-gradient(72% 58% at 11% -6%, color-mix(in srgb, var(--color-brand) 8%, transparent), transparent 60%)",
         }}
       />
 
-      <div className="relative flex flex-col gap-4 p-4 sm:p-4.5 lg:p-5">
-        <DashboardEntrance step={0} className="flex flex-col gap-4">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-0.5">
-              <h2 className="text-[11px] font-medium uppercase tracking-[0.09em] text-[var(--color-muted)]/65">
-                Aujourd&apos;hui
-              </h2>
-              <p className="text-[1.3rem] font-semibold leading-tight tracking-[-0.018em] text-[var(--color-foreground)] sm:text-[1.4rem]">
-                {new Date().toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </p>
-            </div>
-
-            {/* Status badge */}
-            <div
-              className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1 ${status.bgColor} ${status.ringColor}`}
-            >
-              <StatusIcon size={14} strokeWidth={2.3} className={status.color} aria-hidden />
-              <span className={`text-[12px] font-semibold ${status.color}`}>
-                {status.label}
-              </span>
-            </div>
-          </div>
-
-          {/* Primary message — cerveau comprend AVANT les chiffres */}
-          {actionMessage ? (
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: -3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
-            >
-              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
-                {actionMessage}
-              </p>
-            </motion.div>
-          ) : totalActivities === 0 ? (
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: -3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
-            >
-              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
-                Aucune activité prévue aujourd&apos;hui.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: -3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_35%,transparent)]"
-            >
-              <p className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--color-foreground)]">
-                Tout est prêt pour aujourd&apos;hui.
-              </p>
-            </motion.div>
-          )}
-
-          {/* Metrics — secondaires */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.10, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
-            >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
-                Activités
-              </span>
-              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
-                {totalActivities}
-              </span>
-            </motion.div>
-
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.13, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
-            >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
-                Personnes
-              </span>
-              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
-                {totalPeople}
-              </span>
-            </motion.div>
-
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.16, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
-            >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
-                Signées
-              </span>
-              <span className="text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]/90">
-                {totalSigned}
-              </span>
-            </motion.div>
-
-            <motion.div
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.19, ease: DASHBOARD_ENTRANCE_EASE }}
-              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/25 px-3 py-2.5"
-            >
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/55">
-                À signer
-              </span>
-              <span
-                className={`text-[1.5rem] font-semibold tabular-nums leading-none tracking-[-0.02em] ${
-                  totalPending > 0
-                    ? status.state === "urgent"
-                      ? "text-[#ef4444]"
-                      : "text-[#f59e0b]"
-                    : "text-[var(--color-foreground)]/90"
-                }`}
-              >
-                {totalPending}
-              </span>
-            </motion.div>
-          </div>
-        </DashboardEntrance>
+      <div className="relative flex items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,transparent)]`}>
+          <StatusIcon size={18} strokeWidth={2.2} className={status.color} aria-hidden />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`text-[15px] font-semibold leading-snug tracking-tight ${status.color}`}>
+            {status.message}
+          </p>
+        </div>
       </div>
     </section>
   );
