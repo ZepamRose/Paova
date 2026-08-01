@@ -174,10 +174,10 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       ? "border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
       : "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3.5%,var(--color-surface))]",
     upcoming: "border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)]",
-    completed: "border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] opacity-60",
+    completed: "border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] bg-[var(--color-surface)] opacity-45",
   };
 
-  const cardPadding = variant === "upcoming" ? "p-2.5" : "p-3";
+  const cardPadding = variant === "completed" ? "p-2" : variant === "upcoming" ? "p-2.5" : "p-3";
 
   return (
     <Link
@@ -210,19 +210,23 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="flex-1 min-w-0">
           <h3 className={`truncate leading-tight tracking-tight ${
-            variant === "ongoing"
+            variant === "completed"
+              ? "text-[12.5px] font-medium text-[var(--color-foreground)]"
+              : variant === "ongoing"
               ? "text-[15px] font-bold text-[var(--color-foreground)]"
               : "text-[13.5px] font-semibold text-[var(--color-foreground)]"
           }`}>
             {session.name}
           </h3>
-          <p className={`mt-0.5 truncate ${
-            variant === "ongoing"
-              ? "text-[11px] text-[var(--color-muted)]/75"
-              : "text-[10.5px] text-[var(--color-muted)]/70"
-          }`}>
-            {session.template_title}
-          </p>
+          {variant !== "completed" && (
+            <p className={`mt-0.5 truncate ${
+              variant === "ongoing"
+                ? "text-[11px] text-[var(--color-muted)]/75"
+                : "text-[10.5px] text-[var(--color-muted)]/70"
+            }`}>
+              {session.template_title}
+            </p>
+          )}
         </div>
 
         {variant === "ongoing" && pending > 0 && appUrl && (
@@ -236,8 +240,8 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         )}
       </div>
 
-      {/* Informations temporelles — minimales pour upcoming */}
-      {(timeInfo.startTime || timeInfo.endTime) && (
+      {/* Informations temporelles — minimales pour upcoming et completed */}
+      {variant !== "completed" && (timeInfo.startTime || timeInfo.endTime) && (
         <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1.5 ${
           variant === "ongoing"
             ? "text-[11px] text-[var(--color-muted)]/70"
@@ -283,35 +287,39 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         </div>
       )}
 
-      {/* Stats et progression — visuellement forte pour ongoing */}
-      <div className={`flex items-center gap-1.5 ${variant === "ongoing" ? "mb-1.5" : "mb-1"}`}>
-        <div className={`flex items-center gap-1.5 ${
-          variant === "ongoing" ? "text-[12.5px]" : "text-[11.5px]"
-        }`}>
-          <Users size={12} strokeWidth={1.9} className="text-[var(--color-muted)]/80" />
-          <span className={`tabular-nums ${
-            variant === "ongoing"
-              ? "font-semibold text-[var(--color-foreground)]"
-              : "font-medium text-[var(--color-foreground)]/90"
-          }`}>
-            {session.signed}
-          </span>
-          <span className="text-[var(--color-muted)]/60">/</span>
-          <span className={`tabular-nums ${
-            variant === "ongoing"
-              ? "font-semibold text-[var(--color-foreground)]"
-              : "font-medium text-[var(--color-foreground)]/90"
-          }`}>
-            {session.total}
-          </span>
-        </div>
-      </div>
+      {/* Stats et progression — visuellement forte pour ongoing, masquées pour completed */}
+      {variant !== "completed" && (
+        <>
+          <div className={`flex items-center gap-1.5 ${variant === "ongoing" ? "mb-1.5" : "mb-1"}`}>
+            <div className={`flex items-center gap-1.5 ${
+              variant === "ongoing" ? "text-[12.5px]" : "text-[11.5px]"
+            }`}>
+              <Users size={12} strokeWidth={1.9} className="text-[var(--color-muted)]/80" />
+              <span className={`tabular-nums ${
+                variant === "ongoing"
+                  ? "font-semibold text-[var(--color-foreground)]"
+                  : "font-medium text-[var(--color-foreground)]/90"
+              }`}>
+                {session.signed}
+              </span>
+              <span className="text-[var(--color-muted)]/60">/</span>
+              <span className={`tabular-nums ${
+                variant === "ongoing"
+                  ? "font-semibold text-[var(--color-foreground)]"
+                  : "font-medium text-[var(--color-foreground)]/90"
+              }`}>
+                {session.total}
+              </span>
+            </div>
+          </div>
 
-      <GroupProgressBar
-        signed={session.signed}
-        total={session.total}
-        variant="default"
-      />
+          <GroupProgressBar
+            signed={session.signed}
+            total={session.total}
+            variant="default"
+          />
+        </>
+      )}
     </Link>
   );
 }

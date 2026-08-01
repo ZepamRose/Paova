@@ -209,6 +209,14 @@ export function DashboardHeader({
 
             {canCreateGroups && templateChoices.length > 0 ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => setNewSessionModalOpen(true)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter] duration-[160ms] hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
+                >
+                  <CalendarClock size={14} strokeWidth={2} aria-hidden />
+                  <span className="hidden sm:inline">Nouvelle session</span>
+                </button>
                 <NewSessionModal
                   choices={templateChoices}
                   open={newSessionModalOpen}
@@ -229,6 +237,13 @@ export function DashboardHeader({
           <div className="flex items-center gap-2 sm:hidden">
             {canCreateGroups && templateChoices.length > 0 ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => setNewSessionModalOpen(true)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter] duration-[160ms] hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
+                >
+                  <CalendarClock size={14} strokeWidth={2} aria-hidden />
+                </button>
                 <NewSessionModal
                   choices={templateChoices}
                   open={newSessionModalOpen}
