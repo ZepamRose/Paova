@@ -55,6 +55,15 @@ export async function createSigningGroup(formData: FormData) {
     String(formData.get("scheduled_at") ?? ""),
   );
 
+  // V2: Parse session time fields
+  const startTimeRaw = String(formData.get("start_time") ?? "").trim();
+  const endTimeRaw = String(formData.get("end_time") ?? "").trim();
+  const durationMinutesRaw = String(formData.get("duration_minutes") ?? "").trim();
+
+  const startTime = startTimeRaw ? parseScheduledAt(startTimeRaw) : null;
+  const endTime = endTimeRaw ? parseScheduledAt(endTimeRaw) : null;
+  const durationMinutes = durationMinutesRaw ? parseInt(durationMinutesRaw, 10) : null;
+
   if (!name || !templateId) {
     redirect(
       `/dashboard/groupes/new?error=required${templateId ? `&template=${templateId}` : ""}`,
@@ -89,6 +98,9 @@ export async function createSigningGroup(formData: FormData) {
       kind: "roster",
       scheduled_at: scheduledAt,
       closes_at: closesAt,
+      start_time: startTime,
+      end_time: endTime,
+      duration_minutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
     })
     .select("id")
     .single();
@@ -263,6 +275,15 @@ export async function updateGroupSettings(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const nextCloses = parseClosesOn(String(formData.get("closes_on") ?? ""));
 
+  // V2: Parse session time fields
+  const startTimeRaw = String(formData.get("start_time") ?? "").trim();
+  const endTimeRaw = String(formData.get("end_time") ?? "").trim();
+  const durationMinutesRaw = String(formData.get("duration_minutes") ?? "").trim();
+
+  const startTime = startTimeRaw ? parseScheduledAt(startTimeRaw) : null;
+  const endTime = endTimeRaw ? parseScheduledAt(endTimeRaw) : null;
+  const durationMinutes = durationMinutesRaw ? parseInt(durationMinutesRaw, 10) : null;
+
   if (!groupId || !name) {
     redirect(`/dashboard/groupes/${groupId}?error=settings`);
   }
@@ -280,6 +301,9 @@ export async function updateGroupSettings(formData: FormData) {
     .update({
       name: name.slice(0, 120),
       closes_at: nextCloses,
+      start_time: startTime,
+      end_time: endTime,
+      duration_minutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
     })
     .eq("id", groupId)
     .eq("business_id", business.id);

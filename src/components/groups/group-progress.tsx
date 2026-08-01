@@ -97,29 +97,8 @@ export function GroupProgressBar({
 
   return (
     <div className={className}>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[12.5px] font-medium tabular-nums tracking-tight text-[var(--color-foreground)]">
-          <span className="font-semibold">{signed}</span>
-          <span className="font-normal text-[var(--color-muted)]">
-            {" "}
-            / {total}
-          </span>
-          <span className="ml-1.5 font-normal text-[var(--color-muted)]">
-            signés
-          </span>
-        </p>
-        <p
-          className={`text-[11.5px] font-semibold tabular-nums ${
-            complete
-              ? "text-[var(--color-brand)]"
-              : "text-[var(--color-muted)]"
-          }`}
-        >
-          {total === 0 ? "—" : `${pct} %`}
-        </p>
-      </div>
       <div
-        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-surface-2)_88%,var(--color-foreground))]"
+        className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-surface-2)_85%,var(--color-foreground))]"
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}

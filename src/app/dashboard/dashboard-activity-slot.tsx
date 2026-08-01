@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { AlertTriangle, Clock, PartyPopper } from "lucide-react";
+import { AlertTriangle, Clock, PartyPopper, CheckCircle2, Activity } from "lucide-react";
 import type {
   DashboardAttentionItem,
   DashboardAttentionKind,
+  DashboardGroupRow,
 } from "@/lib/dashboard/types";
 
 const ICON: Record<DashboardAttentionKind, typeof AlertTriangle> = {
@@ -21,6 +22,153 @@ const ICON_STYLE: Record<DashboardAttentionKind, string> = {
 };
 
 /**
+ * Hero narratif — raconte l'état opérationnel en une histoire.
+ * Le message guide l'action, les métriques sont secondaires.
+ */
+export function DashboardHero({ groups }: { groups: DashboardGroupRow[] }) {
+  const now = new Date();
+
+  // Classifier les sessions
+  const activeSessions = groups.filter(g => {
+    if (g.status !== "open") return false;
+    const hasStarted = g.start_time ? new Date(g.start_time) <= now : true;
+    const hasEnded = g.end_time ? new Date(g.end_time) < now : false;
+    const isComplete = g.signed >= g.total && g.total > 0;
+    return hasStarted && !hasEnded && !isComplete;
+  });
+
+  const totalPending = activeSessions.reduce((sum, s) => sum + (s.total - s.signed), 0);
+  const sessionsWithPending = activeSessions.filter(s => s.signed < s.total);
+
+  // Déterminer l'urgence
+  const urgentSessions = activeSessions.filter(s => {
+    if (!s.end_time) return false;
+    const endMs = new Date(s.end_time).getTime();
+    const remainingMs = endMs - now.getTime();
+    const remainingMinutes = remainingMs / 60000;
+    return remainingMinutes > 0 && remainingMinutes <= 30 && s.signed < s.total;
+  });
+
+  // Construire le message narratif
+  let status: "urgent" | "attention" | "calm" | "complete";
+  let message: string;
+  let submessage: string;
+
+  if (urgentSessions.length > 0) {
+    status = "urgent";
+    const plural = urgentSessions.length > 1;
+    message = `${plural ? "Des sessions se terminent" : "Une session se termine"} dans moins de 30 minutes`;
+    submessage = `${totalPending} validation${totalPending > 1 ? "s" : ""} encore nécessaire${totalPending > 1 ? "s" : ""} avant la fin.`;
+  } else if (totalPending > 0) {
+    status = "attention";
+    const sessionPlural = sessionsWithPending.length > 1;
+    message = `${totalPending} validation${totalPending > 1 ? "s restent" : " reste"} en attente`;
+    submessage = `${sessionsWithPending.length} session${sessionPlural ? "s nécessitent" : " nécessite"} votre intervention.`;
+  } else if (activeSessions.length > 0) {
+    status = "complete";
+    message = "Toutes les validations sont réunies";
+    submessage = `${activeSessions.length} session${activeSessions.length > 1 ? "s actives" : " active"} — tout est prêt.`;
+  } else {
+    status = "calm";
+    message = "Aucune session active pour le moment";
+    submessage = "Créez une nouvelle session pour commencer.";
+  }
+
+  // Style selon le statut
+  const statusStyles = {
+    urgent: {
+      bg: "bg-gradient-to-br from-[color-mix(in_srgb,#dc2626_8%,var(--color-surface))] to-[color-mix(in_srgb,#dc2626_3%,var(--color-surface))]",
+      border: "border-[color-mix(in_srgb,#dc2626_25%,var(--color-border))]",
+      icon: "bg-[color-mix(in_srgb,#dc2626_12%,transparent)] text-[#dc2626]",
+      indicator: "bg-[#dc2626]",
+      iconComponent: AlertTriangle,
+      emoji: "🔴",
+    },
+    attention: {
+      bg: "bg-gradient-to-br from-[color-mix(in_srgb,#d97706_8%,var(--color-surface))] to-[color-mix(in_srgb,#d97706_3%,var(--color-surface))]",
+      border: "border-[color-mix(in_srgb,#d97706_25%,var(--color-border))]",
+      icon: "bg-[color-mix(in_srgb,#d97706_12%,transparent)] text-[#d97706]",
+      indicator: "bg-[#d97706]",
+      iconComponent: Clock,
+      emoji: "🟡",
+    },
+    complete: {
+      bg: "bg-gradient-to-br from-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] to-[color-mix(in_srgb,var(--color-brand)_3%,var(--color-surface))]",
+      border: "border-[color-mix(in_srgb,var(--color-brand)_22%,var(--color-border))]",
+      icon: "bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]",
+      indicator: "bg-[var(--color-brand)]",
+      iconComponent: CheckCircle2,
+      emoji: "✓",
+    },
+    calm: {
+      bg: "bg-gradient-to-br from-[var(--color-surface-2)] to-[var(--color-surface)]",
+      border: "border-[color-mix(in_srgb,var(--color-border)_50%,transparent)]",
+      icon: "bg-[color-mix(in_srgb,var(--color-muted)_10%,transparent)] text-[var(--color-muted)]",
+      indicator: "bg-[var(--color-muted)]",
+      iconComponent: Activity,
+      emoji: "○",
+    },
+  };
+
+  const style = statusStyles[status];
+  const IconComponent = style.iconComponent;
+
+  return (
+    <section
+      className={`relative overflow-hidden rounded-2xl border p-6 shadow-[var(--elev-2)] ${style.bg} ${style.border}`}
+      aria-label="État opérationnel"
+    >
+      <div className="flex items-start gap-4">
+        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${style.icon}`}>
+          <IconComponent size={20} strokeWidth={1.8} aria-hidden />
+        </span>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`flex h-2 w-2 rounded-full ${style.indicator}`} aria-hidden />
+            <p className="text-[19px] font-semibold tracking-tight text-[var(--color-foreground)] leading-tight">
+              {message}
+            </p>
+          </div>
+
+          <p className="text-[14px] leading-relaxed text-[var(--color-muted)] mb-4">
+            {submessage}
+          </p>
+
+          {/* Métriques secondaires */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[var(--color-muted)]">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold tabular-nums text-[var(--color-foreground)]">{activeSessions.length}</span>
+              <span>session{activeSessions.length > 1 ? "s" : ""} active{activeSessions.length > 1 ? "s" : ""}</span>
+            </div>
+            {totalPending > 0 && (
+              <>
+                <span className="text-[var(--color-muted)]/35">·</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold tabular-nums text-[var(--color-foreground)]">{totalPending}</span>
+                  <span>en attente</span>
+                </div>
+              </>
+            )}
+            {groups.length > activeSessions.length && (
+              <>
+                <span className="text-[var(--color-muted)]/35">·</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                    {groups.length - activeSessions.length}
+                  </span>
+                  <span>à venir</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
  * Priority zone — only renders when something actually needs a decision.
  * Kept compact so it never competes with the business hero above.
  */
@@ -32,40 +180,40 @@ export function DashboardAttention({
   if (items.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-2.5" aria-label="À traiter">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-[var(--color-muted)]">
-          À traiter maintenant
+    <section className="flex flex-col gap-2" aria-label="À traiter">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-[var(--color-muted)]/70">
+          À traiter
         </p>
-        <p className="text-[11.5px] font-medium tabular-nums text-[var(--color-muted)]/78">
+        <p className="text-[11px] font-semibold tabular-nums text-[var(--color-muted)]/65">
           {items.length}
         </p>
       </div>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1.5">
         {items.map((item) => {
           const Icon = ICON[item.kind];
           return (
             <li key={item.id}>
               <Link
                 href={item.href}
-                className="group flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3.5 py-3 shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[150ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_22%,var(--color-border))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                className="group flex items-center gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-3 py-2.5 shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
               >
                 <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${ICON_STYLE[item.kind]}`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${ICON_STYLE[item.kind]}`}
                 >
-                  <Icon size={14} strokeWidth={1.8} aria-hidden />
+                  <Icon size={13} strokeWidth={2} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-medium tracking-tight text-[var(--color-foreground)]">
+                  <span className="block truncate text-[12.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
                     {item.title}
                   </span>
-                  <span className="block truncate text-[12px] leading-snug text-[var(--color-muted)]">
+                  <span className="block truncate text-[11px] leading-snug text-[var(--color-muted)]/80">
                     {item.meta}
                   </span>
                 </span>
                 <span
                   aria-hidden
-                  className="shrink-0 text-[var(--color-muted)]/48 transition-[color,transform] duration-[150ms] group-hover:translate-x-0.5 group-hover:text-[var(--color-brand)]"
+                  className="shrink-0 text-[var(--color-muted)]/40 transition-[color,transform] duration-[140ms] group-hover:translate-x-0.5 group-hover:text-[var(--color-brand)]"
                 >
                   →
                 </span>

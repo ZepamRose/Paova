@@ -52,6 +52,9 @@ export function NewGroupForm({
   const [rosterCount, setRosterCount] = useState(0);
   const [closesOn, setClosesOn] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("");
 
   const selected =
     (locked ? preselected : choices.find((c) => c.id === templateId)) ??
@@ -248,6 +251,65 @@ export function NewGroupForm({
               Après cette date, le lien refuse les nouvelles signatures.
             </span>
           </label>
+        </div>
+
+        {/* V2: Session Time Fields */}
+        <div className="flex flex-col gap-4 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4">
+          <div>
+            <h3 className="text-[13px] font-medium text-[var(--color-foreground)]">
+              Horaires de session{" "}
+              <span className="font-normal text-[var(--color-muted)]">
+                (facultatif)
+              </span>
+            </h3>
+            <p className="mt-0.5 text-[12px] text-[var(--color-muted)]">
+              Précisez les heures de début et fin pour un meilleur suivi
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-[var(--color-foreground)]">
+                Heure de début
+              </span>
+              <input
+                name="start_time"
+                type="datetime-local"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={field}
+              />
+            </label>
+
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-[var(--color-foreground)]">
+                Heure de fin
+              </span>
+              <input
+                name="end_time"
+                type="datetime-local"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={field}
+              />
+            </label>
+
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-[var(--color-foreground)]">
+                Durée (minutes)
+              </span>
+              <input
+                name="duration_minutes"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Ex. 90"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(e.target.value)}
+                className={field}
+              />
+            </label>
+          </div>
         </div>
       </section>
 

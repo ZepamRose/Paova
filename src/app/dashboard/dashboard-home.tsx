@@ -13,6 +13,8 @@ import {
 } from "./dashboard-waivers-section";
 import { DashboardGroupsSection } from "./dashboard-groups-section";
 import { DashboardEntrance } from "./dashboard-entrance";
+import { DashboardSessionsView } from "./dashboard-sessions-view";
+import { DashboardTodayHero } from "./dashboard-today-hero";
 
 function matchesQuery(haystack: string, query: string) {
   if (!query) return true;
@@ -20,8 +22,10 @@ function matchesQuery(haystack: string, query: string) {
 }
 
 /**
- * Client shell below the business hero. One live view: search, forms,
- * planned sessions. Archives are a page of their own.
+ * PAOVA V2 - Dashboard Home
+ *
+ * Nouvelle organisation centrée sur les sessions.
+ * Les sessions sont au premier plan, les modèles en arrière-plan.
  */
 export function DashboardHome({
   attentionItems,
@@ -60,35 +64,33 @@ export function DashboardHome({
 
   const showSearch = active.length + groups.length >= 3 || q.length > 0;
 
-  const canCreateGroup = active.length > 0;
-
   return (
-    <div className="flex flex-col gap-6 sm:gap-6">
+    <div className="flex flex-col gap-4 sm:gap-4">
       {!q ? (
-        <DashboardAttention items={attentionItems} />
+        <>
+          <DashboardTodayHero groups={groups} />
+          <DashboardAttention items={attentionItems} />
+        </>
       ) : null}
 
-      <DashboardEntrance
-        step={2}
-        className="flex flex-col gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_22%,var(--color-background))] p-3 sm:p-3.5 lg:p-4"
-      >
-        {/* Search alone. The Actives/Archivées switch is gone — archives now
-            live behind the header tile, so this list only ever shows live
-            work and there is nothing left to toggle between. */}
-        {showSearch ? (
+      {showSearch ? (
+        <DashboardEntrance
+          step={2}
+          className="flex flex-col gap-2.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_20%,var(--color-background))] p-2.5 sm:p-3"
+        >
           <div className="relative">
             <Search
-              size={15}
-              strokeWidth={1.9}
+              size={14}
+              strokeWidth={2}
               aria-hidden
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]/80"
             />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher un formulaire ou une session…"
-              className="h-[44px] w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[var(--color-surface)] py-2 pl-9 pr-9 text-[14px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--color-muted)]/70 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+              placeholder="Rechercher une session ou un modèle…"
+              className="h-[40px] w-full rounded-lg border border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] bg-[var(--color-surface)] py-2 pl-9 pr-9 text-[13px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--color-muted)]/65 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_2.5px_color-mix(in_srgb,var(--color-brand)_15%,transparent)]"
               aria-label="Rechercher"
             />
             {query ? (
@@ -96,48 +98,63 @@ export function DashboardHome({
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Effacer la recherche"
-                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
+                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]"
               >
-                <X size={14} strokeWidth={2} aria-hidden />
+                <X size={13} strokeWidth={2.2} aria-hidden />
               </button>
             ) : null}
           </div>
-        ) : null}
-      </DashboardEntrance>
+        </DashboardEntrance>
+      ) : null}
 
-      <DashboardEntrance step={3} className="flex flex-col">
-        <DashboardWaiversSection
-          active={filteredActive}
-          archived={[]}
-          listView="active"
-          appUrl={appUrl}
-          signatureCountByTemplate={signatureCountByTemplate}
-          lastSignedByTemplate={lastSignedByTemplate}
-          searchActive={Boolean(q)}
-        />
-      </DashboardEntrance>
+      {/* Vue Sessions */}
+      {!q && (
+        <DashboardEntrance step={3} className="flex flex-col">
+          <DashboardSessionsView
+            groups={filteredGroups}
+            appUrl={appUrl}
+          />
+        </DashboardEntrance>
+      )}
 
-      <div
-        aria-hidden
-        className="my-2 flex items-center gap-3 sm:my-3"
-      >
-        <span className="h-px flex-1 bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]" />
-        <span className="h-1 w-1 rounded-full bg-[color-mix(in_srgb,var(--color-border)_80%,var(--color-muted))]" />
-        <span className="h-px flex-1 bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]" />
-      </div>
+      {/* Vue recherche */}
+      {q && (
+        <>
+          <DashboardEntrance step={3} className="flex flex-col">
+            <DashboardGroupsSection
+              groups={filteredGroups}
+              archivedGroups={[]}
+              listView="active"
+              searchActive={Boolean(q)}
+              appUrl={appUrl}
+              canCreateGroup={active.length > 0}
+              canCreateGroups={canCreateGroups}
+              canManageGroups={canManageGroups}
+            />
+          </DashboardEntrance>
 
-      <DashboardEntrance step={4} className="flex flex-col">
-        <DashboardGroupsSection
-          groups={filteredGroups}
-          archivedGroups={[]}
-          listView="active"
-          searchActive={Boolean(q)}
-          appUrl={appUrl}
-          canCreateGroup={canCreateGroup}
-          canCreateGroups={canCreateGroups}
-          canManageGroups={canManageGroups}
-        />
-      </DashboardEntrance>
+          <div
+            aria-hidden
+            className="my-2 flex items-center gap-3 sm:my-3"
+          >
+            <span className="h-px flex-1 bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]" />
+            <span className="h-1 w-1 rounded-full bg-[color-mix(in_srgb,var(--color-border)_80%,var(--color-muted))]" />
+            <span className="h-px flex-1 bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]" />
+          </div>
+
+          <DashboardEntrance step={4} className="flex flex-col">
+            <DashboardWaiversSection
+              active={filteredActive}
+              archived={[]}
+              listView="active"
+              appUrl={appUrl}
+              signatureCountByTemplate={signatureCountByTemplate}
+              lastSignedByTemplate={lastSignedByTemplate}
+              searchActive={Boolean(q)}
+            />
+          </DashboardEntrance>
+        </>
+      )}
     </div>
   );
 }

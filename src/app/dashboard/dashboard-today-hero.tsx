@@ -2,21 +2,12 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import type { DashboardGroupRow } from "@/lib/dashboard/types";
 import {
   DASHBOARD_ENTRANCE_DURATION,
   DASHBOARD_ENTRANCE_EASE,
   DashboardEntrance,
 } from "./dashboard-entrance";
-
-type DashboardGroup = {
-  id: string;
-  name: string;
-  status: string;
-  scheduled_at: string | null;
-  start_time: string | null;
-  total: number;
-  signed: number;
-};
 
 type TodayStatus = {
   state: "ready" | "attention" | "urgent";
@@ -28,7 +19,7 @@ type TodayStatus = {
 };
 
 function getTodayStatus(
-  todayGroups: DashboardGroup[],
+  todayGroups: DashboardGroupRow[],
   totalPending: number
 ): TodayStatus {
   if (todayGroups.length === 0) {
@@ -53,18 +44,14 @@ function getTodayStatus(
     };
   }
 
-  // Check for urgent cases (sessions starting soon with pending signatures)
+  // Urgent: sessions se terminant dans moins de 30 min avec des signatures manquantes
   const now = new Date();
   const hasUrgent = todayGroups.some((g) => {
-    if (g.total === 0 || g.signed === g.total) return false;
-    if (!g.start_time) return false;
-
-    const startTime = new Date(g.start_time);
-    const msUntilStart = startTime.getTime() - now.getTime();
-    const hoursUntilStart = msUntilStart / (1000 * 60 * 60);
-
-    // Urgent if starting in less than 2 hours with pending signatures
-    return hoursUntilStart < 2 && hoursUntilStart > 0;
+    if (g.total === 0 || g.signed >= g.total) return false;
+    if (!g.end_time) return false;
+    const msUntilEnd = new Date(g.end_time).getTime() - now.getTime();
+    const minutesUntilEnd = msUntilEnd / 60000;
+    return minutesUntilEnd > 0 && minutesUntilEnd <= 30;
   });
 
   if (hasUrgent) {
@@ -89,7 +76,7 @@ function getTodayStatus(
 }
 
 function getActionMessage(
-  todayGroups: DashboardGroup[],
+  todayGroups: DashboardGroupRow[],
   totalPending: number
 ): string | null {
   if (todayGroups.length === 0) return null;
@@ -112,10 +99,9 @@ function getActionMessage(
   return null;
 }
 
-export function DashboardTodayHero({ groups }: { groups: DashboardGroup[] }) {
+export function DashboardTodayHero({ groups }: { groups: DashboardGroupRow[] }) {
   const reduced = useReducedMotion() ?? false;
 
-  // Filter today's groups
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart);
@@ -124,24 +110,18 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroup[] }) {
   const todayGroups = groups.filter((g) => {
     if (g.status === "archived") return false;
 
-    // If has start_time, use it
+    // Préférer start_time (V2), sinon scheduled_at (V1 legacy)
     if (g.start_time) {
-      const startTime = new Date(g.start_time);
-      return startTime >= todayStart && startTime < todayEnd;
+      const t = new Date(g.start_time);
+      return t >= todayStart && t < todayEnd;
     }
-
-    // If has scheduled_at (legacy), use it
     if (g.scheduled_at) {
-      const scheduledTime = new Date(g.scheduled_at);
-      return scheduledTime >= todayStart && scheduledTime < todayEnd;
+      const t = new Date(g.scheduled_at);
+      return t >= todayStart && t < todayEnd;
     }
 
-    // If no time info, consider it as "today" if it&apos;s open and recent
-    if (g.status === "open") {
-      return true;
-    }
-
-    return false;
+    // Session ouverte sans horaire = active aujourd'hui
+    return g.status === "open";
   });
 
   const totalActivities = todayGroups.length;
@@ -156,27 +136,27 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroup[] }) {
   return (
     <section
       aria-label="Aperçu du jour"
-      className="relative overflow-hidden rounded-[1.5rem] border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.045]"
+      className="relative overflow-hidden rounded-[1.25rem] border border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-2)] ring-1 ring-black/[0.015] dark:ring-white/[0.035]"
     >
       {/* Subtle gradient */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(75% 60% at 12% -8%, color-mix(in srgb, var(--color-brand) 11%, transparent), transparent 62%)",
+            "radial-gradient(72% 58% at 11% -6%, color-mix(in srgb, var(--color-brand) 10%, transparent), transparent 60%)",
         }}
       />
 
-      <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:p-7">
-        <DashboardEntrance step={0} className="flex flex-col gap-4">
+      <div className="relative flex flex-col gap-3.5 p-4 sm:p-4.5 lg:p-5">
+        <DashboardEntrance step={0} className="flex flex-col gap-3">
           {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--color-muted)]/70">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.09em] text-[var(--color-muted)]/65">
                 Aujourd&apos;hui
               </h2>
-              <p className="text-[1.5rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--color-foreground)] sm:text-[1.65rem] sm:tracking-[-0.022em]">
+              <p className="text-[1.3rem] font-semibold leading-tight tracking-[-0.018em] text-[var(--color-foreground)] sm:text-[1.4rem]">
                 {new Date().toLocaleDateString("fr-FR", {
                   weekday: "long",
                   day: "numeric",
@@ -187,86 +167,70 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroup[] }) {
 
             {/* Status badge */}
             <div
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 ring-1 ${status.bgColor} ${status.ringColor}`}
+              className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1 ${status.bgColor} ${status.ringColor}`}
             >
-              <StatusIcon size={16} strokeWidth={2.2} className={status.color} aria-hidden />
-              <span className={`text-[13px] font-semibold ${status.color}`}>
+              <StatusIcon size={14} strokeWidth={2.3} className={status.color} aria-hidden />
+              <span className={`text-[12px] font-semibold ${status.color}`}>
                 {status.label}
               </span>
             </div>
           </div>
 
           {/* Metrics */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
             <motion.div
-              initial={reduced ? false : { opacity: 0, y: 8 }}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: DASHBOARD_ENTRANCE_DURATION,
-                delay: reduced ? 0 : 0.05,
-                ease: DASHBOARD_ENTRANCE_EASE,
-              }}
-              className="flex flex-col gap-1 rounded-lg bg-[var(--color-surface-2)]/40 px-3.5 py-3"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.04, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
             >
-              <span className="text-[11.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-muted)]/70">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
                 Activités
               </span>
-              <span className="text-[1.75rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
                 {totalActivities}
               </span>
             </motion.div>
 
             <motion.div
-              initial={reduced ? false : { opacity: 0, y: 8 }}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: DASHBOARD_ENTRANCE_DURATION,
-                delay: reduced ? 0 : 0.08,
-                ease: DASHBOARD_ENTRANCE_EASE,
-              }}
-              className="flex flex-col gap-1 rounded-lg bg-[var(--color-surface-2)]/40 px-3.5 py-3"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.07, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
             >
-              <span className="text-[11.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-muted)]/70">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
                 Personnes
               </span>
-              <span className="text-[1.75rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
                 {totalPeople}
               </span>
             </motion.div>
 
             <motion.div
-              initial={reduced ? false : { opacity: 0, y: 8 }}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: DASHBOARD_ENTRANCE_DURATION,
-                delay: reduced ? 0 : 0.11,
-                ease: DASHBOARD_ENTRANCE_EASE,
-              }}
-              className="flex flex-col gap-1 rounded-lg bg-[var(--color-surface-2)]/40 px-3.5 py-3"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.10, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
             >
-              <span className="text-[11.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-muted)]/70">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
                 Validées
               </span>
-              <span className="text-[1.75rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
+              <span className="text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--color-foreground)]">
                 {totalSigned}
               </span>
             </motion.div>
 
             <motion.div
-              initial={reduced ? false : { opacity: 0, y: 8 }}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: DASHBOARD_ENTRANCE_DURATION,
-                delay: reduced ? 0 : 0.14,
-                ease: DASHBOARD_ENTRANCE_EASE,
-              }}
-              className="flex flex-col gap-1 rounded-lg bg-[var(--color-surface-2)]/40 px-3.5 py-3"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.13, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="flex flex-col gap-0.5 rounded-lg bg-[var(--color-surface-2)]/35 px-3 py-2.5"
             >
-              <span className="text-[11.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-muted)]/70">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-[var(--color-muted)]/65">
                 Restantes
               </span>
               <span
-                className={`text-[1.75rem] font-semibold tabular-nums leading-none tracking-[-0.02em] ${
+                className={`text-[1.6rem] font-semibold tabular-nums leading-none tracking-[-0.02em] ${
                   totalPending > 0
                     ? status.state === "urgent"
                       ? "text-[#ef4444]"
@@ -282,14 +246,10 @@ export function DashboardTodayHero({ groups }: { groups: DashboardGroup[] }) {
           {/* Action message */}
           {actionMessage ? (
             <motion.p
-              initial={reduced ? false : { opacity: 0, y: -4 }}
+              initial={reduced ? false : { opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: DASHBOARD_ENTRANCE_DURATION,
-                delay: reduced ? 0 : 0.18,
-                ease: DASHBOARD_ENTRANCE_EASE,
-              }}
-              className="rounded-lg bg-[var(--color-surface-2)]/50 px-3.5 py-2.5 text-[13.5px] leading-snug text-[var(--color-foreground)]/85"
+              transition={{ duration: DASHBOARD_ENTRANCE_DURATION, delay: reduced ? 0 : 0.16, ease: DASHBOARD_ENTRANCE_EASE }}
+              className="rounded-lg bg-[var(--color-surface-2)]/45 px-3 py-2 text-[12.5px] leading-snug text-[var(--color-foreground)]/80"
             >
               {actionMessage}
             </motion.p>

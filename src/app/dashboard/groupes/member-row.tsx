@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { PendingSubmitButton } from "../pending-submit-button";
+import { CopyLinkButton } from "../copy-link-button";
 import {
   deleteGroupMember,
   sendGroupReminders,
@@ -31,10 +32,13 @@ export function MemberRow({
   groupId,
   member,
   canRemind,
+  /** V1 relancer: quand fourni, affiche un bouton "Copier lien" par participant non-signé. */
+  publicUrl,
 }: {
   groupId: string;
   member: Member;
   canRemind: boolean;
+  publicUrl?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [editState, editAction] = useActionState(updateGroupMember, initialEdit);
@@ -66,6 +70,15 @@ export function MemberRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* V1 relancer: copier le lien de session dans le presse-papiers */}
+          {!signed && publicUrl ? (
+            <CopyLinkButton
+              url={publicUrl}
+              size="sm"
+              variant="icon"
+              className="shrink-0"
+            />
+          ) : null}
           <span
             className={`rounded-md px-1.5 py-0.5 text-[10.5px] font-medium ${
               signed

@@ -103,7 +103,7 @@ export function DashboardGroupsSection({
               className="text-[1.08rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.15rem]"
             >
               {showArchived
-                ? "Sessions planifiées archivées"
+                ? "Sessions archivées"
                 : "Sessions planifiées"}
               {rows.length > 0 ? (
                 <span className="ml-1.5 tabular-nums font-medium text-[var(--color-muted)]">
@@ -118,8 +118,8 @@ export function DashboardGroupsSection({
                 ? "Aucun résultat pour cette recherche."
                 : `${rows.length} résultat${rows.length > 1 ? "s" : ""}`
               : showArchived
-                ? "Masquées du tableau de bord — signatures conservées."
-                : "Suivez la progression collective, signature après signature."}
+                ? "Masquées du tableau de bord — données conservées."
+                : "Gérez vos sessions en direct."}
           </p>
         </div>
       </div>
@@ -127,18 +127,17 @@ export function DashboardGroupsSection({
       {!showArchived && !canCreateGroup && !searchActive && canCreateGroups ? (
         <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_35%,var(--color-surface))] px-4 py-3.5">
           <p className="text-[13.5px] font-medium text-[var(--color-foreground)]">
-            Une session nécessite un formulaire
+            Une session nécessite un modèle
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
-            Commencez par créer un formulaire. Vous pourrez ensuite créer une
-            session pour une classe, une équipe, une entreprise ou tout autre
-            ensemble de participants.
+            Commencez par créer un modèle de formulaire. Vous pourrez ensuite créer des
+            sessions pour vos différents groupes de participants.
           </p>
           <Link
             href="/dashboard/waivers/new"
             className="mt-3 inline-flex h-8 items-center rounded-lg bg-[var(--color-brand)] px-3 text-[12.5px] font-medium tracking-[-0.01em] text-[var(--color-on-brand)] transition-[transform,filter] duration-[150ms] hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
           >
-            Créer un formulaire
+            Créer un modèle
           </Link>
         </div>
       ) : null}

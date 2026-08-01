@@ -9,7 +9,6 @@ import {
 } from "@/lib/templates";
 import type { DashboardAttentionItem } from "@/lib/dashboard/types";
 import { DashboardHome } from "./dashboard-home";
-import { DashboardTodayHero } from "./dashboard-today-hero";
 import { DashboardHeader } from "./dashboard-header";
 
 
@@ -185,7 +184,11 @@ export default async function DashboardPage() {
     }
   }
   attentionItems.push(...completeGroups, ...nearCompleteGroups);
-  const visibleAttentionItems = attentionItems.slice(0, 6);
+  // Seuls les items waiver_expiring sont pertinents ici — les états de session
+  // (group_complete, group_near_complete) sont déjà lisibles dans les cards.
+  const visibleAttentionItems = attentionItems
+    .filter((i) => i.kind === "waiver_expiring")
+    .slice(0, 6);
 
   const appUrl = env.appUrl;
 
@@ -193,10 +196,10 @@ export default async function DashboardPage() {
   const lastSignedRecord = Object.fromEntries(lastSignedByTemplate);
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-dashboard flex-col gap-5 px-5 py-5 sm:gap-6 sm:px-8 sm:py-9 lg:px-10">
+    <main className="relative mx-auto flex min-h-screen max-w-dashboard flex-col gap-4 px-5 py-5 sm:gap-4 sm:px-8 sm:py-8 lg:px-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(75%_55%_at_50%_-8%,color-mix(in_srgb,var(--color-brand)_9%,transparent),transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(72%_52%_at_50%_-6%,color-mix(in_srgb,var(--color-brand)_8.5%,transparent),transparent)]"
       />
 
       <DashboardHeader
@@ -211,8 +214,6 @@ export default async function DashboardPage() {
         canCreateGroup={canCreateGroups && activeTemplatesList.length > 0}
         templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
       />
-
-      <DashboardTodayHero groups={dashboardGroups} />
 
       <DashboardHome
         attentionItems={visibleAttentionItems}

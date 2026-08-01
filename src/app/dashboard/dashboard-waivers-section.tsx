@@ -143,7 +143,7 @@ export function DashboardWaiversSection({
               id="dashboard-waivers-heading"
               className="text-[1.08rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.15rem]"
             >
-              {showArchived ? "Formulaires archivés" : "Vos formulaires"}
+              {showArchived ? "Modèles archivés" : "Vos modèles"}
               {rows.length > 0 ? (
                 <span className="ml-1.5 tabular-nums font-medium text-[var(--color-muted)]">
                   {rows.length}

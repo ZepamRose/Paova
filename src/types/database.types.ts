@@ -418,11 +418,14 @@ export type Database = {
           business_id: string
           closes_at: string | null
           created_at: string
+          duration_minutes: number | null
+          end_time: string | null
           id: string
           kind: string
           name: string
           public_token: string
           scheduled_at: string | null
+          start_time: string | null
           status: string
           template_id: string
         }
@@ -431,11 +434,14 @@ export type Database = {
           business_id: string
           closes_at?: string | null
           created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
           id?: string
           kind?: string
           name: string
           public_token: string
           scheduled_at?: string | null
+          start_time?: string | null
           status?: string
           template_id: string
         }
@@ -444,11 +450,14 @@ export type Database = {
           business_id?: string
           closes_at?: string | null
           created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
           id?: string
           kind?: string
           name?: string
           public_token?: string
           scheduled_at?: string | null
+          start_time?: string | null
           status?: string
           template_id?: string
         }

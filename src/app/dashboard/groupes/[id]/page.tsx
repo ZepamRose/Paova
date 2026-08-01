@@ -1,54 +1,78 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { Share2, Users, Settings2, Zap } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveMembership, resolveBusinessContext } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
 import { env } from "@/lib/env";
 import { CopyLinkButton } from "@/app/dashboard/copy-link-button";
-import { GroupIcon } from "@/components/groups/group-icon";
-import {
-  GroupProgressBar,
-  GroupStatBadges,
-} from "@/components/groups/group-progress";
+import { GroupProgressBar } from "@/components/groups/group-progress";
 import { detectRosterMode } from "@/lib/groups";
 import {
   acceptsGroupSignatures,
   ensureGroupAccepting,
-  formatClosesAt,
 } from "@/lib/groups/lifecycle";
+import {
+  computeSessionPhase,
+  formatTimeRange,
+} from "@/lib/session-time";
 import { AddParticipantForm } from "../add-participant-form";
 import { AddRosterForm } from "../add-roster-form";
-import { QrPreview } from "../qr-preview";
+import { SessionQrOverlay } from "../session-qr-overlay";
+import { SessionStatusBadge } from "../session-status-badge";
 import { PendingSubmitButton } from "../../pending-submit-button";
 import { GroupSettingsForm } from "../group-settings-form";
 import { MemberRow } from "../member-row";
-import { RemindPendingButton } from "../remind-pending-button";
 import { GroupExportButtons } from "../group-export-buttons";
+import { LiveRefresh } from "../live-refresh";
 import {
   archiveGroup,
   setGroupStatus,
   unarchiveGroup,
 } from "../actions";
 
+// ─── Design tokens ───────────────────────────────────────────────────────────
+
 const motion = "duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]";
-
-const card =
-  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[var(--color-surface)] p-4 shadow-[var(--elev-2)] sm:p-5";
-
-const cardFeatured =
-  "rounded-2xl border border-[color-mix(in_srgb,var(--color-brand)_24%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-surface)_93%,var(--color-brand))] p-4 shadow-[var(--elev-2)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_8%,transparent)] sm:p-5";
-
-const cardSoft =
-  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_58%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-background))] p-3.5 sm:p-4";
 
 const btnSecondary = `inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-3.5 text-[13px] font-medium text-[var(--color-foreground)]/82 shadow-[var(--elev-1)] transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-[var(--elev-2)]`;
 
-const labelCaps =
-  "text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--color-muted)]";
+const sectionLabel =
+  "text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-muted)]";
 
-export default async function GroupeDetailPage({
+const card =
+  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] p-5 shadow-[var(--elev-1)]";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** "Aujourd'hui", "Demain", "Hier", ou date longue fr */
+function sessionDateLabel(date: Date): string {
+  const now = new Date();
+  const d = (d: Date) => d.toDateString();
+  if (d(date) === d(now)) return "Aujourd'hui";
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (d(date) === d(tomorrow)) return "Demain";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d(date) === d(yesterday)) return "Hier";
+  return date.toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+/** "14:03" */
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default async function SessionDetailPage({
   params,
   searchParams,
 }: {
@@ -68,6 +92,7 @@ export default async function GroupeDetailPage({
   if (!membership) redirect("/onboarding");
   const canExport = hasCapability(membership.role, "export_data");
   const canManageGroups = hasCapability(membership.role, "manage_groups");
+
   const { data: business } = await supabase
     .from("business")
     .select("id")
@@ -78,22 +103,26 @@ export default async function GroupeDetailPage({
   const { data: group } = await supabase
     .from("signing_group")
     .select(
-      "id, name, public_token, status, template_id, created_at, closes_at, business_id, kind",
+      "id, name, public_token, status, template_id, created_at, closes_at, business_id, kind, start_time, end_time, duration_minutes",
     )
     .eq("id", id)
     .eq("business_id", business.id)
     .maybeSingle();
-  if (!group) redirect("/dashboard/groupes");
+  if (!group) redirect("/dashboard");
 
   await ensureGroupAccepting(supabase, group);
 
   const { data: fresh } = await supabase
     .from("signing_group")
-    .select("status, closes_at")
+    .select("status, closes_at, start_time, end_time, duration_minutes")
     .eq("id", group.id)
     .maybeSingle();
+
   const status = fresh?.status ?? group.status;
   const closesAt = fresh?.closes_at ?? group.closes_at;
+  const startTime = fresh?.start_time ?? group.start_time;
+  const endTime = fresh?.end_time ?? group.end_time;
+  const durationMinutes = fresh?.duration_minutes ?? group.duration_minutes;
   const accepting = acceptsGroupSignatures({ status, closes_at: closesAt });
 
   const { data: template } = await supabase
@@ -125,13 +154,8 @@ export default async function GroupeDetailPage({
   const list = members ?? [];
   const signed = list.filter((m) => m.signed_submission_id).length;
   const total = list.length;
-  const pending = Math.max(0, total - signed);
   const signedMembers = list.filter((m) => m.signed_submission_id);
   const waitingMembers = list.filter((m) => !m.signed_submission_id);
-  const pendingWithEmail = waitingMembers.filter((m) =>
-    Boolean(m.parent_email?.includes("@")),
-  ).length;
-  const closesLabel = formatClosesAt(closesAt);
   const isExpress = group.kind === "express";
 
   const publicUrl = `${env.appUrl}/g/${group.public_token}`;
@@ -140,131 +164,88 @@ export default async function GroupeDetailPage({
     margin: 1,
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
-  const qrDataUrlA4 = await QRCode.toDataURL(publicUrl, {
-    width: 1200,
-    margin: 2,
-    color: { dark: "#0a0a0a", light: "#ffffff" },
-  });
 
-  const statusLabel =
-    status === "archived"
-      ? "Archivé"
-      : accepting
-        ? "Ouvert"
-        : "Fermé";
+  // Phase: calculated server-side for initial render, re-computed live client-side
+  // by SessionStatusBadge.
+  const allSigned = total > 0 && signed === total;
+  const phase = computeSessionPhase(status, startTime, endTime, allSigned);
+  const isArchived = phase === "archived";
+  const isDone = phase === "done";
+
+  // Session time header: "Aujourd'hui 14:00 – 15:30"
+  const startDate = startTime ? new Date(startTime) : null;
+  const endDate = endTime ? new Date(endTime) : null;
+  const timeLabel =
+    startDate && endDate
+      ? `${sessionDateLabel(startDate)} ${formatTimeRange(startDate, endDate)}`
+      : startDate
+        ? sessionDateLabel(startDate)
+        : null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 px-5 py-8 sm:gap-6 sm:px-8 sm:py-10 lg:px-10">
-      <header className="flex flex-col gap-3">
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
+
+      {/* ── Nav ──────────────────────────────────────────────────────────── */}
+      <nav>
         <Link
-          href="/dashboard/groupes"
+          href="/dashboard"
           className="group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] transition-[color,transform] hover:text-[var(--color-foreground)]"
         >
-          <span
-            aria-hidden
-            className="transition-transform group-hover:-translate-x-0.5"
-          >
+          <span aria-hidden className="transition-transform group-hover:-translate-x-0.5">
             ←
           </span>
-          Groupes
+          Tableau de bord
         </Link>
+      </nav>
 
-        {sp.express ? (
-          <p
-            role="status"
-            className="rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 py-2 text-[13px]"
-          >
-            Groupe express prêt — affichez le QR à l&apos;accueil.
-          </p>
-        ) : null}
+      {/* ── Header — statut d'abord, nom ensuite ────────────────────────── */}
+      <header className="flex flex-col gap-3">
+        {/* 1. Statut + countdown */}
+        <SessionStatusBadge
+          dbStatus={status}
+          startTime={startTime}
+          endTime={endTime}
+          allSigned={allSigned}
+        />
 
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface-2))] text-[var(--color-brand)]">
-                {isExpress ? (
-                  <Zap size={16} strokeWidth={1.9} aria-hidden />
-                ) : (
-                  <GroupIcon size={16} />
-                )}
-              </span>
-              <h1 className="text-[1.4rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.5rem]">
-                {group.name}
-              </h1>
-              {isExpress ? (
-                <span className="rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 text-[10.5px] font-semibold tracking-wide text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_22%,transparent)]">
-                  Express
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-1.5 text-[13px] text-[var(--color-muted)]">
-              {template ? (
-                <Link
-                  href={`/dashboard/waivers/${template.id}`}
-                  className="font-medium text-[var(--color-foreground)]/80 underline-offset-2 hover:text-[var(--color-brand)] hover:underline"
-                >
-                  {template.title}
-                </Link>
-              ) : (
-                "Décharge"
-              )}
-              <span className="mx-1.5 text-[var(--color-muted)]/40">·</span>
-              {statusLabel}
-              {closesLabel ? (
-                <>
-                  <span className="mx-1.5 text-[var(--color-muted)]/40">·</span>
-                  Clôture {closesLabel}
-                </>
-              ) : null}
-            </p>
-            <GroupStatBadges
-              className="mt-2.5"
-              total={total}
-              signed={signed}
-              status={status}
-            />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2.5">
-            {canManageGroups ? (
-              status === "archived" ? (
-              <form action={unarchiveGroup}>
-                <input type="hidden" name="group_id" value={group.id} />
-                <PendingSubmitButton
-                  className={btnSecondary}
-                  idle="Désarchiver"
-                  pendingLabel="Désarchivage…"
-                />
-              </form>
-            ) : (
-              <>
-                <form action={setGroupStatus}>
-                  <input type="hidden" name="group_id" value={group.id} />
-                  <input
-                    type="hidden"
-                    name="status"
-                    value={accepting ? "closed" : "open"}
-                  />
-                  <PendingSubmitButton
-                    className={btnSecondary}
-                    idle={accepting ? "Fermer" : "Rouvrir"}
-                    pendingLabel={accepting ? "Fermeture…" : "Réouverture…"}
-                  />
-                </form>
-                <form action={archiveGroup}>
-                  <input type="hidden" name="group_id" value={group.id} />
-                  <PendingSubmitButton
-                    className="px-1 text-[13px] font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)] disabled:pointer-events-none disabled:opacity-70"
-                    idle="Archiver"
-                    pendingLabel="…"
-                  />
-                </form>
-              </>
-            )
-            ) : null}
-          </div>
+        {/* 2. Nom */}
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-[1.4rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.5rem]">
+            {group.name}
+          </h1>
+          {isExpress ? (
+            <span className="rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 text-[10.5px] font-semibold tracking-wide text-[var(--color-brand)] ring-1 ring-[color-mix(in_srgb,var(--color-brand)_22%,transparent)]">
+              Express
+            </span>
+          ) : null}
         </div>
 
+        {/* 3. Décharge (lien) · plage horaire */}
+        <p className="text-[13px] text-[var(--color-muted)]">
+          {template ? (
+            <Link
+              href={`/dashboard/waivers/${template.id}`}
+              className="font-medium text-[var(--color-foreground)]/75 underline-offset-2 hover:text-[var(--color-brand)] hover:underline"
+            >
+              {template.title}
+            </Link>
+          ) : (
+            <span className="font-medium text-[var(--color-foreground)]/75">
+              Décharge
+            </span>
+          )}
+          {timeLabel ? (
+            <>
+              <span className="mx-1.5 opacity-30">·</span>
+              {timeLabel}
+            </>
+          ) : null}
+        </p>
+
+        {/* 4. Barre de progression */}
+        <GroupProgressBar signed={signed} total={total} variant="dashboard" />
+
+        {/* Confirmation settings saved */}
         {sp.saved ? (
           <p
             role="status"
@@ -274,151 +255,124 @@ export default async function GroupeDetailPage({
           </p>
         ) : null}
 
-        <GroupProgressBar signed={signed} total={total} />
+        {/* Confirmation session express créée */}
+        {sp.express ? (
+          <p
+            role="status"
+            className="rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3.5 py-2 text-[13px]"
+          >
+            Session express prête — affichez le QR.
+          </p>
+        ) : null}
       </header>
 
-      {/* Partage — primary surface */}
-      <section className={cardFeatured} id="lien">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] text-[var(--color-brand)]">
-            <Share2 size={14} strokeWidth={1.85} aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold tracking-tight">
-              Partage
-            </h2>
-            <p className="text-[12.5px] text-[var(--color-muted)]">
-              {isExpress
-                ? "Affichez le QR — chacun entre son nom et signe."
-                : "Lien ou QR pour faire signer sur place."}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <span className={labelCaps}>Lien public</span>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <a
-                href={publicUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={`min-w-0 flex-1 truncate rounded-xl border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_72%,var(--color-surface-2))] px-3.5 py-2.5 font-mono text-[13px] text-[var(--color-brand)] shadow-[var(--elev-1)] transition-[border-color,background-color,box-shadow] ${motion} hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[var(--color-surface)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
-              >
-                {publicUrl}
-              </a>
-              <CopyLinkButton url={publicUrl} />
-            </div>
-          </div>
-
-          <div className="grid items-start gap-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-5">
-            <div className="flex w-full flex-col gap-2 justify-self-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-surface-2))] p-3 sm:justify-self-start">
-              <span className={labelCaps}>QR code</span>
-              <QrPreview
-                dataUrl={qrDataUrl}
-                dataUrlA4={qrDataUrlA4}
-                filename={`groupe-${group.public_token}.png`}
-                filenameA4={`groupe-${group.public_token}-a4.png`}
-                downloadClassName={`${btnSecondary} h-9 w-full justify-center text-[13px]`}
-              />
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-3 pt-0.5">
-              <div>
-                <p className={`${labelCaps} mb-1.5`}>
-                  {isExpress ? "En direct" : "Relances"}
-                </p>
-                <p className="text-[13px] leading-snug text-[var(--color-muted)]">
-                  {isExpress
-                    ? total === 0
-                      ? "En attente des premières signatures…"
-                      : `${signed} signé${signed > 1 ? "s" : ""} · actualisation auto`
-                    : pending === 0
-                      ? "Tous les participants ont signé."
-                      : `${pending} en attente${pendingWithEmail > 0 ? ` · ${pendingWithEmail} avec e-mail` : ""}.`}
-                </p>
-                {!isExpress && accepting ? (
-                  <RemindPendingButton
-                    groupId={group.id}
-                    pendingWithEmail={pendingWithEmail}
-                    className={`${btnSecondary} h-9`}
-                  />
-                ) : null}
-                {!isExpress && !accepting ? (
-                  <p className="mt-2 text-[12.5px] text-[var(--color-muted)]">
-                    Groupe fermé — relances désactivées.
-                  </p>
-                ) : null}
-              </div>
-              {template ? (
-                <Link
-                  href={`/dashboard/waivers/${template.id}`}
-                  className="text-[13px] font-medium text-[var(--color-brand)] underline-offset-2 hover:underline"
-                >
-                  Voir les signatures de la décharge →
-                </Link>
+      {/* ── EN ATTENTE — surface de travail principale ───────────────────── */}
+      {!isDone && !isArchived ? (
+        <section className={card}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={sectionLabel}>
+              En attente
+              {waitingMembers.length > 0 ? (
+                <span className="ml-1.5 rounded-md bg-[var(--color-surface-2)] px-1.5 py-0.5 font-semibold tabular-nums text-[var(--color-foreground)]/70">
+                  {waitingMembers.length}
+                </span>
               ) : null}
+            </h2>
+            <div className="flex items-center gap-2">
+              {/* QR — geste principal opérateur */}
+              <SessionQrOverlay
+                qrDataUrl={qrDataUrl}
+                publicUrl={publicUrl}
+                sessionName={group.name}
+                className={btnSecondary}
+              />
+              {/* Copier lien — relancer V1 */}
+              <CopyLinkButton url={publicUrl} size="sm" variant="icon" />
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Participants — main work surface */}
-      <section className={card} id="participants">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-2)] text-[var(--color-foreground)]/70">
-              <Users size={14} strokeWidth={1.85} aria-hidden />
-            </span>
-            <div>
-              <h2 className="text-[15px] font-semibold tracking-tight">
-                Participants
-              </h2>
-              <p className="text-[12.5px] text-[var(--color-muted)]">
-                {isExpress
-                  ? total === 0
-                    ? "Les noms apparaissent ici au fur et à mesure des signatures."
-                    : `${signed} signature${signed > 1 ? "s" : ""} collectée${signed > 1 ? "s" : ""}`
-                  : total === 0
-                    ? "Ajoutez des noms pour démarrer le suivi."
-                    : `${pending} en attente · ${signed} signé${signed > 1 ? "s" : ""}`}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {!isExpress && canManageGroups ? (
-          <div className="mt-3.5">
-            <AddParticipantForm groupId={group.id} />
-          </div>
-        ) : null}
-
-        {waitingMembers.length === 0 && signedMembers.length === 0 ? (
-          <p className="mt-3.5 text-[13px] text-[var(--color-muted)]">
-            {isExpress
-              ? "Personne n’a encore signé — le QR est prêt."
-              : "Aucun participant pour le moment."}
-          </p>
-        ) : (
-          <ul className="mt-3.5 divide-y divide-[color-mix(in_srgb,var(--color-border)_60%,transparent)] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
-            {[...(isExpress ? signedMembers : waitingMembers), ...(isExpress ? waitingMembers : signedMembers)].map(
-              (m) => (
+          {waitingMembers.length === 0 ? (
+            <p className="mt-3 text-[13px] text-[var(--color-muted)]">
+              {total === 0
+                ? isExpress
+                  ? "QR prêt — les participants signent ici au fur et à mesure."
+                  : "Ajoutez des participants pour commencer le suivi."
+                : "Tous les participants ont signé."}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--color-border)_60%,transparent)] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+              {waitingMembers.map((m) => (
                 <MemberRow
                   key={m.id}
                   groupId={group.id}
                   member={m}
                   canRemind={!isExpress && accepting && canManageGroups}
+                  publicUrl={publicUrl}
                 />
-              ),
-            )}
-          </ul>
-        )}
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
-        {!isExpress && canManageGroups ? (
-          <details className="group mt-3.5 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_40%,var(--color-surface))]">
+      {/* ── SIGNÉS ────────────────────────────────────────────────────────── */}
+      {signedMembers.length > 0 ? (
+        <section className={card}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={sectionLabel}>
+              Signés
+              <span className="ml-1.5 rounded-md bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] px-1.5 py-0.5 font-semibold tabular-nums text-[var(--color-brand)]">
+                {signedMembers.length}
+              </span>
+            </h2>
+            {/* En état DONE, le QR n’est plus utile — l’export prend le relai */}
+            {isDone && canExport ? (
+              <GroupExportButtons
+                groupId={group.id}
+                signedCount={signed}
+                className={btnSecondary}
+                compact
+              />
+            ) : null}
+          </div>
+
+          <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--color-border)_60%,transparent)] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+            {signedMembers.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-3 bg-[var(--color-surface)] px-4 py-2.5"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className="shrink-0 text-[var(--color-brand)] opacity-80"
+                  >
+                    ✓
+                  </span>
+                  <p className="truncate text-[14px] font-medium text-[var(--color-foreground)]">
+                    {m.full_name}
+                  </p>
+                </div>
+                {m.signed_at ? (
+                  <span className="shrink-0 tabular-nums text-[12px] text-[var(--color-muted)]">
+                    {fmtTime(m.signed_at)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* ── Ajouter un participant ────────────────────────────────────────── */}
+      {!isArchived && canManageGroups && !isExpress ? (
+        <section className={card}>
+          <h2 className={`${sectionLabel} mb-3`}>Ajouter un participant</h2>
+          <AddParticipantForm groupId={group.id} />
+          <details className="group mt-3 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_40%,var(--color-surface))]">
             <summary className="cursor-pointer list-none px-3.5 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-3">
-                <span className="text-[13px] font-medium text-[var(--color-foreground)]">
+                <span className="text-[13px] font-medium text-[var(--color-foreground)]/70">
                   Import CSV
                 </span>
                 <span className="text-[11px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
@@ -433,64 +387,94 @@ export default async function GroupeDetailPage({
               <AddRosterForm groupId={group.id} mode={rosterMode} />
             </div>
           </details>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
-      {/* Secondary tools — quieter, collapsed by default */}
-      <section className={cardSoft} id="outils">
-        <div className="flex flex-col gap-2.5">
-          {canManageGroups ? (
-          <details className="group rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)]">
-            <summary className="cursor-pointer list-none px-3.5 py-2.5 marker:content-none [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2">
-                  <Settings2
-                    size={14}
-                    strokeWidth={1.85}
-                    className="text-[var(--color-muted)]"
-                    aria-hidden
-                  />
-                  <span className="text-[13px] font-medium text-[var(--color-foreground)]">
-                    Paramètres
-                  </span>
-                  <span className="hidden text-[12px] text-[var(--color-muted)] sm:inline">
-                    Nom · clôture
-                  </span>
-                </span>
-                <span className="text-[11px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
-                  ▾
+      {/* ── Paramètres — déroulant, rôle gestion ──────────────────────────── */}
+      {canManageGroups ? (
+        <details className="group rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] shadow-[var(--elev-1)]">
+          <summary className="cursor-pointer list-none px-5 py-3.5 marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <Settings2
+                  size={14}
+                  strokeWidth={1.85}
+                  className="text-[var(--color-muted)]"
+                  aria-hidden
+                />
+                <span className="text-[13px] font-medium text-[var(--color-foreground)]/80">
+                  Paramètres
                 </span>
               </span>
-            </summary>
-            <div className="border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-3.5 pb-3.5 pt-1">
-              <GroupSettingsForm
-                groupId={group.id}
-                name={group.name}
-                closesAt={closesAt}
-                disabled={status === "archived"}
-              />
-            </div>
-          </details>
-          ) : null}
+              <span className="text-[11px] text-[var(--color-muted)] transition-transform duration-150 group-open:rotate-180">
+                ▾
+              </span>
+            </span>
+          </summary>
+          <div className="border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-5 pb-5 pt-2">
+            <GroupSettingsForm
+              groupId={group.id}
+              name={group.name}
+              closesAt={closesAt}
+              startTime={startTime}
+              endTime={endTime}
+              durationMinutes={durationMinutes}
+              disabled={isArchived}
+            />
+          </div>
+        </details>
+      ) : null}
 
-          {canExport ? (
-            <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] px-3.5 py-3">
-              <p className="text-[13px] font-medium text-[var(--color-foreground)]">
-                Export
-              </p>
-              <p className="mt-0.5 text-[12.5px] text-[var(--color-muted)]">
-                Liste CSV ou preuves PDF des signatures.
-              </p>
-              <GroupExportButtons
-                groupId={group.id}
-                signedCount={signed}
-                className={btnSecondary}
-                compact
+      {/* ── Footer actions ────────────────────────────────────────────────── */}
+      <footer className="flex flex-wrap items-center gap-2.5 border-t border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] pt-5">
+        {canExport && !isDone && signed > 0 ? (
+          <GroupExportButtons
+            groupId={group.id}
+            signedCount={signed}
+            className={btnSecondary}
+            compact
+          />
+        ) : null}
+
+        {canManageGroups && !isArchived ? (
+          <>
+            <form action={setGroupStatus}>
+              <input type="hidden" name="group_id" value={group.id} />
+              <input
+                type="hidden"
+                name="status"
+                value={accepting ? "closed" : "open"}
               />
-            </div>
-          ) : null}
-        </div>
-      </section>
+              <PendingSubmitButton
+                className={btnSecondary}
+                idle={accepting ? "Fermer la session" : "Rouvrir"}
+                pendingLabel={accepting ? "Fermeture…" : "Réouverture…"}
+              />
+            </form>
+            <form action={archiveGroup}>
+              <input type="hidden" name="group_id" value={group.id} />
+              <PendingSubmitButton
+                className="text-[13px] font-medium text-[var(--color-muted)] transition-colors hover:text-[color-mix(in_srgb,#ef4444_70%,var(--color-foreground))] disabled:pointer-events-none disabled:opacity-70"
+                idle="Archiver"
+                pendingLabel="Archivage…"
+              />
+            </form>
+          </>
+        ) : null}
+
+        {canManageGroups && isArchived ? (
+          <form action={unarchiveGroup}>
+            <input type="hidden" name="group_id" value={group.id} />
+            <PendingSubmitButton
+              className={btnSecondary}
+              idle="Désarchiver"
+              pendingLabel="Désarchivage…"
+            />
+          </form>
+        ) : null}
+      </footer>
+
+      <LiveRefresh enabled={isExpress && !isDone && !isArchived} intervalMs={20_000} />
     </main>
   );
 }

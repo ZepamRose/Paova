@@ -21,6 +21,12 @@ export type DashboardGroupRow = {
   signed: number;
   /** Quand le groupe est attendu. Null si la session n'est pas datée. */
   scheduled_at: string | null;
+  /** V2: Heure de début réelle de la session */
+  start_time: string | null;
+  /** V2: Heure de fin réelle de la session */
+  end_time: string | null;
+  /** V2: Durée planifiée en minutes */
+  duration_minutes: number | null;
   created_at: string;
   public_token: string;
 };
