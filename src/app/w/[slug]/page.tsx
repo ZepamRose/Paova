@@ -50,25 +50,25 @@ function PublicFooter({
   contactLines?: string[];
 }) {
   return (
-    <footer className="mt-1 flex flex-col items-center gap-2 pb-2 pt-1 text-[12px] text-[var(--color-muted)]/75">
+    <footer className="mt-auto flex flex-col items-center gap-1.5 pb-2 pt-1 text-[11.5px] text-[var(--color-muted)]/65">
       {contactLines && contactLines.length > 0 ? (
-        <p className="max-w-sm text-center text-[12px] leading-relaxed text-[var(--color-muted)]/70">
+        <p className="max-w-sm text-center text-[11.5px] leading-relaxed text-[var(--color-muted)]/60">
           {contactLines.join(" · ")}
         </p>
       ) : null}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
-        <span className="font-medium tracking-tight text-[var(--color-muted)]/85">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <span className="font-semibold tracking-tight text-[var(--color-muted)]/75">
           Propulsé par Paova
         </span>
         <a
           href="/confidentialite"
-          className="transition-colors duration-[180ms] hover:text-[var(--color-foreground)]"
+          className="transition-colors duration-[180ms] hover:text-[var(--color-foreground)]/60"
         >
           Confidentialité
         </a>
         <a
           href="/mentions-legales"
-          className="transition-colors duration-[180ms] hover:text-[var(--color-foreground)]"
+          className="transition-colors duration-[180ms] hover:text-[var(--color-foreground)]/60"
         >
           Mentions légales
         </a>
@@ -250,28 +250,28 @@ export default async function PublicWaiverPage({
         </div>
 
         <main
-          className={`relative mx-auto flex min-h-screen max-w-[32rem] flex-col px-5 py-8 sm:px-6 sm:py-11 ${
-            showSigningFlow ? "gap-4 sm:gap-5" : "justify-center gap-8"
+          className={`relative mx-auto flex min-h-screen max-w-[30rem] flex-col px-4 py-6 sm:px-5 sm:py-8 ${
+            showSigningFlow ? "gap-3.5 sm:gap-4" : "justify-center gap-6"
           }`}
         >
           <header
             className={`animate-fade-up flex flex-col ${
-              showSigningFlow ? "gap-3.5" : "items-center gap-3 text-center"
+              showSigningFlow ? "gap-3" : "items-center gap-2.5 text-center"
             }`}
           >
             <div
-              className={`flex flex-col gap-4 overflow-hidden rounded-[1.25rem] border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-surface)_94%,var(--color-background))] p-5 shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04] sm:p-6 ${
+              className={`flex flex-col gap-3.5 overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-surface)_96%,var(--color-background))] p-4 shadow-[var(--elev-2)] ring-1 ring-black/[0.015] dark:ring-white/[0.035] sm:p-5 ${
                 showSigningFlow ? "" : "w-full max-w-md"
               }`}
             >
               <div
-                className={`flex items-center gap-3.5 ${
+                className={`flex items-center gap-3 ${
                   showSigningFlow ? "" : "flex-col"
                 }`}
               >
                 {showLogo ? (
                   logoUrl ? (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.05rem] border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] p-2 shadow-[var(--elev-1)] sm:h-14 sm:w-14">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-1.5 shadow-[var(--elev-1)] sm:h-12 sm:w-12">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={logoUrl}
@@ -281,7 +281,7 @@ export default async function PublicWaiverPage({
                     </div>
                   ) : (
                     <span
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.05rem] text-sm font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--elev-1)]"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--elev-1)]"
                       style={{ backgroundColor: brandColor }}
                       aria-hidden
                     >
@@ -294,27 +294,27 @@ export default async function PublicWaiverPage({
                 >
                   {showName && business?.name ? (
                     <p
-                      className="text-[15px] font-semibold tracking-tight"
+                      className="text-[14px] font-bold tracking-tight"
                       style={{ color: brandColor }}
                     >
                       {business.name}
                     </p>
                   ) : null}
                   {tagline ? (
-                    <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--color-muted)]">
+                    <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--color-muted)]">
                       {tagline}
                     </p>
                   ) : null}
                   {showSigningFlow ? (
                     <p
-                      className={`text-[13px] leading-relaxed text-[var(--color-muted)] ${
+                      className={`text-[12px] leading-relaxed text-[var(--color-muted)] ${
                         tagline || (showName && business?.name)
-                          ? "mt-1"
-                          : "mt-0.5"
+                          ? "mt-0.5"
+                          : ""
                       }`}
                     >
                       {isLegalRep
-                        ? "Autorisation à remplir par le parent ou représentant légal"
+                        ? "Autorisation parentale"
                         : "À signer avant l’activité"}
                     </p>
                   ) : null}
@@ -322,13 +322,13 @@ export default async function PublicWaiverPage({
               </div>
 
               {showSigningFlow ? (
-                <div className="border-t border-[color-mix(in_srgb,var(--color-border)_52%,transparent)] pt-4">
-                  <h1 className="text-[1.5rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.7rem]">
+                <div className="border-t border-[color-mix(in_srgb,var(--color-border)_48%,transparent)] pt-3.5">
+                  <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--color-foreground)] sm:text-[1.5rem]">
                     {template.title}
                   </h1>
                 </div>
               ) : (
-                <p className="max-w-sm text-[13px] leading-relaxed text-[var(--color-muted)]">
+                <p className="max-w-sm text-[12.5px] leading-relaxed text-[var(--color-muted)]">
                   {template.title}
                 </p>
               )}
@@ -337,12 +337,12 @@ export default async function PublicWaiverPage({
 
           {showSigningFlow ? (
             <>
-              <section className="animate-fade-up-delay overflow-hidden rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04]">
-                <div className="flex items-center justify-between gap-3 px-5 pb-0 pt-4 sm:px-6 sm:pt-5">
-                  <p className="text-[12.5px] font-medium tracking-tight text-[var(--color-muted)]">
+              <section className="animate-fade-up-delay overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[var(--color-surface)] shadow-[var(--elev-2)] ring-1 ring-black/[0.015] dark:ring-white/[0.035]">
+                <div className="flex items-center justify-between gap-3 px-4 pb-0 pt-3.5 sm:px-5 sm:pt-4">
+                  <p className="text-[11.5px] font-bold tracking-tight text-[var(--color-muted)]/80">
                     {isLegalRep
-                      ? "Texte de l’autorisation"
-                      : "Texte de la décharge"}
+                      ? "TEXTE DE L’AUTORISATION"
+                      : "TEXTE DE LA DÉCHARGE"}
                   </p>
                   <span
                     className="h-1.5 w-1.5 rounded-full"
@@ -350,17 +350,17 @@ export default async function PublicWaiverPage({
                     aria-hidden
                   />
                 </div>
-                <div className="max-h-[min(32vh,18rem)] overflow-y-auto px-5 py-3.5 sm:px-6 sm:py-4">
-                  <p className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-[var(--color-foreground)]/86">
+                <div className="max-h-[min(30vh,16rem)] overflow-y-auto px-4 py-3 sm:px-5 sm:py-3.5">
+                  <p className="whitespace-pre-wrap text-[13.5px] leading-[1.65] text-[var(--color-foreground)]/84">
                     {template.legal_text}
                   </p>
                 </div>
                 <div
-                  className="h-px w-full bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--color-border)_80%,transparent)] to-transparent"
+                  className="h-px w-full bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--color-border)_75%,transparent)] to-transparent"
                   aria-hidden
                 />
-                <p className="px-5 py-3 text-[12px] leading-relaxed text-[var(--color-muted)] sm:px-6">
-                  Lisez attentivement avant de remplir le formulaire ci-dessous.
+                <p className="px-4 py-2.5 text-[11.5px] leading-relaxed text-[var(--color-muted)] sm:px-5">
+                  Lisez attentivement avant de remplir le formulaire.
                 </p>
               </section>
 
@@ -380,23 +380,23 @@ export default async function PublicWaiverPage({
               </div>
             </>
           ) : unavailableCopy ? (
-            <section className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-surface)] px-6 py-9 text-center shadow-[var(--elev-3)] sm:px-9 sm:py-10">
+            <section className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] bg-[var(--color-surface)] px-5 py-8 text-center shadow-[var(--elev-2)] sm:px-7 sm:py-9">
               <span
-                className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ring-1"
+                className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl ring-1"
                 style={{
-                  backgroundColor: `color-mix(in srgb, ${brandColor} 12%, transparent)`,
+                  backgroundColor: `color-mix(in srgb, ${brandColor} 11%, transparent)`,
                   color: brandColor,
-                  boxShadow: `0 0 0 1px color-mix(in srgb, ${brandColor} 18%, transparent)`,
+                  boxShadow: `0 0 0 1px color-mix(in srgb, ${brandColor} 16%, transparent)`,
                 }}
                 aria-hidden
               >
                 <svg
-                  width="26"
-                  height="26"
+                  width="24"
+                  height="24"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.85"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -405,19 +405,19 @@ export default async function PublicWaiverPage({
                 </svg>
               </span>
               <p
-                className="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em]"
+                className="mt-4 text-[10.5px] font-bold uppercase tracking-[0.13em]"
                 style={{ color: brandColor }}
               >
                 {unavailableCopy.eyebrow}
               </p>
-              <h1 className="mt-2.5 text-[1.55rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.75rem]">
+              <h1 className="mt-2 text-[1.4rem] font-bold tracking-tight text-[var(--color-foreground)] sm:text-[1.55rem]">
                 {unavailableCopy.title}
               </h1>
-              <p className="mx-auto mt-3 max-w-[22rem] text-[14.5px] leading-relaxed text-[var(--color-muted)]">
+              <p className="mx-auto mt-2.5 max-w-[20rem] text-[13.5px] leading-relaxed text-[var(--color-muted)]">
                 {unavailableCopy.body}
               </p>
               {unavailableCopy.meta ? (
-                <p className="mx-auto mt-6 max-w-[22rem] rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface-2)]/60 px-4 py-3 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
+                <p className="mx-auto mt-5 max-w-[20rem] rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface-2)]/55 px-3.5 py-2.5 text-[12px] leading-relaxed text-[var(--color-muted)]">
                   {unavailableCopy.meta}
                 </p>
               ) : null}

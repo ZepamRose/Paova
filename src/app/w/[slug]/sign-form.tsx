@@ -31,10 +31,10 @@ type WaiverField = {
 const MOTION = "duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
 
 const INPUT_CLASS =
-  "w-full min-h-12 rounded-[0.9rem] border border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_55%,var(--color-surface))] px-3.5 py-3 text-[15px] text-[var(--color-foreground)] shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow,background-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] placeholder:text-[var(--color-muted)]/45 hover:border-[color-mix(in_srgb,var(--color-border)_55%,var(--color-muted))] focus:border-[var(--public-brand)] focus:bg-[var(--color-surface)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--public-brand)_16%,transparent)]";
+  "w-full min-h-[2.75rem] rounded-lg border border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_58%,var(--color-surface))] px-3 py-2.5 text-[14px] text-[var(--color-foreground)] shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow,background-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] placeholder:text-[var(--color-muted)]/40 hover:border-[color-mix(in_srgb,var(--color-border)_52%,var(--color-muted))] focus:border-[var(--public-brand)] focus:bg-[var(--color-surface)] focus:shadow-[0_0_0_2.5px_color-mix(in_srgb,var(--public-brand)_15%,transparent)]";
 
 const sectionCard =
-  "rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[var(--color-surface)] p-5 shadow-[var(--elev-3)] ring-1 ring-black/[0.02] dark:ring-white/[0.04] sm:p-6";
+  "rounded-xl border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[var(--color-surface)] p-4 shadow-[var(--elev-2)] ring-1 ring-black/[0.015] dark:ring-white/[0.035] sm:p-5";
 
 function Spinner({ className = "" }: { className?: string }) {
   return (
@@ -100,14 +100,14 @@ function Section({
     <section
       className={
         featured
-          ? `${sectionCard} border-[color-mix(in_srgb,var(--public-brand)_22%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-surface)_94%,var(--public-brand))]`
+          ? `${sectionCard} border-[color-mix(in_srgb,var(--public-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-surface)_96%,var(--public-brand))]`
           : sectionCard
       }
     >
-      <div className="mb-5 flex items-start gap-3">
+      <div className="mb-4 flex items-start gap-2.5">
         {typeof step === "number" ? (
           <span
-            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tabular-nums text-[var(--color-on-brand)] shadow-[var(--elev-1)]"
+            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold tabular-nums text-[var(--color-on-brand)] shadow-[var(--elev-1)]"
             style={{ backgroundColor: "var(--public-brand)" }}
             aria-hidden
           >
@@ -115,17 +115,17 @@ function Section({
           </span>
         ) : null}
         <div className="min-w-0 pt-px">
-          <h2 className="text-[1.05rem] font-semibold tracking-tight text-[var(--color-foreground)]">
+          <h2 className="text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-muted)]">
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-[var(--color-muted)]">
               {description}
             </p>
           ) : null}
         </div>
       </div>
-      <div className="flex flex-col gap-4 sm:gap-5">{children}</div>
+      <div className="flex flex-col gap-3.5">{children}</div>
     </section>
   );
 }
@@ -211,7 +211,7 @@ function SignaturePad({
   }
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       <div className="relative">
         <canvas
           ref={canvasRef}
@@ -219,29 +219,29 @@ function SignaturePad({
           onPointerMove={move}
           onPointerUp={end}
           onPointerLeave={end}
-          className={`h-48 w-full touch-none rounded-[1.05rem] border bg-[color-mix(in_srgb,var(--color-background)_48%,var(--color-surface))] transition-[border-color,box-shadow] ${MOTION} ${
+          className={`h-40 w-full touch-none rounded-lg border bg-[color-mix(in_srgb,var(--color-background)_50%,var(--color-surface))] transition-[border-color,box-shadow] ${MOTION} ${
             signed
-              ? "border-[color-mix(in_srgb,var(--public-brand)_35%,var(--color-border))]"
-              : "border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))]"
+              ? "border-[color-mix(in_srgb,var(--public-brand)_32%,var(--color-border))]"
+              : "border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))]"
           }`}
           style={{
             boxShadow: signed
-              ? `inset 0 0 0 1px color-mix(in srgb, ${color} 22%, transparent), var(--elev-1)`
+              ? `inset 0 0 0 1px color-mix(in srgb, ${color} 20%, transparent), var(--elev-1)`
               : `inset 0 1px 0 rgba(255,255,255,0.04), var(--elev-1)`,
           }}
         />
         {!signed ? (
-          <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[12px] text-[var(--color-muted)]/55">
+          <p className="pointer-events-none absolute inset-x-0 bottom-2.5 text-center text-[11.5px] text-[var(--color-muted)]/50">
             Signez ici avec le doigt ou la souris
           </p>
         ) : null}
       </div>
       <div className="flex items-center justify-between gap-3">
         <p
-          className={`text-[12.5px] ${
+          className={`text-[12px] ${
             signed
-              ? "font-medium text-[var(--public-brand)]"
-              : "text-[var(--color-muted)]"
+              ? "font-bold text-[var(--public-brand)]"
+              : "font-semibold text-[var(--color-muted)]"
           }`}
         >
           {signed ? "Signature capturée" : "Signature obligatoire"}
@@ -250,7 +250,7 @@ function SignaturePad({
           type="button"
           onClick={clear}
           disabled={!signed}
-          className={`rounded-lg px-2 py-1 text-[12.5px] font-medium text-[var(--color-muted)] transition-[color,background-color,opacity] ${MOTION} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] disabled:pointer-events-none disabled:opacity-35`}
+          className={`rounded-lg px-2 py-1 text-[12px] font-semibold text-[var(--color-muted)] transition-[color,background-color,opacity] ${MOTION} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] disabled:pointer-events-none disabled:opacity-30`}
         >
           Effacer
         </button>
@@ -302,23 +302,23 @@ function ParticipantsField({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       <input type="hidden" name={`field_${field.key}`} value={serialized} />
 
       {rows.map((row, index) => (
         <div
           key={index}
-          className="flex flex-col gap-3.5 rounded-[1.05rem] bg-[color-mix(in_srgb,var(--color-background)_55%,var(--color-surface-2))] p-4 ring-1 ring-[color-mix(in_srgb,var(--color-border)_55%,transparent)]"
+          className="flex flex-col gap-3 rounded-lg bg-[color-mix(in_srgb,var(--color-background)_58%,var(--color-surface-2))] p-3.5 ring-1 ring-[color-mix(in_srgb,var(--color-border)_52%,transparent)]"
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[12.5px] font-medium tracking-tight text-[var(--color-foreground)]/80">
+            <p className="text-[12px] font-bold tracking-tight text-[var(--color-foreground)]/80">
               {isMinors ? `Enfant ${index + 1}` : `Participant ${index + 1}`}
             </p>
             {rows.length > 1 ? (
               <button
                 type="button"
                 onClick={() => remove(index)}
-                className={`text-[12.5px] font-medium text-[var(--color-muted)] transition-colors ${MOTION} hover:text-[var(--color-foreground)]`}
+                className={`text-[11.5px] font-semibold text-[var(--color-muted)] transition-colors ${MOTION} hover:text-[var(--color-foreground)]`}
               >
                 Retirer
               </button>
@@ -327,7 +327,7 @@ function ParticipantsField({
 
           <div className="flex flex-col gap-1.5">
             <label
-              className="text-[13px] font-medium tracking-tight"
+              className="text-[12.5px] font-bold tracking-tight"
               htmlFor={`participant-name-${field.key}-${index}`}
             >
               {isMinors ? "Nom et prénom" : "Nom"}{" "}
@@ -343,38 +343,37 @@ function ParticipantsField({
               autoComplete="off"
             />
           </div>
-          <div className="grid gap-3.5 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label
-                className="text-[13px] font-medium tracking-tight"
+                className="text-[12.5px] font-bold tracking-tight"
                 htmlFor={`participant-dob-${field.key}-${index}`}
               >
-                Date de naissance
+                Date de naissance <OptionalHint />
               </label>
               <input
                 id={`participant-dob-${field.key}-${index}`}
-                type="date"
                 value={row.dob}
                 onChange={(e) => update(index, { dob: e.target.value })}
+                placeholder="JJ/MM/AAAA"
                 className={INPUT_CLASS}
+                autoComplete="off"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label
-                className="text-[13px] font-medium tracking-tight"
+                className="text-[12.5px] font-bold tracking-tight"
                 htmlFor={`participant-note-${field.key}-${index}`}
               >
-                {isMinors ? "Allergie / particularité" : "Note"}
-                <OptionalHint />
+                Note <OptionalHint />
               </label>
               <input
                 id={`participant-note-${field.key}-${index}`}
                 value={row.note}
                 onChange={(e) => update(index, { note: e.target.value })}
-                placeholder={
-                  isMinors ? "Ex. allergie arachides" : "Note"
-                }
+                placeholder="Ex. allergies"
                 className={INPUT_CLASS}
+                autoComplete="off"
               />
             </div>
           </div>
@@ -384,22 +383,23 @@ function ParticipantsField({
       <button
         type="button"
         onClick={add}
-        className={`inline-flex h-11 w-full items-center justify-center gap-2.5 ${radiusClass} border border-dashed px-4 text-[14px] font-semibold tracking-tight transition-[transform,background-color,border-color,box-shadow] ${MOTION} hover:-translate-y-px active:translate-y-0 active:scale-[0.99]`}
-        style={{
-          color: brandColor,
-          borderColor: `color-mix(in srgb, ${brandColor} 48%, var(--color-border))`,
-          backgroundColor: `color-mix(in srgb, ${brandColor} 18%, var(--color-surface))`,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${brandColor} 10%, transparent)`,
-        }}
+        className={`${radiusClass} flex h-10 items-center justify-center gap-2 border border-dashed border-[color-mix(in_srgb,var(--color-border)_58%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_45%,var(--color-surface))] text-[13px] font-semibold text-[var(--color-foreground)]/75 transition-[background-color,border-color,color] ${MOTION} hover:border-[color-mix(in_srgb,var(--public-brand)_35%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--public-brand)_6%,var(--color-surface))] hover:text-[var(--color-foreground)]`}
+        style={{ color: "var(--color-foreground)" }}
       >
-        <span
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[15px] font-semibold leading-none text-white shadow-sm"
-          style={{ backgroundColor: brandColor }}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           aria-hidden
         >
-          +
-        </span>
-        {isMinors ? "Ajouter un enfant" : "Ajouter un participant"}
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Ajouter {isMinors ? "un enfant" : "un participant"}
       </button>
     </div>
   );
@@ -408,7 +408,7 @@ function ParticipantsField({
 function FieldBlock({ field }: { field: WaiverField }) {
   if (field.type === "checkbox") {
     return (
-      <label className={`flex cursor-pointer items-start gap-3 rounded-[0.95rem] border border-[color-mix(in_srgb,var(--color-border)_68%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_42%,var(--color-surface))] px-3.5 py-3.5 text-[14px] leading-snug transition-[border-color,background-color] ${MOTION} hover:border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))] hover:bg-[var(--color-surface)]`}>
+      <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_45%,var(--color-surface))] px-3 py-3 text-[13.5px] leading-snug transition-[border-color,background-color] ${MOTION} hover:border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] hover:bg-[var(--color-surface)]`}>
         <input
           type="checkbox"
           name={`field_${field.key}`}
@@ -426,7 +426,7 @@ function FieldBlock({ field }: { field: WaiverField }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label
-        className="text-[13px] font-medium tracking-tight"
+        className="text-[12.5px] font-bold tracking-tight"
         htmlFor={`field_${field.key}`}
       >
         {field.label}
@@ -438,7 +438,7 @@ function FieldBlock({ field }: { field: WaiverField }) {
           name={`field_${field.key}`}
           rows={4}
           required={field.required}
-          className={`${INPUT_CLASS} min-h-[7rem] resize-y`}
+          className={`${INPUT_CLASS} min-h-[6.5rem] resize-y`}
         />
       ) : field.type === "select" ? (
         <select
@@ -569,7 +569,7 @@ export function SignForm({
       >
         <div className="flex flex-col gap-1.5">
           <label
-            className="text-[13px] font-medium tracking-tight"
+            className="text-[12.5px] font-bold tracking-tight"
             htmlFor="signer_name"
           >
             {nameLabel} <RequiredMark />
@@ -585,7 +585,7 @@ export function SignForm({
 
         <div className="flex flex-col gap-1.5">
           <label
-            className="text-[13px] font-medium tracking-tight"
+            className="text-[12.5px] font-bold tracking-tight"
             htmlFor="signer_email"
           >
             Email
@@ -602,7 +602,7 @@ export function SignForm({
           />
           <p
             id="signer_email_hint"
-            className="text-[12.5px] leading-relaxed text-[var(--color-muted)]/80"
+            className="text-[11.5px] leading-relaxed text-[var(--color-muted)]/75"
           >
             Sans email, le document ne sera pas envoyé — vous pourrez télécharger
             votre copie juste après.
@@ -656,7 +656,7 @@ export function SignForm({
       >
         <SignaturePad onChange={setSignature} color={brandColor} />
 
-        <label className={`flex cursor-pointer items-start gap-3 rounded-[0.95rem] border border-[color-mix(in_srgb,var(--color-border)_68%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-background))] px-3.5 py-3.5 text-[13.5px] leading-relaxed transition-[border-color,background-color] ${MOTION} hover:border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))]`}>
+        <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-background))] px-3 py-3 text-[13px] leading-relaxed transition-[border-color,background-color] ${MOTION} hover:border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))]`}>
           <input
             type="checkbox"
             name="rgpd_consent"
@@ -696,7 +696,7 @@ export function SignForm({
         {hasError ? (
           <p
             role="alert"
-            className="rounded-xl border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-4 py-3 text-[13.5px] text-[var(--color-warning-fg)]"
+            className="rounded-lg border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-3.5 py-2.5 text-[12.5px] text-[var(--color-warning-fg)]"
           >
             {hasError === "signature"
               ? "Merci de signer avant de valider."
@@ -712,11 +712,11 @@ export function SignForm({
           type="submit"
           disabled={!canSubmit}
           aria-busy={submitting}
-          className={`inline-flex min-h-12 w-full items-center justify-center gap-2 ${radiusClass} px-5 py-3.5 text-[15px] font-semibold text-[var(--color-on-brand)] transition-[transform,filter,box-shadow,opacity] ${MOTION} hover:-translate-y-px hover:brightness-[1.04] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:brightness-100`}
+          className={`inline-flex min-h-[2.85rem] w-full items-center justify-center gap-2 ${radiusClass} px-5 py-3 text-[14.5px] font-bold text-[var(--color-on-brand)] transition-[transform,filter,box-shadow,opacity] ${MOTION} hover:-translate-y-px hover:brightness-[1.04] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:brightness-100`}
           style={{
             backgroundColor: brandColor,
             boxShadow: canSubmit
-              ? `0 1px 0 rgba(255,255,255,0.14) inset, 0 1px 2px rgba(0,0,0,0.06), 0 14px 28px -12px color-mix(in srgb, ${brandColor} 55%, transparent)`
+              ? `0 1px 0 rgba(255,255,255,0.14) inset, 0 1px 2px rgba(0,0,0,0.06), 0 12px 24px -10px color-mix(in srgb, ${brandColor} 52%, transparent)`
               : "none",
           }}
         >
