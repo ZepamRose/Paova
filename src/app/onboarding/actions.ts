@@ -42,5 +42,5 @@ export async function createBusiness(formData: FormData) {
     throw new Error(error.message);
   }
 
-  redirect("/onboarding/premiere-decharge");
+  redirect("/dashboard");
 }

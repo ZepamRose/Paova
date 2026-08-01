@@ -37,7 +37,6 @@ export default async function OnboardingPage({
         <p className="text-[var(--color-muted)]">
           Comment s&apos;appelle votre établissement ?
         </p>
-        <p className="text-xs text-[var(--color-muted)]">Étape 1 sur 2</p>
       </div>
 
       <form action={createBusiness} className="flex flex-col gap-4">

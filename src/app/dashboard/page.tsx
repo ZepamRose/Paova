@@ -10,6 +10,7 @@ import {
 import type { DashboardAttentionItem } from "@/lib/dashboard/types";
 import { DashboardHome } from "./dashboard-home";
 import { DashboardHeader } from "./dashboard-header";
+import { DashboardOnboardingHero } from "./dashboard-onboarding-hero";
 
 
 export default async function DashboardPage() {
@@ -195,6 +196,10 @@ export default async function DashboardPage() {
   const signatureCountRecord = Object.fromEntries(signatureCountByTemplate);
   const lastSignedRecord = Object.fromEntries(lastSignedByTemplate);
 
+  const hasWaivers = activeTemplatesList.length > 0;
+  const hasSessions = dashboardGroups.length > 0;
+  const hasSignatures = Object.values(signatureCountRecord).some((count) => count > 0);
+
   return (
     <main className="relative mx-auto flex min-h-screen max-w-dashboard flex-col gap-4 px-5 py-5 sm:gap-4 sm:px-8 sm:py-8 lg:px-10">
       <div
@@ -214,6 +219,16 @@ export default async function DashboardPage() {
         canCreateGroup={canCreateGroups && activeTemplatesList.length > 0}
         templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
       />
+
+      {!hasWaivers || !hasSessions || !hasSignatures ? (
+        <DashboardOnboardingHero
+          hasWaivers={hasWaivers}
+          hasSessions={hasSessions}
+          hasSignatures={hasSignatures}
+          canManageWaivers={canManageWaivers}
+          canCreateGroups={canCreateGroups}
+        />
+      ) : null}
 
       <DashboardHome
         attentionItems={visibleAttentionItems}

@@ -221,7 +221,7 @@ export async function createTemplate(formData: FormData) {
     redirect(`${returnTo}${sep}template=${created.id}`);
   }
 
-  redirect(`/dashboard/waivers/${created.id}`);
+  redirect(`/dashboard`);
 }
 
 /** One-click create from a built-in pack (used by guided onboarding). */
@@ -294,7 +294,7 @@ export async function createFromPreset(formData: FormData) {
     },
   });
 
-  redirect(`/dashboard/waivers/${created.id}?welcome=1`);
+  redirect(`/dashboard`);
 }
 
 export async function updateTemplate(formData: FormData) {

@@ -135,7 +135,7 @@ export async function createSigningGroup(formData: FormData) {
   revalidatePath("/dashboard/groupes");
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/waivers/${templateId}`);
-  redirect(`/dashboard/groupes/${group.id}`);
+  redirect(`/dashboard`);
 }
 
 /**
@@ -147,7 +147,6 @@ export async function createExpressGroup(formData: FormData) {
   const templateId = String(formData.get("template_id") ?? "").trim();
   const nameRaw = String(formData.get("name") ?? "").trim();
   const name = (nameRaw || defaultExpressGroupName()).slice(0, 120);
-  const returnTo = String(formData.get("return_to") ?? "").trim();
 
   if (!templateId) {
     redirect("/dashboard/groupes/express?error=required");
@@ -194,10 +193,7 @@ export async function createExpressGroup(formData: FormData) {
   revalidatePath("/dashboard/groupes");
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/waivers/${templateId}`);
-  if (returnTo.startsWith("/dashboard/")) {
-    redirect(`/dashboard/groupes/${group.id}?express=1`);
-  }
-  redirect(`/dashboard/groupes/${group.id}?express=1`);
+  redirect(`/dashboard`);
 }
 
 export type AddMembersState = {
