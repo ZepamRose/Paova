@@ -1,17 +1,15 @@
 import { redirect } from "next/navigation";
 import { env } from "@/lib/env";
-import { isPro, currentMonthStartISO } from "@/lib/plan";
 import { getDashboardSession } from "@/lib/auth/session";
 import { listActiveMemberships } from "@/lib/auth/membership";
 import { hasCapability } from "@/lib/auth/permissions";
-import { formatRelativeFr } from "@/lib/dates";
 import {
   effectiveTemplateStatus,
   isTemplateStatus,
 } from "@/lib/templates";
 import type { DashboardAttentionItem } from "@/lib/dashboard/types";
 import { DashboardHome } from "./dashboard-home";
-import { DashboardBusinessHero } from "./dashboard-business-hero";
+import { DashboardTodayHero } from "./dashboard-today-hero";
 import { DashboardHeader } from "./dashboard-header";
 
 
@@ -65,7 +63,7 @@ export default async function DashboardPage() {
 
   const { data: signingGroups } = await supabase
     .from("signing_group")
-    .select("id, name, status, template_id, scheduled_at, created_at, public_token")
+    .select("id, name, status, template_id, scheduled_at, start_time, end_time, duration_minutes, created_at, public_token")
     .eq("business_id", business.id)
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -109,6 +107,9 @@ export default async function DashboardPage() {
       template_title: groupTemplateTitle.get(g.template_id) ?? "Formulaire",
       status: g.status,
       scheduled_at: g.scheduled_at,
+      start_time: g.start_time,
+      end_time: g.end_time,
+      duration_minutes: g.duration_minutes,
       total: s.total,
       signed: s.signed,
       created_at: g.created_at,
@@ -120,21 +121,10 @@ export default async function DashboardPage() {
   );
   const activeTemplatesList =
     allTemplates?.filter((t) => !t.deleted_at) ?? [];
-  const activeForStats = activeTemplatesList;
-
-  // Plan is per tenant (migration 0031), so every member sees the real tier.
-  const pro = isPro(business);
-  const monthStart = currentMonthStartISO();
 
   const [
-    { count: usedThisMonth },
     { data: templateStats },
   ] = await Promise.all([
-    supabase
-      .from("submission")
-      .select("id", { count: "exact", head: true })
-      .eq("business_id", business.id)
-      .gte("signed_at", monthStart),
     // Per-template totals aggregated in SQL (migration 0032): constant payload
     // regardless of how many signatures the business has accumulated.
     supabase.rpc("dashboard_template_stats", { p_business_id: business.id }),
@@ -149,16 +139,6 @@ export default async function DashboardPage() {
     }
   }
 
-  const activeWaivers = activeForStats.filter((t) => {
-    if (!isTemplateStatus(t.status)) return false;
-    return (
-      effectiveTemplateStatus({
-        status: t.status,
-        expires_at: t.expires_at,
-      }) === "open"
-    );
-  }).length;
-  const activeGroups = dashboardGroups.filter((g) => g.status === "open").length;
   const attentionItems: DashboardAttentionItem[] = [];
 
   for (const t of activeTemplatesList) {
@@ -207,26 +187,6 @@ export default async function DashboardPage() {
   attentionItems.push(...completeGroups, ...nearCompleteGroups);
   const visibleAttentionItems = attentionItems.slice(0, 6);
 
-  // Most recent signature across all templates, from the SQL aggregate.
-  const latestSignedAt =
-    (templateStats ?? [])
-      .map((row) => row.last_signed_at)
-      .filter((v): v is string => Boolean(v))
-      .sort()
-      .at(-1) ?? null;
-  const latestTemplate = allTemplates?.[0] ?? null;
-
-  const planLabel = pro ? "Plan Pro" : "Plan Gratuit";
-  const lastActivityIso = (() => {
-    const times = [latestSignedAt, latestTemplate?.created_at]
-      .filter((v): v is string => Boolean(v))
-      .map((v) => new Date(v).getTime())
-      .filter((n) => !Number.isNaN(n));
-    if (times.length === 0) return null;
-    return new Date(Math.max(...times)).toISOString();
-  })();
-  const lastActivityRelative = formatRelativeFr(lastActivityIso);
-
   const appUrl = env.appUrl;
 
   const signatureCountRecord = Object.fromEntries(signatureCountByTemplate);
@@ -249,21 +209,10 @@ export default async function DashboardPage() {
         canManageWaivers={canManageWaivers}
         canCreateGroups={canCreateGroups}
         canCreateGroup={canCreateGroups && activeTemplatesList.length > 0}
+        templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
       />
 
-      <DashboardBusinessHero
-        name={business.name}
-        brandColor={business.brand_color}
-        planLabel={planLabel}
-        isPro={pro}
-        lastActivityRelative={lastActivityRelative}
-        lastActivityIso={lastActivityIso}
-        activeWaivers={activeWaivers}
-        activeGroups={activeGroups}
-        usedThisMonth={usedThisMonth ?? 0}
-        role={membership.role}
-        viewerName={viewerName}
-      />
+      <DashboardTodayHero groups={dashboardGroups} />
 
       <DashboardHome
         attentionItems={visibleAttentionItems}
