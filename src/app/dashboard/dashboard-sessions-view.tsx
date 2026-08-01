@@ -19,6 +19,73 @@ import { CompletedSessionModal } from "./completed-session-modal";
  * PAOVA V2 - Sessions View
  */
 
+// ─── Live Time Display Component ─────────────────────────────────────────────
+
+type LiveTimeRemainingProps = {
+  endTime: Date;
+  startTime: Date;
+  variant: "ongoing" | "upcoming";
+};
+
+function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingProps) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const remainingMs = Math.max(0, endTime.getTime() - now);
+  const timeUntilStartMs = Math.max(0, startTime.getTime() - now);
+
+  // Si la session n'a pas encore commencé
+  if (variant === "upcoming" || timeUntilStartMs > 0) {
+    return (
+      <div className="flex items-center gap-1 text-[11px]">
+        <Clock size={11} strokeWidth={1.9} className="text-[var(--color-brand)]" />
+        <span className="font-semibold text-[var(--color-brand)]">
+          {getTimeUntilText(timeUntilStartMs)}
+        </span>
+      </div>
+    );
+  }
+
+  // Session terminée
+  if (remainingMs === 0) {
+    return null;
+  }
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const isUrgent = minutes < 10;
+
+  return (
+    <div className={`flex items-center gap-1.5 text-[12px] ${
+      isUrgent ? "font-semibold" : "font-medium"
+    }`}>
+      <Clock
+        size={12}
+        strokeWidth={2}
+        className={isUrgent ? "text-[#dc2626]" : "text-[var(--color-muted)]"}
+      />
+      <span className={isUrgent ? "text-[#dc2626]" : "text-[var(--color-foreground)]"}>
+        {minutes > 0 ? (
+          <>
+            {minutes} min restante{minutes > 1 ? 's' : ''}
+          </>
+        ) : (
+          <>
+            {seconds} sec
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
 // ─── Session Quick View Modal ────────────────────────────────────────────────
 
 type SessionQuickViewProps = {
@@ -36,6 +103,7 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
   const [mounted, setMounted] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     setMounted(true);
@@ -48,16 +116,28 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Update time every second when modal is open
+  useEffect(() => {
+    if (!open) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [open]);
+
   const pending = session.total - session.signed;
   const timeInfo = getSessionTimeInfo(session.start_time, session.end_time, session.duration_minutes);
 
-  // Déterminer l'urgence
-  const now = Date.now();
+  // Déterminer l'urgence (basé sur now en temps réel)
   const endMs = timeInfo.endTime ? timeInfo.endTime.getTime() : null;
   const remainingMs = endMs ? Math.max(0, endMs - now) : null;
   const remainingMinutes = remainingMs ? remainingMs / 60000 : null;
   const isUrgent = remainingMinutes !== null && remainingMinutes > 0 && remainingMinutes <= 30 && pending > 0;
   const isCompleting = remainingMinutes !== null && remainingMinutes > 30 && remainingMinutes <= 120 && pending > 0;
+
+  // Temps restant pour affichage temps réel
+  const timeUntilEnd = endMs ? endMs - now : null;
+  const timeUntilStart = timeInfo.startTime ? timeInfo.startTime.getTime() - now : null;
 
   // Charger le QR si nécessaire
   useEffect(() => {
@@ -106,11 +186,22 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
           }`}>
             {pending === 1 ? "1 signature manquante" : `${pending} signatures manquantes`}
           </p>
-          {timeInfo.timeUntilEnd && timeInfo.timeUntilEnd > 0 && (
-            <p className="text-[13px] text-[var(--color-muted)]">
-              Temps restant : {getTimeUntilText(timeInfo.timeUntilEnd)}
-            </p>
-          )}
+          {timeUntilEnd && timeUntilEnd > 0 && (() => {
+            const totalSeconds = Math.floor(timeUntilEnd / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return (
+              <p className={`text-[13px] font-medium tabular-nums ${
+                minutes < 10 ? "text-[#dc2626]" : "text-[var(--color-muted)]"
+              }`}>
+                {minutes > 0 ? (
+                  <>Temps restant : {minutes} min</>
+                ) : (
+                  <>Temps restant : {seconds} sec</>
+                )}
+              </p>
+            );
+          })()}
         </div>
       </div>
     ) : (
@@ -137,9 +228,9 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
         <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
           Session à venir
         </p>
-        {timeInfo.timeUntilStart && timeInfo.timeUntilStart > 0 && (
+        {timeUntilStart && timeUntilStart > 0 && (
           <p className="mt-1 text-[13px] text-[var(--color-muted)]">
-            Débute {getTimeUntilText(timeInfo.timeUntilStart)}
+            Débute {getTimeUntilText(timeUntilStart)}
           </p>
         )}
       </div>
@@ -427,15 +518,17 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
               )}
             </>
           )}
+        </div>
+      )}
 
-          {variant === "upcoming" && timeInfo.timeUntilStart && timeInfo.timeUntilStart > 0 && (
-            <>
-              {timeInfo.startTime && <span className="text-[var(--color-muted)]/30">·</span>}
-              <span className="font-semibold text-[var(--color-brand)]">
-                {getTimeUntilText(timeInfo.timeUntilStart)}
-              </span>
-            </>
-          )}
+      {/* Live countdown pour sessions avec horaires */}
+      {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
+        <div className="mb-1.5">
+          <LiveTimeRemaining
+            startTime={timeInfo.startTime}
+            endTime={timeInfo.endTime}
+            variant={variant}
+          />
         </div>
       )}
 
@@ -530,6 +623,7 @@ export function DashboardSessionsView({
   appUrl: string;
 }) {
   const now = new Date();
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
 
   // Définir les limites de "aujourd'hui" en heure locale
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -622,9 +716,9 @@ export function DashboardSessionsView({
     .slice(0, 6);
 
   // 4. Sessions TERMINÉES AUJOURD'HUI
-  const completedSessions = groups
-    .filter(isSessionCompleted)
-    .slice(0, 4);
+  const completedSessions = groups.filter(isSessionCompleted);
+  const completedToShow = showAllCompleted ? completedSessions : completedSessions.slice(0, 4);
+  const remainingCompleted = completedSessions.length - 4;
 
   return (
     <div className="flex flex-col gap-6">
@@ -721,22 +815,24 @@ export function DashboardSessionsView({
       {/* 4. Terminées aujourd'hui — Journal d'activité */}
       {completedSessions.length > 0 && (
         <section className="pt-3 mt-4 border-t border-[color-mix(in_srgb,var(--color-border)_35%,transparent)]">
-          <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,#059669_12%,transparent)] text-[#059669]">
-              <CheckCircle2 size={13} strokeWidth={2.2} />
-            </span>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
-                Terminées aujourd&apos;hui
-              </h2>
-              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
-                {completedSessions.length}
+          <div className="mb-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,#059669_12%,transparent)] text-[#059669]">
+                <CheckCircle2 size={13} strokeWidth={2.2} />
               </span>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
+                  Terminées aujourd&apos;hui
+                </h2>
+                <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
+                  {completedSessions.length}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {completedSessions.map(session => (
+            {completedToShow.map(session => (
               <SessionCard
                 key={session.id}
                 session={session}
@@ -745,6 +841,19 @@ export function DashboardSessionsView({
               />
             ))}
           </div>
+
+          {/* Lien pour afficher toutes les sessions */}
+          {remainingCompleted > 0 && !showAllCompleted && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllCompleted(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+              >
+                Voir les {remainingCompleted} autre{remainingCompleted > 1 ? 's' : ''}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
