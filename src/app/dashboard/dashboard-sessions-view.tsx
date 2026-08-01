@@ -13,6 +13,7 @@ import {
   formatTimeRange,
   getTimeUntilText
 } from "@/lib/session-time";
+import { CompletedSessionModal } from "./completed-session-modal";
 
 /**
  * PAOVA V2 - Sessions View
@@ -147,6 +148,7 @@ type SessionCardProps = {
 };
 
 function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps) {
+  const [completedModalOpen, setCompletedModalOpen] = useState(false);
   const pending = session.total - session.signed;
 
   // Utiliser les nouveaux champs de temps
@@ -179,11 +181,9 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
 
   const cardPadding = variant === "completed" ? "p-2" : variant === "upcoming" ? "p-2.5" : "p-3";
 
-  return (
-    <Link
-      href={`/dashboard/groupes/${session.id}`}
-      className={`group block rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
-    >
+  // Pour les sessions completed, utiliser un bouton au lieu d'un lien
+  const cardContent = (
+    <>
       {/* Message d'action prioritaire — Sessions en cours seulement */}
       {variant === "ongoing" && pending > 0 && (
         <div className="mb-2 flex items-start gap-1.5">
@@ -320,6 +320,42 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
           />
         </>
       )}
+    </>
+  );
+
+  if (variant === "completed") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setCompletedModalOpen(true)}
+          className={`group block w-full text-left rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
+        >
+          {cardContent}
+        </button>
+        <CompletedSessionModal
+          session={{
+            id: session.id,
+            name: session.name,
+            template_title: session.template_title,
+            status: session.status,
+            total: session.total,
+            signed: session.signed,
+            end_time: session.end_time,
+          }}
+          open={completedModalOpen}
+          onClose={() => setCompletedModalOpen(false)}
+        />
+      </>
+    );
+  }
+
+  return (
+    <Link
+      href={`/dashboard/groupes/${session.id}`}
+      className={`group block rounded-xl border shadow-[var(--elev-1)] transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-px hover:shadow-[var(--elev-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${cardPadding}`}
+    >
+      {cardContent}
     </Link>
   );
 }
