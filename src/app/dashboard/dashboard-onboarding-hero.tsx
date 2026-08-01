@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Circle } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, Circle, PartyPopper } from "lucide-react";
 
 type OnboardingStep = {
   id: string;
@@ -11,21 +12,62 @@ type OnboardingStep = {
 export function DashboardOnboardingHero({
   hasWaivers,
   hasSessions,
-  hasSignatures,
   canManageWaivers,
   canCreateGroups,
+  firstSessionId,
 }: {
   hasWaivers: boolean;
   hasSessions: boolean;
-  hasSignatures: boolean;
   canManageWaivers: boolean;
   canCreateGroups: boolean;
+  firstSessionId: string | null;
 }) {
-  // Si tout est complété, ne rien afficher
-  if (hasWaivers && hasSessions && hasSignatures) {
-    return null;
+  const [dismissed, setDismissed] = useState(false);
+
+  // Si tout est complété, afficher la carte de félicitations
+  if (hasWaivers && hasSessions) {
+    if (dismissed) return null;
+
+    return (
+      <div className="animate-fade-up rounded-[1.35rem] border border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] p-5 shadow-[var(--elev-2)] sm:p-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_15%,var(--color-surface))]">
+              <PartyPopper size={20} className="text-[var(--color-brand)]" strokeWidth={2} />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-[1.15rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.25rem]">
+                🎉 Votre espace est prêt
+              </h2>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--color-muted)]">
+                Votre première session est créée. Vous pouvez commencer à collecter des signatures dès que vos participants seront présents.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {firstSessionId ? (
+              <a
+                href={`/dashboard/groupes/${firstSessionId}`}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--color-brand)] px-5 text-[13.5px] font-medium text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--elev-1)] transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99]"
+              >
+                Ouvrir la session
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setDismissed(true)}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-5 text-[13.5px] font-medium text-[var(--color-foreground)] shadow-[var(--elev-1)] transition-[background-color,border-color,transform] duration-200 hover:border-[color-mix(in_srgb,var(--color-brand)_25%,var(--color-border))] hover:bg-[var(--color-surface-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            >
+              Retour au tableau de bord
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // Sinon, afficher l'onboarding progressif
   const steps: OnboardingStep[] = [
     {
       id: "space",
@@ -42,11 +84,6 @@ export function DashboardOnboardingHero({
       label: "Créer votre première session",
       completed: hasSessions,
     },
-    {
-      id: "signature",
-      label: "Collecter votre première signature",
-      completed: hasSignatures,
-    },
   ];
 
   const completedCount = steps.filter((s) => s.completed).length;
@@ -54,7 +91,7 @@ export function DashboardOnboardingHero({
   let title = "Bienvenue sur Paova 👋";
   let subtitle = "Votre espace est prêt. Il ne reste plus que quelques étapes pour commencer.";
   let ctaLabel = "Créer ma première décharge";
-  let ctaHref = "/dashboard/waivers/new";
+  const ctaHref = "/dashboard/waivers/new";
   let ctaType: "link" | "button" | "none" = "link";
   let ctaDisabled = false;
   let ctaDisabledReason = "";
@@ -66,12 +103,6 @@ export function DashboardOnboardingHero({
     ctaType = canCreateGroups ? "button" : "none";
     ctaDisabled = !canCreateGroups;
     ctaDisabledReason = "Permission insuffisante";
-  } else if (hasSessions && !hasSignatures) {
-    title = "Première session créée ✓";
-    subtitle = "Dernière étape :";
-    ctaLabel = "Ouvrir ma session";
-    ctaHref = "/dashboard/groupes";
-    ctaType = "link";
   }
 
   if (!canManageWaivers && !hasWaivers) {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Calendar, Clock, Users, CheckCircle2, PlayCircle, CalendarClock, AlertCircle, AlertTriangle, Plus, QrCode, Loader2, X } from "lucide-react";
+import { Calendar, Clock, Users, CheckCircle2, CalendarClock, AlertCircle, AlertTriangle, Plus, QrCode, Loader2, X } from "lucide-react";
 import type { DashboardGroupRow } from "@/lib/dashboard/types";
 import { GroupProgressBar } from "@/components/groups/group-progress";
 import {
@@ -23,12 +24,23 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
   const [open, setOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function handleOpen(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+
+    // Ouvrir le modal immédiatement
+    setOpen(true);
+
+    // Charger le QR en arrière-plan si pas encore chargé
     if (!qrDataUrl) {
       setLoading(true);
       try {
@@ -43,7 +55,6 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
         setLoading(false);
       }
     }
-    setOpen(true);
   }
 
   useEffect(() => {
@@ -58,6 +69,58 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  const modalContent = open && mounted ? (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`QR code — ${sessionName}`}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.target === e.currentTarget) close();
+      }}
+      style={{ background: "rgba(0, 0, 0, 0.9)", backdropFilter: "blur(4px)" }}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+        }}
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        aria-label="Fermer"
+      >
+        <X size={20} aria-hidden />
+      </button>
+      <div
+        className="flex flex-col items-center gap-5 rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <p className="max-w-[240px] text-center text-[14px] font-semibold tracking-tight text-gray-900">
+          {sessionName}
+        </p>
+        {loading ? (
+          <div className="flex h-[280px] w-[280px] items-center justify-center">
+            <Loader2 size={32} strokeWidth={2} className="animate-spin text-gray-400" />
+          </div>
+        ) : qrDataUrl ? (
+          <div className="overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt={`QR code — ${sessionName}`} width={280} height={280} />
+          </div>
+        ) : null}
+        <p className="max-w-[240px] truncate text-center font-mono text-[12px] text-gray-400">
+          {publicUrl}
+        </p>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <button
@@ -66,49 +129,11 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
         aria-label="Afficher le QR code"
         className="flex shrink-0 items-center gap-1 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-2 py-1 text-[11px] font-semibold text-[var(--color-foreground)]/70 shadow-[var(--elev-1)] transition-[background-color,border-color,transform] duration-140 hover:border-[color-mix(in_srgb,var(--color-brand)_28%,var(--color-border))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand)]"
       >
-        {loading ? (
-          <Loader2 size={11} strokeWidth={2.2} className="animate-spin" aria-hidden />
-        ) : (
-          <QrCode size={11} strokeWidth={2} aria-hidden />
-        )}
+        <QrCode size={11} strokeWidth={2} aria-hidden />
         QR
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`QR code — ${sessionName}`}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) close(); }}
-        >
-          <button
-            type="button"
-            onClick={close}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label="Fermer"
-          >
-            <X size={20} aria-hidden />
-          </button>
-          <div
-            className="flex flex-col items-center gap-5 rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="max-w-[240px] text-center text-[14px] font-semibold tracking-tight text-gray-900">
-              {sessionName}
-            </p>
-            {qrDataUrl ? (
-              <div className="overflow-hidden rounded-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrDataUrl} alt={`QR code — ${sessionName}`} width={280} height={280} />
-              </div>
-            ) : null}
-            <p className="max-w-[240px] truncate text-center font-mono text-[12px] text-gray-400">
-              {publicUrl}
-            </p>
-          </div>
-        </div>
-      )}
+      {mounted ? createPortal(modalContent, document.body) : null}
     </>
   );
 }
@@ -321,6 +346,42 @@ export function DashboardSessionsView({
     return false;
   }
 
+  // Séparer les sessions en cours en deux catégories
+  const ongoingSessions = groups.filter(g =>
+    g.status === "open" &&
+    !isSessionUpcoming(g) &&
+    !isSessionCompleted(g)
+  );
+
+  // Action requise : signatures manquantes
+  const actionRequired = ongoingSessions
+    .filter(g => g.total > 0 && g.signed < g.total)
+    .sort((a, b) => {
+      // Les plus urgentes en premier : moins de temps restant, plus de signatures manquantes
+      const aTimeInfo = getSessionTimeInfo(a.start_time, a.end_time, a.duration_minutes);
+      const bTimeInfo = getSessionTimeInfo(b.start_time, b.end_time, b.duration_minutes);
+
+      const aEndMs = aTimeInfo.endTime ? aTimeInfo.endTime.getTime() : Infinity;
+      const bEndMs = bTimeInfo.endTime ? bTimeInfo.endTime.getTime() : Infinity;
+
+      const aRemaining = Math.max(0, aEndMs - now.getTime());
+      const bRemaining = Math.max(0, bEndMs - now.getTime());
+
+      // Trier par temps restant croissant
+      if (aRemaining !== bRemaining) {
+        return aRemaining - bRemaining;
+      }
+
+      // Si même urgence, trier par nombre de signatures manquantes décroissant
+      const aPending = a.total - a.signed;
+      const bPending = b.total - b.signed;
+      return bPending - aPending;
+    });
+
+  // Prêtes : toutes les signatures obtenues
+  const readySessions = ongoingSessions
+    .filter(g => g.total > 0 && g.signed >= g.total);
+
   const upcomingSessions = groups
     .filter(isSessionUpcoming)
     .sort((a, b) => {
@@ -335,34 +396,27 @@ export function DashboardSessionsView({
     .filter(isSessionCompleted)
     .slice(0, 4);
 
-  // En cours = open, pas terminé, pas à venir
-  const ongoingSessions = groups.filter(g =>
-    g.status === "open" &&
-    !isSessionUpcoming(g) &&
-    !isSessionCompleted(g)
-  );
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* Sessions en cours */}
-      {ongoingSessions.length > 0 && (
+    <div className="flex flex-col gap-6">
+      {/* 1. Action requise - PRIORITÉ MAXIMUM */}
+      {actionRequired.length > 0 && (
         <section>
-          <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_13%,transparent)] text-[var(--color-brand)]">
-              <PlayCircle size={14} strokeWidth={2} />
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_16%,transparent)] text-[var(--color-brand)]">
+              <AlertCircle size={16} strokeWidth={2.2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[14px] font-bold tracking-tight text-[var(--color-foreground)]">
-                En cours
+              <h2 className="text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
+                Action requise
               </h2>
-              <span className="text-[11px] font-semibold tabular-nums text-[var(--color-muted)]/70">
-                {ongoingSessions.length}
+              <span className="text-[12px] font-semibold tabular-nums text-[var(--color-brand)]">
+                {actionRequired.length}
               </span>
             </div>
           </div>
 
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {ongoingSessions.map(session => (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {actionRequired.map(session => (
               <SessionCard
                 key={session.id}
                 session={session}
@@ -374,18 +428,48 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* Prochaines sessions */}
-      {upcomingSessions.length > 0 && (
+      {/* 2. Prêtes - Signatures complètes */}
+      {readySessions.length > 0 && (
         <section>
           <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_9%,transparent)] text-[var(--color-muted)]">
-              <CalendarClock size={14} strokeWidth={2} />
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]">
+              <CheckCircle2 size={14} strokeWidth={2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
-                Prochaines
+              <h2 className="text-[13.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                Prêtes
               </h2>
-              <span className="text-[10.5px] font-medium tabular-nums text-[var(--color-muted)]/65">
+              <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/70">
+                {readySessions.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {readySessions.map(session => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                variant="ongoing"
+                appUrl={appUrl}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 3. À venir - Plus discrètes */}
+      {upcomingSessions.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)] text-[var(--color-muted)]">
+              <CalendarClock size={13} strokeWidth={2} />
+            </span>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[12.5px] font-semibold tracking-tight text-[var(--color-foreground)]/90">
+                À venir
+              </h2>
+              <span className="text-[10.5px] font-medium tabular-nums text-[var(--color-muted)]/60">
                 {upcomingSessions.length}
               </span>
             </div>
@@ -404,24 +488,24 @@ export function DashboardSessionsView({
         </section>
       )}
 
-      {/* Sessions terminées */}
+      {/* 4. Terminées aujourd'hui - Très discrètes */}
       {completedSessions.length > 0 && (
         <section>
-          <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)] text-[var(--color-muted)]/80">
-              <CheckCircle2 size={14} strokeWidth={2} />
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_6%,transparent)] text-[var(--color-muted)]/70">
+              <CheckCircle2 size={12} strokeWidth={2} />
             </span>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/85">
-                Terminées
+              <h2 className="text-[12px] font-medium tracking-tight text-[var(--color-foreground)]/75">
+                Terminées aujourd&apos;hui
               </h2>
-              <span className="text-[10.5px] font-medium tabular-nums text-[var(--color-muted)]/60">
+              <span className="text-[10px] font-medium tabular-nums text-[var(--color-muted)]/55">
                 {completedSessions.length}
               </span>
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {completedSessions.map(session => (
               <SessionCard
                 key={session.id}
@@ -435,7 +519,7 @@ export function DashboardSessionsView({
       )}
 
       {/* État vide */}
-      {ongoingSessions.length === 0 && upcomingSessions.length === 0 && completedSessions.length === 0 && (
+      {actionRequired.length === 0 && readySessions.length === 0 && upcomingSessions.length === 0 && completedSessions.length === 0 && (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-muted)_7%,transparent)]">
             <Calendar size={22} strokeWidth={1.8} className="text-[var(--color-muted)]" />

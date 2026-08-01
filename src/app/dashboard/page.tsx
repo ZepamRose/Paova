@@ -198,7 +198,6 @@ export default async function DashboardPage() {
 
   const hasWaivers = activeTemplatesList.length > 0;
   const hasSessions = dashboardGroups.length > 0;
-  const hasSignatures = Object.values(signatureCountRecord).some((count) => count > 0);
 
   return (
     <main className="relative mx-auto flex min-h-screen max-w-dashboard flex-col gap-4 px-5 py-5 sm:gap-4 sm:px-8 sm:py-8 lg:px-10">
@@ -220,13 +219,13 @@ export default async function DashboardPage() {
         templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
       />
 
-      {!hasWaivers || !hasSessions || !hasSignatures ? (
+      {!hasWaivers || !hasSessions ? (
         <DashboardOnboardingHero
           hasWaivers={hasWaivers}
           hasSessions={hasSessions}
-          hasSignatures={hasSignatures}
           canManageWaivers={canManageWaivers}
           canCreateGroups={canCreateGroups}
+          firstSessionId={dashboardGroups.length > 0 ? dashboardGroups[0].id : null}
         />
       ) : null}
 
