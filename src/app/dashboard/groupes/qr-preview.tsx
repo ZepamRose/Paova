@@ -134,15 +134,12 @@ export function QrPreview({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16, ease: "linear" }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      setOpen(false);
-                    }
-                  }}
                 >
-                  <div
+                  <button
+                    type="button"
+                    aria-label="Fermer"
+                    onClick={() => setOpen(false)}
                     className="absolute inset-0 bg-black/50 dark:bg-black/60"
-                    aria-hidden="true"
                   />
 
                   <motion.div
@@ -154,7 +151,6 @@ export function QrPreview({
                     exit={reduced ? undefined : { y: 8, scale: 0.98 }}
                     transition={{ duration: 0.24, ease: EASE }}
                     className="relative z-10 w-full max-w-[min(92vw,28rem)] overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] bg-[var(--color-surface)] p-5 shadow-[var(--elev-3)] sm:p-6"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div>

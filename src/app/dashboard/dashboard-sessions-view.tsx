@@ -79,7 +79,7 @@ function CardQrButton({ publicUrl, sessionName }: { publicUrl: string; sessionNa
           role="dialog"
           aria-modal="true"
           aria-label={`QR code — ${sessionName}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) close(); }}
         >
           <button

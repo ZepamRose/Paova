@@ -131,7 +131,7 @@ export function QrPreview({
               {open ? (
                 <motion.div
                   key="qr-preview-dialog"
-                  className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
+                  className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
                   initial={reduced ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
