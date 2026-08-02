@@ -44,19 +44,58 @@ function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingPro
   if (variant === "upcoming" || timeUntilStartMs > 0) {
     const minutes = Math.floor(timeUntilStartMs / 60000);
     const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-    let text = "";
-    if (hours > 0) {
-      text = `Dans ${hours} h`;
-    } else if (minutes > 0) {
-      text = `Dans ${minutes} min`;
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const isToday = startTime.getDate() === today.getDate() &&
+                    startTime.getMonth() === today.getMonth() &&
+                    startTime.getFullYear() === today.getFullYear();
+
+    const isTomorrow = startTime.getDate() === tomorrow.getDate() &&
+                       startTime.getMonth() === tomorrow.getMonth() &&
+                       startTime.getFullYear() === tomorrow.getFullYear();
+
+    let prefix = "";
+    let timeText = "";
+
+    if (isToday) {
+      prefix = "Aujourd'hui";
+      if (minutes < 60) {
+        timeText = `Commence dans ${minutes} min`;
+      } else {
+        const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        timeText = `Commence à ${formattedTime}`;
+      }
+    } else if (isTomorrow) {
+      prefix = "Demain";
+      const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      timeText = `à ${formattedTime}`;
+    } else if (days > 0) {
+      const dayName = startTime.toLocaleDateString("fr-FR", { weekday: "long" });
+      const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      prefix = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+      timeText = `à ${formattedTime}`;
     } else {
-      text = "Commence bientôt";
+      if (hours > 0) {
+        timeText = `Commence dans ${hours} h ${minutes % 60} min`;
+      } else {
+        timeText = `Commence dans ${minutes} min`;
+      }
     }
 
     return (
-      <div className="text-[11px] font-medium text-[var(--color-brand)]">
-        {text}
+      <div className="flex flex-col gap-0.5">
+        {prefix && (
+          <div className="text-[11px] font-medium text-[var(--color-muted)]">
+            {prefix}
+          </div>
+        )}
+        <div className="text-[11.5px] font-medium text-[var(--color-foreground)]">
+          {timeText}
+        </div>
       </div>
     );
   }
@@ -68,21 +107,31 @@ function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingPro
 
   const totalSeconds = Math.floor(remainingMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const hours = Math.floor(minutes / 60);
   const isUrgent = minutes < 10;
 
   let text = "";
-  if (minutes > 0) {
-    text = `${minutes} min restante${minutes > 1 ? 's' : ''}`;
+  if (hours > 0) {
+    text = `${hours} h ${String(minutes % 60).padStart(2, "0")}`;
+  } else if (minutes > 0) {
+    text = `${minutes} min`;
   } else {
-    text = `${seconds} sec`;
+    text = `${totalSeconds} sec`;
   }
 
   return (
-    <div className={`text-[11px] font-semibold ${
-      isUrgent ? "text-[#dc2626]" : "text-[var(--color-muted)]"
-    }`}>
-      {text}
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <div className={`h-1.5 w-1.5 rounded-full ${isUrgent ? "bg-[#ef4444]" : "bg-[#10b981]"}`} />
+        <span className="text-[11px] font-medium text-[var(--color-muted)]">
+          En cours
+        </span>
+      </div>
+      <div className={`text-[11.5px] font-semibold tabular-nums ${
+        isUrgent ? "text-[#ef4444]" : "text-[var(--color-foreground)]"
+      }`}>
+        Se termine dans {text}
+      </div>
     </div>
   );
 }
@@ -421,29 +470,12 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       <h3 className={`truncate font-semibold leading-tight tracking-tight ${
         variant === "completed"
           ? "text-[13px] text-[var(--color-foreground)]/90"
-          : variant === "ongoing"
-          ? "text-[14px] text-[var(--color-foreground)]"
-          : "text-[13px] text-[var(--color-foreground)]"
+          : "text-[13.5px] text-[var(--color-foreground)]"
       }`}>
         {session.name}
       </h3>
 
-      {/* Décharge */}
-      {variant !== "completed" && (
-        <p className="mt-0.5 truncate text-[11px] text-[var(--color-muted)]/70">
-          {session.template_title}
-        </p>
-      )}
-
-      {/* Horaires pour sessions avec timing */}
-      {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
-        <div className="mt-1.5 flex items-center gap-1 text-[10.5px] text-[var(--color-muted)]/60">
-          <Clock size={10} strokeWidth={1.9} />
-          <span>{formatTimeRange(timeInfo.startTime, timeInfo.endTime)}</span>
-        </div>
-      )}
-
-      {/* État temporel */}
+      {/* Informations temporelles - priorité absolue */}
       {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
         <div className="mt-1.5">
           <LiveTimeRemaining
@@ -454,10 +486,10 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         </div>
       )}
 
-      {/* Progression uniquement */}
+      {/* Progression */}
       {variant !== "completed" && (
-        <div className="mt-2.5">
-          <div className="mb-1 flex items-baseline gap-1.5 text-[11px]">
+        <div className="mt-2">
+          <div className="mb-1 flex items-baseline gap-1 text-[11px]">
             <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
               {session.signed}
             </span>
@@ -497,7 +529,7 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
         <button
           type="button"
           onClick={() => setCompletedModalOpen(true)}
-          className={`group block w-full text-left rounded-lg border p-2.5 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
+          className={`group block w-full text-left rounded-lg border p-2 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
         >
           {cardContent}
         </button>
@@ -523,9 +555,7 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
       <button
         type="button"
         onClick={() => setQuickViewOpen(true)}
-        className={`group block w-full text-left rounded-lg border shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]} ${
-          variant === "ongoing" ? "p-3" : "p-2.5"
-        }`}
+        className={`group block w-full text-left rounded-lg border p-2.5 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
       >
         {cardContent}
       </button>
