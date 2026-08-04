@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { DashboardGroupRow, DashboardListView } from "@/lib/dashboard/types";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
 import { StatusBadge } from "@/components/status-badge";
 import { GroupIcon } from "@/components/groups/group-icon";
 import { GroupProgressBar } from "@/components/groups/group-progress";
@@ -273,16 +274,34 @@ export function DashboardGroupsSection({
                       </div>
 
                       {/* Progress well — collective tracking signal */}
-                      <Link
-                        href={`/dashboard/groupes/${g.id}`}
-                        className="block rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[background-color,ring-color] duration-[150ms] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-                      >
-                        <GroupProgressBar
-                          variant="dashboard"
-                          signed={g.signed}
-                          total={g.total}
-                        />
-                      </Link>
+                      {(() => {
+                        const sigState = resolveGroupSigningState(g);
+                        return (
+                          <Link
+                            href={`/dashboard/groupes/${g.id}`}
+                            className="block rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[background-color,ring-color] duration-[150ms] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                          >
+                            {sigState.isRepMode ? (
+                              <p className="text-[12.5px] font-medium text-[var(--color-foreground)]/80">
+                                {sigState.repSigned ? (
+                                  <span className="font-semibold text-[var(--color-brand)]">✓ Représentant signé</span>
+                                ) : (
+                                  <span className="text-[var(--color-muted)]">En attente du représentant</span>
+                                )}
+                                <span className="ml-1.5 text-[var(--color-muted)]/60">
+                                  · {g.total} participant{g.total > 1 ? "s" : ""} couverts
+                                </span>
+                              </p>
+                            ) : (
+                              <GroupProgressBar
+                                variant="dashboard"
+                                signed={sigState.coveredSigned}
+                                total={sigState.total}
+                              />
+                            )}
+                          </Link>
+                        );
+                      })()}
                     </div>
                   </motion.li>
                 );

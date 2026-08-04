@@ -8,6 +8,7 @@ import {
 } from "../actions";
 import type { ExpirationMode } from "@/lib/templates";
 import { PendingSubmitButton } from "../../pending-submit-button";
+import { DatePickerField } from "@/components/ui/datetime-picker";
 
 const selectClass =
   "h-10 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-sm shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow] focus:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] focus:shadow-[var(--elev-2)]";
@@ -100,13 +101,10 @@ export function ExpirationSettings({
           <label htmlFor="expires_on" className="text-[13px] font-medium">
             Date d&apos;expiration
           </label>
-          <input
-            id="expires_on"
+          <DatePickerField
             name="expires_on"
-            type="date"
             defaultValue={initialDate}
-            required
-            className={inputClass}
+            allowPast={true}
           />
         </div>
       ) : null}

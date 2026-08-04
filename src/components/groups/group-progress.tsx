@@ -98,7 +98,7 @@ export function GroupProgressBar({
   return (
     <div className={className}>
       <div
-        className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-surface-2)_85%,var(--color-foreground))]"
+        className="relative h-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-muted)_6%,transparent)] shadow-[inset_0_0.5px_1.5px_rgba(0,0,0,0.06)]"
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}
@@ -106,9 +106,25 @@ export function GroupProgressBar({
         aria-label={`${signed} sur ${total} signatures`}
       >
         <div
-          className="h-full rounded-full bg-[var(--color-brand)] transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          style={{ width: `${pct}%` }}
-        />
+          className="relative h-full overflow-hidden rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0.5px_1px_rgba(0,0,0,0.08)] transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            width: `${pct}%`,
+            background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)'
+          }}
+        >
+          {/* Animation shimmer premium ultra-élégante - rayon lumineux toutes les 5s */}
+          {pct > 0 && (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0) 15%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0) 85%, transparent 100%)',
+                filter: 'blur(2px)',
+                animation: 'shimmer-shine 5s ease-in-out infinite',
+                willChange: 'transform'
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

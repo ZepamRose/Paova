@@ -24,7 +24,7 @@ export default async function SettingsPage({
   const { data: business } = await supabase
     .from("business")
     .select(
-      "id, name, brand_color, logo_url, tagline, brand_accent, contact_address, contact_phone, contact_email, website_url, thank_you_title, thank_you_message, thank_you_button_label, thank_you_button_url, public_theme, custom_domain, custom_domain_status, public_header_style, public_show_logo, public_show_name, public_show_tagline, public_show_contact, pdf_show_logo, pdf_show_name, pdf_show_contact, pdf_show_website, pdf_show_phone, pdf_show_footer, email_from_name, email_subject_template, email_signature, email_footer, email_show_logo, enabled_locales",
+      "id, name, brand_color, logo_url, tagline, brand_accent, contact_address, contact_phone, contact_email, website_url, thank_you_title, thank_you_message, thank_you_button_label, thank_you_button_url, public_theme, custom_domain, custom_domain_status, public_header_style, public_show_logo, public_show_name, public_show_tagline, public_show_contact, pdf_show_logo, pdf_show_name, pdf_show_contact, pdf_show_website, pdf_show_phone, pdf_show_footer, email_from_name, email_subject_template, email_signature, email_footer, email_show_logo, enabled_locales, opening_hours",
     )
     .eq("id", membership.businessId)
     .maybeSingle();
@@ -35,23 +35,21 @@ export default async function SettingsPage({
 
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-5 py-7 sm:gap-6 sm:px-8 sm:py-9 lg:px-10">
-      <header className="flex flex-col gap-1.5">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12 lg:px-6">
+      <header className="flex flex-col gap-1">
         <Link
           href="/dashboard"
-          className="w-fit text-sm text-[var(--color-muted)]/80 transition-colors duration-200 hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          className="mb-3 inline-flex w-fit items-center gap-1.5 text-[12.5px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
         >
-          ← Retour au tableau de bord
+          <span aria-hidden>←</span>
+          Tableau de bord
         </Link>
-        <div className="flex flex-col gap-1">
-            <h1 className="text-[1.625rem] font-semibold tracking-tight sm:text-[1.85rem]">
-              Réglages
-            </h1>
-            <p className="max-w-2xl text-[14px] leading-snug text-[var(--color-muted)]">
-              Gérez l&apos;identité de votre établissement et les e-mails
-              envoyés après chaque signature.
-            </p>
-        </div>
+        <h1 className="text-[1.75rem] font-bold tracking-tight text-[var(--color-foreground)] sm:text-[2rem]">
+          Réglages
+        </h1>
+        <p className="mt-0.5 text-[14px] text-[var(--color-muted)]">
+          Gérez l&apos;identité de votre établissement et les préférences de communication.
+        </p>
       </header>
 
       <SettingsSavedBanner show={Boolean(success)} />
@@ -126,6 +124,7 @@ export default async function SettingsPage({
         initialEmailSignature={business.email_signature}
         initialEmailFooter={business.email_footer}
         initialEnabledLocales={business.enabled_locales}
+        initialOpeningHours={business.opening_hours as import("@/lib/groups/lifecycle").OpeningHours | null}
         logoUrl={business.logo_url}
       />
     </main>

@@ -213,7 +213,7 @@ export async function submitWaiver(formData: FormData) {
   if (groupToken && (groupMemberIds.length > 0 || expressWalkIn)) {
     const { data: group } = await supabase
       .from("signing_group")
-      .select("id, business_id, template_id, status, closes_at, kind")
+      .select("id, business_id, template_id, status, closes_at, kind, requires_signature")
       .eq("public_token", groupToken)
       .maybeSingle();
 
@@ -229,7 +229,7 @@ export async function submitWaiver(formData: FormData) {
     }
 
     if (expressWalkIn) {
-      if (group.kind !== "express") {
+      if (group.kind !== "express" && group.kind !== "station") {
         redirect(`/g/${groupToken}?error=closed`);
       }
 

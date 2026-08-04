@@ -8,6 +8,11 @@ import type { RosterMode } from "@/lib/groups";
 import { createSigningGroup } from "./actions";
 import { RosterImport } from "./roster-import";
 import { TemplateCombobox } from "./template-combobox";
+import {
+  CompactDateTimePicker,
+  DatePicker,
+  formatDateString,
+} from "@/components/ui/datetime-picker";
 
 type TemplateChoice = {
   id: string;
@@ -50,11 +55,39 @@ export function NewGroupForm({
     preselected?.id ?? choices[0]?.id ?? "",
   );
   const [rosterCount, setRosterCount] = useState(0);
-  const [closesOn, setClosesOn] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+
+  // Date / time state — driven by premium pickers
+  const [scheduledDate, setScheduledDate] = useState<Date | null>(null);
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [closesOnDate, setClosesOnDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [startTimePart, setStartTimePart] = useState("");
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [endTimePart, setEndTimePart] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
+
+  // Computed ISO values for hidden inputs
+  const scheduledAtISO = (() => {
+    if (!scheduledDate || !scheduledTime) return "";
+    const [h, m] = scheduledTime.split(":").map(Number);
+    const d = new Date(scheduledDate);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  })();
+  const startTimeISO = (() => {
+    if (!startDate || !startTimePart) return "";
+    const [h, m] = startTimePart.split(":").map(Number);
+    const d = new Date(startDate);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  })();
+  const endTimeISO = (() => {
+    if (!endDate || !endTimePart) return "";
+    const [h, m] = endTimePart.split(":").map(Number);
+    const d = new Date(endDate);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  })();
 
   const selected =
     (locked ? preselected : choices.find((c) => c.id === templateId)) ??
@@ -70,8 +103,8 @@ export function NewGroupForm({
     rosterCount > 0
       ? `${rosterCount} participant${rosterCount > 1 ? "s" : ""}`
       : null,
-    closesOn
-      ? `clôture ${new Date(`${closesOn}T12:00:00`).toLocaleDateString("fr-FR", {
+    closesOnDate
+      ? `clôture ${closesOnDate.toLocaleDateString("fr-FR", {
           day: "numeric",
           month: "short",
         })}`
@@ -214,43 +247,47 @@ export function NewGroupForm({
           />
         </div>
 
-        <div className="flex flex-col gap-4 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4 sm:flex-row sm:gap-5">
-          <label className="flex flex-col gap-1.5">
+        {/* Hidden ISO values for server action */}
+        <input type="hidden" name="scheduled_at" value={scheduledAtISO} />
+        <input type="hidden" name="closes_on" value={formatDateString(closesOnDate)} />
+        <input type="hidden" name="start_time" value={startTimeISO} />
+        <input type="hidden" name="end_time" value={endTimeISO} />
+
+        <div className="flex flex-col gap-4 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-4">
+          <div className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--color-foreground)]">
               Date et heure de la session{" "}
               <span className="font-normal text-[var(--color-muted)]">
                 (facultatif)
               </span>
             </span>
-            <input
-              name="scheduled_at"
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className={`${field} max-w-xs`}
+            <CompactDateTimePicker
+              date={scheduledDate}
+              time={scheduledTime}
+              onDateChange={setScheduledDate}
+              onTimeChange={setScheduledTime}
             />
             <span className="text-[12px] text-[var(--color-muted)]">
               Quand a lieu votre activité. Affiché sur la carte.
             </span>
-          </label>
-          <label className="flex flex-col gap-1.5">
+          </div>
+          <div className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--color-foreground)]">
               Date de clôture{" "}
               <span className="font-normal text-[var(--color-muted)]">
                 (facultatif)
               </span>
             </span>
-            <input
-              name="closes_on"
-              type="date"
-              value={closesOn}
-              onChange={(e) => setClosesOn(e.target.value)}
-              className={`${field} max-w-xs`}
+            <DatePicker
+              value={closesOnDate}
+              onChange={setClosesOnDate}
+              allowPast={true}
+              placeholder="Pas de limite"
             />
             <span className="text-[12px] text-[var(--color-muted)]">
               Après cette date, le lien refuse les nouvelles signatures.
             </span>
-          </label>
+          </div>
         </div>
 
         {/* V2: Session Time Fields */}
@@ -267,32 +304,30 @@ export function NewGroupForm({
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-            <label className="flex flex-1 flex-col gap-1.5">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[13px] font-medium text-[var(--color-foreground)]">
                 Heure de début
               </span>
-              <input
-                name="start_time"
-                type="datetime-local"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className={field}
+              <CompactDateTimePicker
+                date={startDate}
+                time={startTimePart}
+                onDateChange={setStartDate}
+                onTimeChange={setStartTimePart}
               />
-            </label>
+            </div>
 
-            <label className="flex flex-1 flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[13px] font-medium text-[var(--color-foreground)]">
                 Heure de fin
               </span>
-              <input
-                name="end_time"
-                type="datetime-local"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={field}
+              <CompactDateTimePicker
+                date={endDate}
+                time={endTimePart}
+                onDateChange={setEndDate}
+                onTimeChange={setEndTimePart}
               />
-            </label>
+            </div>
 
             <label className="flex flex-1 flex-col gap-1.5">
               <span className="text-[13px] font-medium text-[var(--color-foreground)]">

@@ -18,6 +18,8 @@ import {
 import { updateBusiness } from "./actions";
 import { LogoUploader } from "./logo-uploader";
 import { ResetSettingsDialog } from "./reset-settings-dialog";
+import type { OpeningHours, DayHours } from "@/lib/groups/lifecycle";
+import { TimePicker } from "@/components/ui/datetime-picker";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -67,7 +69,7 @@ const nestedPanel =
   "rounded-xl border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_42%,var(--color-surface))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-3.5";
 
 const card =
-  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[var(--color-surface)] p-4 shadow-[var(--elev-3)] sm:p-5";
+  "rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-5 shadow-[var(--elev-1)] sm:p-6";
 
 const field =
   "mt-1.5 min-h-[2.75rem] w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_82%,var(--color-surface-2))] px-3.5 py-2.5 text-sm outline-none transition-[border-color,box-shadow,background-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] placeholder:text-[var(--color-muted)]/50 hover:border-[color-mix(in_srgb,var(--color-border)_50%,var(--color-muted))] focus-visible:border-[var(--color-brand)] focus-visible:bg-[var(--color-surface)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]";
@@ -85,6 +87,88 @@ function norm(s: string | null | undefined) {
 function localesEqual(a: SupportedLocale[], b: SupportedLocale[]) {
   if (a.length !== b.length) return false;
   return [...a].sort().join(",") === [...b].sort().join(",");
+}
+
+// ─── Opening hours editor ─────────────────────────────────────────────────────
+
+const DAY_ENTRIES: { key: keyof OpeningHours; label: string }[] = [
+  { key: "mon", label: "Lun" },
+  { key: "tue", label: "Mar" },
+  { key: "wed", label: "Mer" },
+  { key: "thu", label: "Jeu" },
+  { key: "fri", label: "Ven" },
+  { key: "sat", label: "Sam" },
+  { key: "sun", label: "Dim" },
+];
+
+function OpeningHoursEditor({
+  value,
+  onChange,
+}: {
+  value: OpeningHours;
+  onChange: (next: OpeningHours) => void;
+}) {
+  function setDay(key: keyof OpeningHours, hours: DayHours) {
+    onChange({ ...value, [key]: hours });
+  }
+
+  return (
+    <div className="flex flex-col divide-y divide-[color-mix(in_srgb,var(--color-border)_50%,transparent)] rounded-xl border border-[color-mix(in_srgb,var(--color-border)_68%,var(--color-foreground))] bg-[color-mix(in_srgb,var(--color-background)_42%,var(--color-surface))]">
+      {DAY_ENTRIES.map(({ key, label }) => {
+        const day = value[key];
+        const isOpen = day !== null;
+        return (
+          <div key={key} className="flex items-center gap-3 px-3.5 py-2.5">
+            <span className="w-8 shrink-0 text-[12.5px] font-semibold text-[var(--color-foreground)]">
+              {label}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isOpen}
+              onClick={() =>
+                setDay(key, isOpen ? null : { open: "08:00", close: "18:00" })
+              }
+              className={[
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
+                isOpen ? "bg-[var(--color-brand)]" : "bg-[var(--color-surface-2)]",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-[var(--color-surface)] shadow ring-0 transition duration-200",
+                  isOpen ? "translate-x-4" : "translate-x-0",
+                ].join(" ")}
+              />
+            </button>
+            {isOpen && day ? (
+              <div className="flex flex-1 items-center gap-2">
+                <div className="flex-1">
+                  <TimePicker
+                    value={day.open}
+                    onChange={(t) => setDay(key, { open: t, close: day.close })}
+                    size="sm"
+                    placeholder="Ouv."
+                  />
+                </div>
+                <span className="shrink-0 text-[11px] text-[var(--color-muted)]">→</span>
+                <div className="flex-1">
+                  <TimePicker
+                    value={day.close}
+                    onChange={(t) => setDay(key, { open: day.open, close: t })}
+                    size="sm"
+                    placeholder="Ferm."
+                  />
+                </div>
+              </div>
+            ) : (
+              <span className="flex-1 text-[12px] italic text-[var(--color-muted)]">Fermé</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function SettingsForm({
@@ -119,6 +203,7 @@ export function SettingsForm({
   initialEmailSignature,
   initialEmailFooter,
   initialEnabledLocales,
+  initialOpeningHours = null,
   logoUrl,
 }: {
   businessId: string;
@@ -152,6 +237,7 @@ export function SettingsForm({
   initialEmailSignature: string | null;
   initialEmailFooter: string | null;
   initialEnabledLocales: string[] | null;
+  initialOpeningHours?: OpeningHours | null;
   logoUrl: string | null;
 }) {
   const reduced = useReducedMotion() ?? false;
@@ -210,6 +296,11 @@ export function SettingsForm({
   const [enabledLocales, setEnabledLocales] = useState<SupportedLocale[]>(
     resolveEnabledLocales(initialEnabledLocales),
   );
+  const [openingHours, setOpeningHours] = useState<OpeningHours>(
+    initialOpeningHours ?? {
+      mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null,
+    },
+  );
   const [resetOpen, setResetOpen] = useState(false);
 
   const initialAccentResolved = resolveAccentColor(
@@ -249,7 +340,8 @@ export function SettingsForm({
     norm(emailSubject) !== norm(initialEmailSubject) ||
     norm(emailSignature) !== norm(initialEmailSignature) ||
     norm(emailFooter) !== norm(initialEmailFooter) ||
-    !localesEqual(enabledLocales, initialLocalesResolved);
+    !localesEqual(enabledLocales, initialLocalesResolved) ||
+    JSON.stringify(openingHours) !== JSON.stringify(initialOpeningHours ?? { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null });
 
 
 
@@ -291,8 +383,8 @@ export function SettingsForm({
 
   return (
     <form action={updateBusiness}>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:gap-3.5">
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           {/* 1. Identité */}
           <motion.section
             className={card}
@@ -300,69 +392,53 @@ export function SettingsForm({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: EASE }}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3.5">
               <SectionIcon>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.85"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
                   <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
                   <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
                   <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
                 </svg>
               </SectionIcon>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <h2 className="text-[1rem] font-semibold tracking-tight text-[var(--color-foreground)]">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
                   Identité
                 </h2>
-                <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--color-muted)]">
+                <p className="mt-0.5 text-[13px] leading-snug text-[var(--color-muted)]">
                   Logo, nom et coordonnées de votre établissement.
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-4">
+            <div className="mt-6 flex flex-col gap-5">
               <LogoUploader businessId={businessId} currentLogoUrl={logoUrl} />
 
               <div className={divider} />
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex flex-col gap-0.5 sm:col-span-2">
-                  <label
-                    htmlFor="name"
-                    className="text-[13px] font-medium tracking-tight"
-                  >
-                    Nom
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Escape Room Liège centre"
-                    className={field}
-                  />
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor="name" className="text-[13px] font-medium tracking-tight text-[var(--color-foreground)]">
+                  Nom de l&apos;établissement
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Escape Room Liège centre"
+                  className={field}
+                />
               </div>
 
-              <details className="group rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_50%,var(--color-surface))]">
-                <summary className="cursor-pointer list-none px-3.5 py-2.5 text-[13px] font-medium tracking-tight marker:content-none [&::-webkit-details-marker]:hidden">
+              <details className="group rounded-xl border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_50%,var(--color-surface))]">
+                <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-medium tracking-tight marker:content-none [&::-webkit-details-marker]:hidden">
                   <span className="flex items-center justify-between gap-3">
-                    <span>Coordonnées & site</span>
-                    <span className="text-[11px] font-normal text-[var(--color-muted)] transition-transform duration-[160ms] group-open:rotate-180">
-                      ▾
-                    </span>
+                    <span>Coordonnées &amp; site</span>
+                    <span className="text-[11px] font-normal text-[var(--color-muted)] transition-transform duration-[160ms] group-open:rotate-180">▾</span>
                   </span>
                 </summary>
-                <div className="flex flex-col gap-3.5 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] px-3.5 py-3.5">
+                <div className="flex flex-col gap-3.5 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] px-4 py-4">
                   <input
                     id="contact_address"
                     name="contact_address"
@@ -451,42 +527,33 @@ export function SettingsForm({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: EASE, delay: 0.05 }}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3.5">
               <SectionIcon>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.85"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
                   <rect width="20" height="16" x="2" y="4" rx="2" />
                   <path d="m22 7-8.991 5.247a2 2 0 0 1-2.009 0L2 7" />
                 </svg>
               </SectionIcon>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <h2 className="text-[1rem] font-semibold tracking-tight text-[var(--color-foreground)]">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
                   Communication
                 </h2>
+                <p className="mt-0.5 text-[13px] leading-snug text-[var(--color-muted)]">
+                  Personnalisez les e-mails envoyés aux participants.
+                </p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="mt-6 flex flex-col gap-4">
               <div className={nestedPanel}>
                 <Subhead
-                  title="Email de confirmation"
-                  hint="Envoyé après chaque signature."
+                  title="E-mail de confirmation"
+                  hint="Envoyé après chaque signature de décharge."
                 />
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="flex flex-col gap-0.5">
-                      <label
-                        htmlFor="email_from_name"
-                        className="text-[12.5px] font-medium tracking-tight"
-                      >
+                      <label htmlFor="email_from_name" className="text-[12.5px] font-medium tracking-tight">
                         Expéditeur
                       </label>
                       <input
@@ -500,10 +567,7 @@ export function SettingsForm({
                       />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <label
-                        htmlFor="email_subject_template"
-                        className="text-[12.5px] font-medium tracking-tight"
-                      >
+                      <label htmlFor="email_subject_template" className="text-[12.5px] font-medium tracking-tight">
                         Objet
                       </label>
                       <input
@@ -519,10 +583,7 @@ export function SettingsForm({
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="flex flex-col gap-0.5">
-                      <label
-                        htmlFor="email_signature"
-                        className="text-[12.5px] font-medium tracking-tight"
-                      >
+                      <label htmlFor="email_signature" className="text-[12.5px] font-medium tracking-tight">
                         Signature
                       </label>
                       <textarea
@@ -537,10 +598,7 @@ export function SettingsForm({
                       />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <label
-                        htmlFor="email_footer"
-                        className="text-[12.5px] font-medium tracking-tight"
-                      >
+                      <label htmlFor="email_footer" className="text-[12.5px] font-medium tracking-tight">
                         Pied de page
                       </label>
                       <textarea
@@ -555,19 +613,51 @@ export function SettingsForm({
                       />
                     </div>
                   </div>
-                  {/* Le logo est désormais toujours affiché : la valeur est
-                      épinglée plutôt que réglable. */}
                   <input type="hidden" name="email_show_logo" value="1" />
                 </div>
               </div>
+            </div>
+          </motion.section>
 
-              
+          {/* 4. Horaires d'ouverture */}
+          <motion.section
+            className={card}
+            initial={reduced ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: EASE, delay: 0.08 }}
+          >
+            <div className="flex items-start gap-3.5">
+              <SectionIcon tone="muted">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </SectionIcon>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                  Horaires d&apos;ouverture
+                </h2>
+                <p className="mt-0.5 text-[13px] leading-snug text-[var(--color-muted)]">
+                  Utilisés pour calculer automatiquement la fin des activités en mode &ldquo;fermeture établissement&rdquo;.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <OpeningHoursEditor
+                value={openingHours}
+                onChange={setOpeningHours}
+              />
+              <input
+                type="hidden"
+                name="opening_hours"
+                value={JSON.stringify(openingHours)}
+              />
             </div>
           </motion.section>
 
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 pb-2">
           <button
             type="button"
             onClick={() => setResetOpen(true)}
@@ -576,7 +666,7 @@ export function SettingsForm({
             <RotateCcw size={14} strokeWidth={1.9} aria-hidden />
             Restaurer les réglages par défaut
           </button>
-          <p className="px-1 text-[11.5px] leading-snug text-[var(--color-muted)]/75">
+          <p className="px-1 text-[11.5px] leading-snug text-[var(--color-muted)]/70">
             Nom et logo conservés. Enregistrez ensuite pour appliquer.
           </p>
         </div>

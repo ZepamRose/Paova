@@ -484,7 +484,7 @@ export default async function WaiverDetailPage({
 
   const { data: templateGroups } = await supabase
     .from("signing_group")
-    .select("id, name, status")
+    .select("id, name, status, requires_signature")
     .eq("template_id", template.id)
     .eq("business_id", template.business_id)
     .order("created_at", { ascending: false });

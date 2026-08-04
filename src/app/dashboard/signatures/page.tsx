@@ -49,7 +49,7 @@ export default async function SignaturesSearchPage({
       .order("title", { ascending: true }),
     supabase
       .from("signing_group")
-      .select("id, name, template_id, status")
+      .select("id, name, template_id, status, requires_signature")
       .eq("business_id", business.id)
       .order("created_at", { ascending: false }),
     supabase

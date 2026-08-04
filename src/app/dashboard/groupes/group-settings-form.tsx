@@ -1,8 +1,14 @@
-"use client";
+﻿"use client";
 
+import { useState } from "react";
 import { PendingSubmitButton } from "../pending-submit-button";
 import { updateGroupSettings } from "./actions";
 import { closesOnInputValue } from "@/lib/groups/lifecycle";
+import {
+  DatePickerField,
+  DateTimePickerField,
+  parseDateString,
+} from "@/components/ui/datetime-picker";
 
 export function GroupSettingsForm({
   groupId,
@@ -24,19 +30,6 @@ export function GroupSettingsForm({
   const field =
     "h-10 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_78%,var(--color-foreground))] bg-[var(--color-surface)] px-3.5 text-[14px] outline-none transition-[border-color,box-shadow] focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)] disabled:opacity-60";
 
-  // Convert ISO timestamp to datetime-local format
-  const formatDateTimeLocal = (isoString: string | null | undefined) => {
-    if (!isoString) return "";
-    try {
-      const date = new Date(isoString);
-      const offset = date.getTimezoneOffset();
-      const localDate = new Date(date.getTime() - offset * 60 * 1000);
-      return localDate.toISOString().slice(0, 16);
-    } catch {
-      return "";
-    }
-  };
-
   return (
     <form action={updateGroupSettings} className="mt-3 flex flex-col gap-3">
       <input type="hidden" name="group_id" value={groupId} />
@@ -53,21 +46,20 @@ export function GroupSettingsForm({
           className={field}
         />
       </label>
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <span className="text-[12px] font-medium tracking-tight">
           Date de clôture
         </span>
-        <input
+        <DatePickerField
           name="closes_on"
-          type="date"
           defaultValue={closesOnInputValue(closesAt)}
-          disabled={disabled}
-          className={`${field} max-w-xs`}
+          allowPast={true}
+          placeholder="Pas de limite"
         />
         <span className="text-[11.5px] text-[var(--color-muted)]">
           Vide = pas de limite. Après cette date, signatures refusées.
         </span>
-      </label>
+      </div>
 
       {/* V2: Session Time Fields */}
       <div className="flex flex-col gap-3 border-t border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] pt-3">
@@ -83,32 +75,28 @@ export function GroupSettingsForm({
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-3">
-          <label className="flex flex-1 flex-col gap-1">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
             <span className="text-[12px] font-medium tracking-tight">
               Heure de début
             </span>
-            <input
+            <DateTimePickerField
               name="start_time"
-              type="datetime-local"
-              defaultValue={formatDateTimeLocal(startTime)}
-              disabled={disabled}
-              className={field}
+              defaultValue={startTime}
+              allowPast={true}
             />
-          </label>
+          </div>
 
-          <label className="flex flex-1 flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-[12px] font-medium tracking-tight">
               Heure de fin
             </span>
-            <input
+            <DateTimePickerField
               name="end_time"
-              type="datetime-local"
-              defaultValue={formatDateTimeLocal(endTime)}
-              disabled={disabled}
-              className={field}
+              defaultValue={endTime}
+              allowPast={true}
             />
-          </label>
+          </div>
 
           <label className="flex flex-1 flex-col gap-1">
             <span className="text-[12px] font-medium tracking-tight">

@@ -7,6 +7,7 @@ import {
   GroupProgressBar,
   GroupStatBadges,
 } from "@/components/groups/group-progress";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
 import { unarchiveGroup } from "./actions";
 
 /** This page is kept for direct access but should not be linked from UI */
@@ -28,7 +29,7 @@ export default async function GroupesPage({
 
   const { data: allGroups } = await supabase
     .from("signing_group")
-    .select("id, name, public_token, status, created_at, template_id")
+    .select("id, name, public_token, status, created_at, template_id, requires_signature, signature_mode")
     .eq("business_id", business.id)
     .order("created_at", { ascending: false });
 
@@ -56,7 +57,23 @@ export default async function GroupesPage({
     });
   }
 
-  const templateIds = [...new Set((allGroups ?? []).map((g) => g.template_id))];
+  // Batch-fetch rep submissions for rep-mode groups
+  const repModeIds = (allGroups ?? [])
+    .filter((g) => g.signature_mode === "group_representative")
+    .map((g) => g.id);
+  const repSignedSet = new Set<string>();
+  if (repModeIds.length > 0) {
+    const { data: repSubs } = await supabase
+      .from("submission")
+      .select("represented_group_id")
+      .in("represented_group_id", repModeIds)
+      .eq("signature_type", "group_representative");
+    for (const sub of repSubs ?? []) {
+      if (sub.represented_group_id) repSignedSet.add(sub.represented_group_id);
+    }
+  }
+
+  const templateIds = [...new Set((allGroups ?? []).map((g) => g.template_id).filter((id): id is string => id !== null))];
   const { data: templates } =
     templateIds.length > 0
       ? await supabase
@@ -143,7 +160,14 @@ export default async function GroupesPage({
         <ul className="flex flex-col gap-2.5">
           {groups.map((g) => {
             const s = stats.get(g.id) ?? { total: 0, signed: 0 };
-            const pending = Math.max(0, s.total - s.signed);
+            const sigState = resolveGroupSigningState({
+              requires_signature: g.requires_signature,
+              signature_mode: g.signature_mode,
+              rep_signed: repSignedSet.has(g.id),
+              signed: s.signed,
+              total: s.total,
+            });
+            const pending = Math.max(0, s.total - sigState.coveredSigned);
             return (
               <li key={g.id} className="relative">
                 <Link
@@ -173,20 +197,26 @@ export default async function GroupesPage({
                         ) : null}
                       </div>
                       <p className="mt-0.5 truncate text-[13px] text-[var(--color-muted)]">
-                        {titleById.get(g.template_id) ?? "Décharge"}
+                        {g.template_id ? (titleById.get(g.template_id) ?? "Décharge") : "Sans signatures"}
                       </p>
                       <GroupStatBadges
                         className="mt-2.5"
                         total={s.total}
-                        signed={s.signed}
+                        signed={sigState.coveredSigned}
                         status={g.status}
                       />
-                      <GroupProgressBar
-                        className="mt-3.5"
-                        signed={s.signed}
-                        total={s.total}
-                      />
-                      {pending > 0 ? (
+                      {sigState.isRepMode ? (
+                        <p className={`mt-3.5 text-[12.5px] font-medium ${sigState.repSigned ? "text-[var(--color-brand)]" : "text-[var(--color-muted)]"}`}>
+                          {sigState.repSigned ? "✓ Représentant signé" : "En attente du représentant"}
+                        </p>
+                      ) : (
+                        <GroupProgressBar
+                          className="mt-3.5"
+                          signed={sigState.coveredSigned}
+                          total={s.total}
+                        />
+                      )}
+                      {pending > 0 && !sigState.isRepMode ? (
                         <p className="mt-2 text-[12px] text-[var(--color-muted)]">
                           {pending} en attente
                         </p>

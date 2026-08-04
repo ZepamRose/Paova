@@ -107,6 +107,20 @@ export async function updateBusiness(formData: FormData) {
   const locales =
     fromToggles.length > 0 ? resolveEnabledLocales(fromToggles) : enabledLocales;
 
+  // Opening hours — stored as JSON if provided, otherwise leave unchanged
+  const openingHoursRaw = String(formData.get("opening_hours") ?? "").trim();
+  let openingHours: Record<string, unknown> | null | undefined = undefined; // undefined = don't update
+  if (openingHoursRaw) {
+    try {
+      const parsed = JSON.parse(openingHoursRaw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        openingHours = parsed;
+      }
+    } catch {
+      // malformed JSON — skip the field
+    }
+  }
+
   if (!name) {
     redirect("/dashboard/settings?error=name");
   }
@@ -114,10 +128,6 @@ export async function updateBusiness(formData: FormData) {
   const { supabase, businessId } = await requireEditableBusinessId();
   const pro = await businessIsPro(supabase, businessId);
 
-  // Identity (name, contact, tagline) stays free — a usable PDF must not
-  // require a subscription. Visual branding and custom copy are the Pro
-  // differentiator advertised on the billing page, so free plans keep their
-  // existing values instead of having the submitted ones applied.
   const brandingFields = pro
     ? {
         brand_color: brandColor,
@@ -157,6 +167,8 @@ export async function updateBusiness(formData: FormData) {
       public_show_tagline: formFlag(formData.get("public_show_tagline"), true),
       public_show_contact: formFlag(formData.get("public_show_contact"), true),
       enabled_locales: locales,
+      // Only include opening_hours if it was actually submitted
+      ...(openingHours !== undefined ? { opening_hours: openingHours as import("@/types/database.types").Json } : {}),
       ...brandingFields,
     })
     .eq("id", businessId);

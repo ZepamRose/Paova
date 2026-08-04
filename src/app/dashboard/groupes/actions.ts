@@ -11,6 +11,9 @@ import {
   ensureGroupAccepting,
   parseClosesOn,
   parseScheduledAt,
+  resolveEndTime,
+  parseOpeningHours,
+  type ClosingMode,
 } from "@/lib/groups/lifecycle";
 import { sendGroupReminder } from "@/lib/email";
 import { env } from "@/lib/env";
@@ -46,66 +49,114 @@ function normalizeEmail(raw: string | null | undefined): string | null {
 }
 
 export async function createSigningGroup(formData: FormData) {
+  console.log("createSession called");
   const { supabase, business } = await requireBusiness("create_groups");
   const name = String(formData.get("name") ?? "").trim();
+  const requiresSignature = formData.get("requires_signature") === "true";
+  const signatureModeRaw = String(formData.get("signature_mode") ?? "individual").trim();
+  const signatureMode = ["individual", "group_representative"].includes(signatureModeRaw)
+    ? signatureModeRaw
+    : "individual";
   const templateId = String(formData.get("template_id") ?? "").trim();
   const rosterRaw = String(formData.get("roster") ?? "");
   const closesAt = parseClosesOn(String(formData.get("closes_on") ?? ""));
-  const scheduledAt = parseScheduledAt(
-    String(formData.get("scheduled_at") ?? ""),
-  );
 
-  // V2: Parse session time fields
+  // Closing mode fields
+  const closingModeRaw = String(formData.get("closing_mode") ?? "manual").trim();
+  const closingMode: ClosingMode =
+    ["duration", "business_close", "fixed_time", "manual"].includes(closingModeRaw)
+      ? (closingModeRaw as ClosingMode)
+      : "manual";
+
+  // start_time is optional for sessions
   const startTimeRaw = String(formData.get("start_time") ?? "").trim();
+  const startTime = startTimeRaw ? parseScheduledAt(startTimeRaw) : null;
+
+  // fixed_time: the caller provides end_time directly
   const endTimeRaw = String(formData.get("end_time") ?? "").trim();
   const durationMinutesRaw = String(formData.get("duration_minutes") ?? "").trim();
-
-  const startTime = startTimeRaw ? parseScheduledAt(startTimeRaw) : null;
-  const endTime = endTimeRaw ? parseScheduledAt(endTimeRaw) : null;
   const durationMinutes = durationMinutesRaw ? parseInt(durationMinutesRaw, 10) : null;
 
-  if (!name || !templateId) {
-    redirect(
-      `/dashboard/groupes/new?error=required${templateId ? `&template=${templateId}` : ""}`,
-    );
+  // Resolve end_time server-side based on closing mode
+  let endTime: string | null = null;
+  if (closingMode === "fixed_time") {
+    endTime = endTimeRaw ? parseScheduledAt(endTimeRaw) : null;
+  } else if (startTime) {
+    // For business_close and duration modes, we need a start_time to calculate end_time
+    let openingHours = null;
+    if (closingMode === "business_close") {
+      const { data: biz } = await supabase
+        .from("business")
+        .select("opening_hours")
+        .eq("id", business.id)
+        .maybeSingle();
+      openingHours = parseOpeningHours(biz?.opening_hours);
+    }
+    endTime = resolveEndTime(closingMode, new Date(startTime), durationMinutes, openingHours);
   }
 
-  const { data: template } = await supabase
-    .from("waiver_template")
-    .select("id")
-    .eq("id", templateId)
-    .eq("business_id", business.id)
-    .is("deleted_at", null)
-    .maybeSingle();
+  // Session name is always required
+  if (!name) {
+    redirect(`/dashboard/groupes/new?error=required`);
+  }
 
-  if (!template) {
-    redirect(
-      `/dashboard/groupes/new?error=template${templateId ? `&template=${templateId}` : ""}`,
-    );
+  // If signatures are required, template is mandatory
+  if (requiresSignature && !templateId) {
+    redirect(`/dashboard/groupes/new?error=template_required`);
+  }
+
+  // Verify template exists if signatures are enabled
+  if (requiresSignature) {
+    const { data: template } = await supabase
+      .from("waiver_template")
+      .select("id")
+      .eq("id", templateId)
+      .eq("business_id", business.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!template) {
+      redirect(
+        `/dashboard/groupes/new?error=template${templateId ? `&template=${templateId}` : ""}`,
+      );
+    }
   }
 
   const members = parseRosterCsv(rosterRaw);
   const token = createGroupPublicToken();
 
+  const insertData = {
+    business_id: business.id,
+    template_id: requiresSignature ? templateId : null,
+    requires_signature: requiresSignature,
+    signature_mode: signatureMode,
+    name,
+    public_token: token,
+    status: "open",
+    kind: "roster",
+    scheduled_at: startTime,
+    closes_at: closesAt,
+    start_time: startTime,
+    end_time: endTime,
+    duration_minutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
+    closing_mode: closingMode,
+  };
+
+  console.log("[createSigningGroup] Insert data:", JSON.stringify(insertData, null, 2));
+
   const { data: group, error } = await supabase
     .from("signing_group")
-    .insert({
-      business_id: business.id,
-      template_id: templateId,
-      name,
-      public_token: token,
-      status: "open",
-      kind: "roster",
-      scheduled_at: scheduledAt,
-      closes_at: closesAt,
-      start_time: startTime,
-      end_time: endTime,
-      duration_minutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
-    })
+    .insert(insertData)
     .select("id")
     .single();
 
   if (error || !group) {
+    console.error("[createSigningGroup] Insert failed:", error);
+    logError("group.create_failed", error?.message || "unknown", {
+      businessId: business.id,
+      errorCode: error?.code,
+      errorDetails: error?.details,
+    });
     redirect(`/dashboard/groupes/new?error=create&template=${templateId}`);
   }
 
@@ -135,7 +186,7 @@ export async function createSigningGroup(formData: FormData) {
   revalidatePath("/dashboard/groupes");
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/waivers/${templateId}`);
-  redirect(`/dashboard`);
+  redirect(`/dashboard/groupes/${group.id}`);
 }
 
 /**
@@ -194,6 +245,86 @@ export async function createExpressGroup(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/waivers/${templateId}`);
   redirect(`/dashboard`);
+}
+
+/**
+ * Station (QR permanent): permanent QR code for continuous walk-in signing.
+ * No date, no time, no pre-defined roster. Each scan creates a new signature.
+ */
+export async function createStation(formData: FormData) {
+  console.log("createStation called");
+  console.log("🚀 createStation: START");
+  const { supabase, business } = await requireBusiness("create_groups");
+  const templateId = String(formData.get("template_id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+
+  console.log("📝 createStation: Données reçues", { name, templateId });
+
+  if (!name) {
+    console.log("❌ createStation: Nom manquant");
+    redirect("/dashboard/groupes/new?error=name_required");
+  }
+
+  if (!templateId) {
+    console.log("❌ createStation: Template manquant");
+    redirect("/dashboard/groupes/new?error=template_required");
+  }
+
+  console.log("🔍 createStation: Vérification du template...");
+  const { data: template } = await supabase
+    .from("waiver_template")
+    .select("id, status")
+    .eq("id", templateId)
+    .eq("business_id", business.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!template || template.status === "archived") {
+    console.log("❌ createStation: Template invalide", { template });
+    redirect(
+      `/dashboard/groupes/new?error=template${templateId ? `&template=${templateId}` : ""}`,
+    );
+  }
+
+  console.log("✅ createStation: Template valide, génération token...");
+  const token = createGroupPublicToken();
+  console.log("🎫 createStation: Token généré", { token });
+
+  console.log("💾 createStation: Insertion dans Supabase...");
+  const { data: group, error } = await supabase
+    .from("signing_group")
+    .insert({
+      business_id: business.id,
+      template_id: templateId,
+      name,
+      public_token: token,
+      status: "open",
+      kind: "station",
+      requires_signature: true,
+      signature_mode: "individual",
+    })
+    .select("id")
+    .single();
+
+  if (error || !group) {
+    console.error("❌ createStation: Erreur insertion", { error, group });
+    console.error("❌ createStation: Détail erreur complète:", JSON.stringify(error, null, 2));
+    logError("group.station_create_failed", error?.message, {
+      businessId: business.id,
+      templateId,
+    });
+    redirect(
+      `/dashboard/groupes/new?error=create&template=${templateId}`,
+    );
+  }
+
+  console.log("✅ createStation: Station créée avec succès!", { groupId: group.id });
+  console.log("🔄 createStation: Revalidation des paths...");
+  revalidatePath("/dashboard/groupes");
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/waivers/${templateId}`);
+  console.log("🎯 createStation: Redirection vers", `/dashboard/groupes/${group.id}`);
+  redirect(`/dashboard/groupes/${group.id}`);
 }
 
 export type AddMembersState = {
@@ -270,6 +401,8 @@ export async function updateGroupSettings(formData: FormData) {
   const groupId = String(formData.get("group_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const nextCloses = parseClosesOn(String(formData.get("closes_on") ?? ""));
+  const requiresSignature = formData.get("requires_signature") === "true";
+  const templateId = String(formData.get("template_id") ?? "").trim();
 
   // V2: Parse session time fields
   const startTimeRaw = String(formData.get("start_time") ?? "").trim();
@@ -284,13 +417,53 @@ export async function updateGroupSettings(formData: FormData) {
     redirect(`/dashboard/groupes/${groupId}?error=settings`);
   }
 
+  // If signatures are required, template is mandatory
+  if (requiresSignature && !templateId) {
+    redirect(`/dashboard/groupes/${groupId}?error=template_required`);
+  }
+
+  // Verify template exists if signatures are enabled
+  if (requiresSignature) {
+    const { data: template } = await supabase
+      .from("waiver_template")
+      .select("id")
+      .eq("id", templateId)
+      .eq("business_id", business.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!template) {
+      redirect(`/dashboard/groupes/${groupId}?error=template`);
+    }
+  }
+
   const { data: group } = await supabase
     .from("signing_group")
-    .select("id, status")
+    .select("id, status, signature_mode")
     .eq("id", groupId)
     .eq("business_id", business.id)
     .maybeSingle();
   if (!group) redirect("/dashboard/groupes");
+
+  // ── Vérification du verrou juridique ─────────────────────────────────────
+  // Une signature est une preuve juridique. Dès qu'au moins une existe,
+  // les champs qui ont servi à produire le document signé deviennent immuables.
+  // Cette protection est appliquée côté serveur — elle ne peut pas être
+  // contournée en manipulant le formulaire côté client.
+  const [{ count: signedMemberCount }, { data: repSubData }] = await Promise.all([
+    supabase
+      .from("signing_group_member")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", groupId)
+      .not("signed_submission_id", "is", null),
+    supabase
+      .from("submission")
+      .select("id")
+      .eq("represented_group_id", groupId)
+      .eq("signature_type", "group_representative")
+      .maybeSingle(),
+  ]);
+  const isLegallyLocked = (signedMemberCount ?? 0) > 0 || repSubData !== null;
 
   await supabase
     .from("signing_group")
@@ -300,6 +473,11 @@ export async function updateGroupSettings(formData: FormData) {
       start_time: startTime,
       end_time: endTime,
       duration_minutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
+      // Champs juridiques : immuables une fois qu'une signature existe.
+      ...(!isLegallyLocked && {
+        requires_signature: requiresSignature,
+        template_id: requiresSignature ? templateId : null,
+      }),
     })
     .eq("id", groupId)
     .eq("business_id", business.id);
@@ -381,7 +559,7 @@ export async function updateGroupMember(
 }
 
 export type RemindState = {
-  error: "closed" | "empty" | "send" | "cooldown" | null;
+  error: "closed" | "empty" | "send" | "cooldown" | "no_signatures" | null;
   sent?: number;
   skipped?: number;
 };
@@ -397,7 +575,7 @@ export async function sendGroupReminders(
 
   const { data: group } = await supabase
     .from("signing_group")
-    .select("id, business_id, name, status, closes_at, public_token, template_id")
+    .select("id, business_id, name, status, closes_at, public_token, template_id, requires_signature")
     .eq("id", groupId)
     .eq("business_id", business.id)
     .maybeSingle();
@@ -406,6 +584,11 @@ export async function sendGroupReminders(
   const accepting = await ensureGroupAccepting(supabase, group);
   if (!accepting) {
     return { error: "closed" };
+  }
+
+  // Cannot send reminders for sessions without signatures
+  if (!group.requires_signature || !group.template_id) {
+    return { error: "no_signatures" };
   }
 
   const { data: template } = await supabase
@@ -501,7 +684,12 @@ export async function setGroupStatus(formData: FormData) {
     redirect(`/dashboard/groupes/${groupId}`);
   }
 
-  const patch: { status: string; closes_at?: string | null } = { status };
+  const patch: { status: string; closes_at?: string | null; closed_at?: string | null } = { status };
+
+  if (status === "closed") {
+    // Record the real closing timestamp for analytics.
+    patch.closed_at = new Date().toISOString();
+  }
 
   // Reopening a group past its deadline would instantly auto-close again —
   // clear the deadline so "Rouvrir" actually sticks.
@@ -593,4 +781,57 @@ export async function deleteGroupMember(formData: FormData) {
     .is("signed_submission_id", null);
 
   revalidatePath(`/dashboard/groupes/${groupId}`);
+}
+
+/**
+ * Delete a group entirely (not just archive).
+ * This is a destructive action and should only be used for groups with no signatures.
+ */
+export async function deleteGroup(formData: FormData) {
+  const { supabase, business } = await requireBusiness("manage_groups");
+  const groupId = String(formData.get("group_id") ?? "").trim();
+
+  // Safety check: only delete groups with no signed submissions
+  const { data: group } = await supabase
+    .from("signing_group")
+    .select("id, signing_group_member(id, signed_submission_id)")
+    .eq("id", groupId)
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  if (!group) {
+    redirect("/dashboard?error=group_not_found");
+  }
+
+  // Check if any member has signed
+  type GroupWithMembers = typeof group & {
+    signing_group_member?: Array<{ id: string; signed_submission_id: string | null }>;
+  };
+  const members = (group as GroupWithMembers).signing_group_member || [];
+  const hasSigned = members.some((m) => m.signed_submission_id !== null);
+
+  if (hasSigned) {
+    redirect(`/dashboard/groupes/${groupId}?error=has_signatures`);
+  }
+
+  // Delete members first (cascade should handle this, but being explicit)
+  await supabase
+    .from("signing_group_member")
+    .delete()
+    .eq("group_id", groupId);
+
+  // Delete the group
+  const { error } = await supabase
+    .from("signing_group")
+    .delete()
+    .eq("id", groupId)
+    .eq("business_id", business.id);
+
+  if (error) {
+    redirect(`/dashboard/groupes/${groupId}?error=delete_failed`);
+  }
+
+  revalidatePath("/dashboard/groupes");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }

@@ -35,7 +35,6 @@ export function computeSessionPhase(
 ): SessionPhase {
   if (dbStatus === "archived") return "archived";
   if (dbStatus === "closed") return "done";
-  if (allSigned && dbStatus !== "open") return "done";
 
   const now = Date.now();
 
@@ -97,7 +96,15 @@ export function getSessionTimeInfo(
 ): SessionTimeInfo {
   const now = new Date();
   const start = startTime ? new Date(startTime) : null;
-  const end = endTime ? new Date(endTime) : null;
+
+  // Si end_time est absent mais que start_time et duration_minutes existent,
+  // calculer automatiquement la fin de session
+  let end: Date | null = null;
+  if (endTime) {
+    end = new Date(endTime);
+  } else if (start && durationMinutes && durationMinutes > 0) {
+    end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+  }
 
   const isOngoing = !!(start && end && now >= start && now <= end);
   const isUpcoming = !!(start && now < start);

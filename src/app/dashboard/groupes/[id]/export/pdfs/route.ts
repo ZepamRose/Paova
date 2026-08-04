@@ -33,7 +33,7 @@ export async function GET(
 
   const { data: group } = await supabase
     .from("signing_group")
-    .select("id, name, template_id, business_id")
+    .select("id, name, template_id, business_id, requires_signature, signature_mode")
     .eq("id", id)
     .maybeSingle();
   if (!group) {
@@ -51,6 +51,11 @@ export async function GET(
   }
   const business = { id: group.business_id };
 
+  // Sessions without signatures cannot export PDFs
+  if (!group.requires_signature || !group.template_id) {
+    return new NextResponse("Cette session ne nécessite pas de signatures.", { status: 400 });
+  }
+
   const { data: members } = await supabase
     .from("signing_group_member")
     .select("id, full_name, signed_submission_id")
@@ -62,21 +67,88 @@ export async function GET(
   if (signed.length === 0) {
     return new NextResponse("Aucune signature à exporter.", { status: 404 });
   }
+
+  // Template + business + logo are identical for every member of the group:
+  // resolve them once instead of re-querying (and re-fetching the logo) per
+  // document.
+  const context = await loadSubmissionPdfContext(supabase, group.template_id);
+  if (!context) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  const safe = group.name
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase()
+    .slice(0, 40);
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  // ── Mode représentant : un seul PDF pour tout le groupe ──────────────────
+  if (group.signature_mode === "group_representative") {
+    const { data: repSubmission } = await supabase
+      .from("submission")
+      .select("id, signer_name")
+      .eq("represented_group_id", group.id)
+      .eq("signature_type", "group_representative")
+      .maybeSingle();
+
+    if (!repSubmission) {
+      return new NextResponse("Aucune signature représentant à exporter.", { status: 404 });
+    }
+
+    const { data: repProofRow } = await supabase
+      .from("signature_proof")
+      .select(
+        "submission_id, reference, signed_at, timezone, timezone_offset_minutes, ip_address, user_agent, device_hint, template_version, content_sha256, hash_algorithm",
+      )
+      .eq("submission_id", repSubmission.id)
+      .maybeSingle();
+
+    const pdf = await buildSubmissionPdf(
+      supabase,
+      { submissionId: repSubmission.id, templateId: group.template_id },
+      {
+        context,
+        proofRow: repProofRow ? { ...repProofRow, content_snapshot: null } : null,
+      },
+    );
+
+    if (!pdf) {
+      return new NextResponse("Impossible de générer le PDF représentant.", { status: 500 });
+    }
+
+    await recordAuditEvent(supabase, {
+      businessId: business.id,
+      actorUserId: user.id,
+      actorKind: actorKindFromRole(membership.role),
+      entityType: "export",
+      entityId: group.id,
+      templateId: group.template_id,
+      eventType: "export.zip_generated",
+      payload: {
+        scope: "group_representative_pdf",
+        group_id: group.id,
+        group_name: group.name,
+        submission_id: repSubmission.id,
+        format: "pdf",
+      },
+    });
+
+    const filename = `decharge-representant-${safe || "groupe"}-${stamp}.pdf`;
+    return new NextResponse(Buffer.from(pdf.bytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  }
+
+  // ── Mode individuel : ZIP avec un PDF par participant ────────────────────
   if (signed.length > MAX_PDFS) {
     return new NextResponse(
       `Trop de PDF (${signed.length}). Maximum ${MAX_PDFS} par export — contactez le support ou exportez par lots.`,
       { status: 413 },
     );
-  }
-
-  // Template + business + logo are identical for every member of the group:
-  // resolve them once instead of re-querying (and re-fetching the logo) per
-  // document. Proof metadata is batched WITHOUT content_snapshot so we do not
-  // pull embedded PNGs into memory — buildSubmissionPdf resolves signatures
-  // from Storage via submission.signature_url.
-  const context = await loadSubmissionPdfContext(supabase, group.template_id);
-  if (!context) {
-    return new NextResponse("Not found", { status: 404 });
   }
 
   const submissionIds = signed
@@ -144,13 +216,6 @@ export async function GET(
       format: "zip",
     },
   });
-
-  const safe = group.name
-    .replace(/[^a-z0-9]+/gi, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase()
-    .slice(0, 40);
-  const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(Buffer.from(zip), {
     headers: {

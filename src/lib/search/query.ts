@@ -113,7 +113,7 @@ export async function searchSubmissions(
     // Specific group — verify it exists under RLS before filtering.
     const { data: group } = await client
       .from("signing_group")
-      .select("id")
+      .select("id, requires_signature")
       .eq("id", n.groupId)
       .eq("business_id", businessId)
       .maybeSingle();

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -128,6 +128,7 @@ export type Database = {
           thank_you_message: string | null
           thank_you_title: string | null
           website_url: string | null
+          opening_hours: Json | null
         }
         Insert: {
           brand_accent?: string | null
@@ -171,6 +172,7 @@ export type Database = {
           thank_you_message?: string | null
           thank_you_title?: string | null
           website_url?: string | null
+          opening_hours?: Json | null
         }
         Update: {
           brand_accent?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           thank_you_message?: string | null
           thank_you_title?: string | null
           website_url?: string | null
+          opening_hours?: Json | null
         }
         Relationships: [
           {
@@ -417,6 +420,8 @@ export type Database = {
           archived_at: string | null
           business_id: string
           closes_at: string | null
+          closed_at: string | null
+          closing_mode: string
           created_at: string
           duration_minutes: number | null
           end_time: string | null
@@ -424,15 +429,19 @@ export type Database = {
           kind: string
           name: string
           public_token: string
+          requires_signature: boolean
           scheduled_at: string | null
+          signature_mode: string
           start_time: string | null
           status: string
-          template_id: string
+          template_id: string | null
         }
         Insert: {
           archived_at?: string | null
           business_id: string
           closes_at?: string | null
+          closed_at?: string | null
+          closing_mode?: string
           created_at?: string
           duration_minutes?: number | null
           end_time?: string | null
@@ -440,15 +449,19 @@ export type Database = {
           kind?: string
           name: string
           public_token: string
+          requires_signature?: boolean
           scheduled_at?: string | null
+          signature_mode?: string
           start_time?: string | null
           status?: string
-          template_id: string
+          template_id?: string | null
         }
         Update: {
           archived_at?: string | null
           business_id?: string
           closes_at?: string | null
+          closed_at?: string | null
+          closing_mode?: string
           created_at?: string
           duration_minutes?: number | null
           end_time?: string | null
@@ -456,10 +469,12 @@ export type Database = {
           kind?: string
           name?: string
           public_token?: string
+          requires_signature?: boolean
           scheduled_at?: string | null
+          signature_mode?: string
           start_time?: string | null
           status?: string
-          template_id?: string
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -560,6 +575,9 @@ export type Database = {
           id: string
           ip_address: string | null
           pdf_url: string | null
+          represented_group_id: string | null
+          representative_role: string | null
+          signature_type: string
           signature_url: string | null
           signed_at: string
           signer_email: string | null
@@ -572,6 +590,9 @@ export type Database = {
           id?: string
           ip_address?: string | null
           pdf_url?: string | null
+          represented_group_id?: string | null
+          representative_role?: string | null
+          signature_type?: string
           signature_url?: string | null
           signed_at?: string
           signer_email?: string | null
@@ -584,6 +605,9 @@ export type Database = {
           id?: string
           ip_address?: string | null
           pdf_url?: string | null
+          represented_group_id?: string | null
+          representative_role?: string | null
+          signature_type?: string
           signature_url?: string | null
           signed_at?: string
           signer_email?: string | null
@@ -887,6 +911,16 @@ export type Database = {
         }
         Returns: number
       }
+      search_signatures: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          id: string
+          signed_at: string
+          signer_email: string
+          signer_name: string
+          template_title: string
+        }[]
+      }
       search_submissions_for_owner:
         | {
             Args: {
@@ -1112,4 +1146,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

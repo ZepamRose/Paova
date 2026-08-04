@@ -9,6 +9,7 @@ import {
   type SignatureHoursConfig,
 } from "@/lib/templates";
 import { PendingSubmitButton } from "../../pending-submit-button";
+import { TimePickerField } from "@/components/ui/datetime-picker";
 
 const selectClass =
   "h-10 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-3 text-sm shadow-[var(--elev-1)] outline-none transition-[border-color,box-shadow] focus:border-[color-mix(in_srgb,var(--color-brand)_40%,var(--color-border))] focus:shadow-[var(--elev-2)]";
@@ -108,26 +109,18 @@ export function SignatureHoursSettings({
               <label htmlFor="signature_hours_start" className="text-[13px] font-medium">
                 Ouverture
               </label>
-              <input
-                id="signature_hours_start"
+              <TimePickerField
                 name="start"
-                type="time"
                 defaultValue={initial.start ?? "09:00"}
-                required
-                className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="signature_hours_end" className="text-[13px] font-medium">
                 Fermeture
               </label>
-              <input
-                id="signature_hours_end"
+              <TimePickerField
                 name="end"
-                type="time"
                 defaultValue={initial.end ?? "19:00"}
-                required
-                className={inputClass}
               />
             </div>
           </div>

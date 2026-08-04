@@ -15,6 +15,9 @@ import { DashboardGroupsSection } from "./dashboard-groups-section";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { DashboardSessionsView } from "./dashboard-sessions-view";
 import { DashboardTodayHero } from "./dashboard-today-hero";
+import { SessionsPanel } from "./sessions-panel";
+import { SessionsSidebar } from "./sessions-sidebar";
+import type { RecentSignature } from "./sessions-signatures-action";
 
 function matchesQuery(haystack: string, query: string) {
   if (!query) return true;
@@ -37,6 +40,8 @@ export function DashboardHome({
   canCreateGroups,
   canManageGroups,
   templateChoices = [],
+  businessId,
+  initialSignatures = [],
 }: {
   attentionItems: DashboardAttentionItem[];
   active: DashboardWaiverRow[];
@@ -47,6 +52,8 @@ export function DashboardHome({
   canCreateGroups: boolean;
   canManageGroups: boolean;
   templateChoices?: Array<{ id: string; title: string }>;
+  businessId: string;
+  initialSignatures?: RecentSignature[];
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -109,13 +116,21 @@ export function DashboardHome({
         </DashboardEntrance>
       ) : null}
 
-      {/* Vue Sessions */}
+      {/* Vue Sessions — layout 2 colonnes */}
       {!q && (
         <DashboardEntrance step={3} className="flex flex-col">
-          <DashboardSessionsView
-            groups={filteredGroups}
-            appUrl={appUrl}
-          />
+          <div className="flex items-start gap-5">
+            {/* Colonne principale : onglets + liste/cartes */}
+            <div className="min-w-0 flex-1">
+              <SessionsPanel groups={filteredGroups} appUrl={appUrl} />
+            </div>
+            {/* Colonne latérale : stats du jour + dernières signatures */}
+            <SessionsSidebar
+              groups={groups}
+              businessId={businessId}
+              initialSignatures={initialSignatures}
+            />
+          </div>
         </DashboardEntrance>
       )}
 

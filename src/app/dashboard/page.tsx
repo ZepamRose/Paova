@@ -8,9 +8,12 @@ import {
   isTemplateStatus,
 } from "@/lib/templates";
 import type { DashboardAttentionItem } from "@/lib/dashboard/types";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
+import { parseOpeningHours } from "@/lib/groups/lifecycle";
 import { DashboardHome } from "./dashboard-home";
 import { DashboardHeader } from "./dashboard-header";
 import { DashboardOnboardingHero } from "./dashboard-onboarding-hero";
+import { getRecentSignatures } from "./sessions-signatures-action";
 
 
 export default async function DashboardPage() {
@@ -45,7 +48,7 @@ export default async function DashboardPage() {
 
   const { data: business } = await supabase
     .from("business")
-    .select("id, name, brand_color, plan, subscription_status")
+    .select("id, name, brand_color, plan, subscription_status, opening_hours")
     .eq("id", membership.businessId)
     .maybeSingle();
 
@@ -63,7 +66,7 @@ export default async function DashboardPage() {
 
   const { data: signingGroups } = await supabase
     .from("signing_group")
-    .select("id, name, status, template_id, scheduled_at, start_time, end_time, duration_minutes, created_at, public_token")
+    .select("id, name, status, template_id, scheduled_at, start_time, end_time, duration_minutes, requires_signature, created_at, public_token, signature_mode, kind")
     .eq("business_id", business.id)
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -85,7 +88,7 @@ export default async function DashboardPage() {
   }
 
   const groupTemplateIds = [
-    ...new Set((signingGroups ?? []).map((g) => g.template_id)),
+    ...new Set((signingGroups ?? []).map((g) => g.template_id).filter((id): id is string => id !== null)),
   ];
   const { data: groupTemplates } =
     groupTemplateIds.length > 0
@@ -98,22 +101,43 @@ export default async function DashboardPage() {
     (groupTemplates ?? []).map((t) => [t.id, t.title]),
   );
 
+  // Batch-fetch rep submissions for all rep-mode groups in one query.
+  const repModeGroupIds = (signingGroups ?? [])
+    .filter((g) => g.signature_mode === "group_representative")
+    .map((g) => g.id);
+
+  const repSignedSet = new Set<string>();
+  if (repModeGroupIds.length > 0) {
+    const { data: repSubs } = await supabase
+      .from("submission")
+      .select("represented_group_id")
+      .in("represented_group_id", repModeGroupIds)
+      .eq("signature_type", "group_representative");
+    for (const s of repSubs ?? []) {
+      if (s.represented_group_id) repSignedSet.add(s.represented_group_id);
+    }
+  }
+
   const allDashboardGroups = (signingGroups ?? []).map((g) => {
     const s = groupStats.get(g.id) ?? { total: 0, signed: 0 };
     return {
       id: g.id,
       name: g.name,
       template_id: g.template_id,
-      template_title: groupTemplateTitle.get(g.template_id) ?? "Formulaire",
+      template_title: g.template_id ? (groupTemplateTitle.get(g.template_id) ?? "Formulaire") : "Sans signatures",
       status: g.status,
       scheduled_at: g.scheduled_at,
       start_time: g.start_time,
       end_time: g.end_time,
       duration_minutes: g.duration_minutes,
+      requires_signature: g.requires_signature,
       total: s.total,
       signed: s.signed,
       created_at: g.created_at,
       public_token: g.public_token,
+      signature_mode: g.signature_mode ?? "individual",
+      rep_signed: repSignedSet.has(g.id),
+      kind: g.kind ?? "roster",
     };
   });
   const dashboardGroups = allDashboardGroups.filter(
@@ -165,8 +189,9 @@ export default async function DashboardPage() {
   const completeGroups: DashboardAttentionItem[] = [];
   for (const g of dashboardGroups) {
     if (g.status !== "open" || g.total === 0) continue;
-    const pending = g.total - g.signed;
-    if (pending === 0) {
+    const sigState = resolveGroupSigningState(g);
+    const pending = g.total - sigState.coveredSigned;
+    if (sigState.allCovered) {
       completeGroups.push({
         id: `complete-${g.id}`,
         kind: "group_complete",
@@ -174,12 +199,12 @@ export default async function DashboardPage() {
         meta: "Toutes les signatures sont réunies — pensez à fermer la session.",
         href: `/dashboard/groupes/${g.id}`,
       });
-    } else if (g.signed / g.total >= 0.8) {
+    } else if (sigState.coveredSigned / g.total >= 0.8) {
       nearCompleteGroups.push({
         id: `near-${g.id}`,
         kind: "group_near_complete",
         title: g.name,
-        meta: `${g.signed}/${g.total} signés · ${pending} en attente`,
+        meta: `${sigState.coveredSigned}/${g.total} signés · ${pending} en attente`,
         href: `/dashboard/groupes/${g.id}`,
       });
     }
@@ -192,6 +217,9 @@ export default async function DashboardPage() {
     .slice(0, 6);
 
   const appUrl = env.appUrl;
+
+  // Fetch des signatures récentes pour la sidebar (best-effort)
+  const initialSignatures = await getRecentSignatures(business.id).catch(() => []);
 
   const signatureCountRecord = Object.fromEntries(signatureCountByTemplate);
   const lastSignedRecord = Object.fromEntries(lastSignedByTemplate);
@@ -217,6 +245,7 @@ export default async function DashboardPage() {
         canCreateGroups={canCreateGroups}
         canCreateGroup={canCreateGroups && activeTemplatesList.length > 0}
         templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
+        openingHours={parseOpeningHours(business.opening_hours)}
       />
 
       {!hasWaivers || !hasSessions ? (
@@ -239,6 +268,8 @@ export default async function DashboardPage() {
         canCreateGroups={canCreateGroups}
         canManageGroups={canManageGroups}
         templateChoices={activeTemplatesList.map((t) => ({ id: t.id, title: t.title }))}
+        businessId={membership.businessId}
+        initialSignatures={initialSignatures}
       />
     </main>
   );

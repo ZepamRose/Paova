@@ -8,7 +8,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { BusinessSwitcher } from "./business-switcher";
 import { DashboardCreateControl } from "./dashboard-create-control";
 import { DashboardMobileMenu } from "./dashboard-mobile-menu";
-import { NewSessionModal } from "./groupes/new-session-modal";
+import { CreateActivityModal } from "./groupes/create-activity-modal";
+import type { OpeningHours } from "@/lib/groups/lifecycle";
 import { applyTheme, resolveTheme, type Theme } from "@/lib/theme";
 
 const easing = "duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
@@ -132,6 +133,7 @@ export function DashboardHeader({
   canCreateGroups,
   canCreateGroup,
   templateChoices = [],
+  openingHours = null,
 }: {
   currentBusinessId: string;
   businessName: string;
@@ -143,15 +145,10 @@ export function DashboardHeader({
   canCreateGroups: boolean;
   canCreateGroup: boolean;
   templateChoices?: TemplateChoice[];
+  openingHours?: OpeningHours | null;
 }) {
-  const [newSessionModalOpen, setNewSessionModalOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    const handleOpenModal = () => setNewSessionModalOpen(true);
-    window.addEventListener('open-new-session-modal', handleOpenModal);
-    return () => window.removeEventListener('open-new-session-modal', handleOpenModal);
-  }, []);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Determine active section
   const isSessionsActive = pathname === "/dashboard" || pathname.startsWith("/dashboard/groupes");
@@ -211,16 +208,16 @@ export function DashboardHeader({
               <>
                 <button
                   type="button"
-                  onClick={() => setNewSessionModalOpen(true)}
+                  onClick={() => setCreateModalOpen(true)}
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3.5 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter] duration-[160ms] hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
                 >
                   <CalendarClock size={14} strokeWidth={2} aria-hidden />
-                  <span className="hidden sm:inline">Nouvelle session</span>
+                  <span className="hidden sm:inline">Nouvelle activité</span>
                 </button>
-                <NewSessionModal
+                <CreateActivityModal
                   choices={templateChoices}
-                  open={newSessionModalOpen}
-                  onOpenChange={setNewSessionModalOpen}
+                  open={createModalOpen}
+                  onOpenChange={setCreateModalOpen}
                 />
               </>
             ) : canManageWaivers || canCreateGroups ? (
@@ -239,16 +236,11 @@ export function DashboardHeader({
               <>
                 <button
                   type="button"
-                  onClick={() => setNewSessionModalOpen(true)}
+                  onClick={() => setCreateModalOpen(true)}
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-3 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter] duration-[160ms] hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
                 >
                   <CalendarClock size={14} strokeWidth={2} aria-hidden />
                 </button>
-                <NewSessionModal
-                  choices={templateChoices}
-                  open={newSessionModalOpen}
-                  onOpenChange={setNewSessionModalOpen}
-                />
               </>
             ) : canManageWaivers || canCreateGroups ? (
               <DashboardCreateControl
@@ -281,7 +273,7 @@ export function DashboardHeader({
           aria-current={isSessionsActive ? "page" : undefined}
         >
           <CalendarClock size={15} strokeWidth={1.85} aria-hidden />
-          Sessions
+          Activités
         </Link>
 
         <Link

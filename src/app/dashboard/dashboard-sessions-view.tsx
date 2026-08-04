@@ -3,138 +3,24 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Calendar, Clock, CheckCircle2, AlertCircle, AlertTriangle, Plus, Loader2, X, ArrowRight, ChevronRight } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, Plus, Loader2, X, ArrowRight, ChevronRight } from "lucide-react";
 import type { DashboardGroupRow } from "@/lib/dashboard/types";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
 import { GroupProgressBar } from "@/components/groups/group-progress";
 import {
   getSessionTimeInfo,
   formatSessionDuration,
   formatSessionDate,
-  formatTimeRange,
-  getTimeUntilText
 } from "@/lib/session-time";
 import { CompletedSessionModal } from "./completed-session-modal";
+import { SessionActionsMenu } from "./groupes/session-actions-menu";
+import { LiveCountdown } from "@/components/live-countdown";
+import { LiveSessionManager, AnimatedSessionGrid, AnimatedSessionCard } from "@/components/live-session-manager";
 
 /**
  * PAOVA V2 - Sessions View
+ * Avec compteurs temps réel et déplacement automatique des cartes
  */
-
-// ─── Live Time Display Component ─────────────────────────────────────────────
-
-type LiveTimeRemainingProps = {
-  endTime: Date;
-  startTime: Date;
-  variant: "ongoing" | "upcoming";
-};
-
-function LiveTimeRemaining({ endTime, startTime, variant }: LiveTimeRemainingProps) {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const remainingMs = Math.max(0, endTime.getTime() - now);
-  const timeUntilStartMs = Math.max(0, startTime.getTime() - now);
-
-  // Si la session n'a pas encore commencé
-  if (variant === "upcoming" || timeUntilStartMs > 0) {
-    const minutes = Math.floor(timeUntilStartMs / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    const isToday = startTime.getDate() === today.getDate() &&
-                    startTime.getMonth() === today.getMonth() &&
-                    startTime.getFullYear() === today.getFullYear();
-
-    const isTomorrow = startTime.getDate() === tomorrow.getDate() &&
-                       startTime.getMonth() === tomorrow.getMonth() &&
-                       startTime.getFullYear() === tomorrow.getFullYear();
-
-    let prefix = "";
-    let timeText = "";
-
-    if (isToday) {
-      prefix = "Aujourd'hui";
-      if (minutes < 60) {
-        timeText = `Commence dans ${minutes} min`;
-      } else {
-        const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-        timeText = `Commence à ${formattedTime}`;
-      }
-    } else if (isTomorrow) {
-      prefix = "Demain";
-      const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      timeText = `à ${formattedTime}`;
-    } else if (days > 0) {
-      const dayName = startTime.toLocaleDateString("fr-FR", { weekday: "long" });
-      const formattedTime = startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      prefix = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-      timeText = `à ${formattedTime}`;
-    } else {
-      if (hours > 0) {
-        timeText = `Commence dans ${hours} h ${minutes % 60} min`;
-      } else {
-        timeText = `Commence dans ${minutes} min`;
-      }
-    }
-
-    return (
-      <div className="flex flex-col gap-0.5">
-        {prefix && (
-          <div className="text-[11px] font-medium text-[var(--color-muted)]">
-            {prefix}
-          </div>
-        )}
-        <div className="text-[11.5px] font-medium text-[var(--color-foreground)]">
-          {timeText}
-        </div>
-      </div>
-    );
-  }
-
-  // Session terminée
-  if (remainingMs === 0) {
-    return null;
-  }
-
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const isUrgent = minutes < 10;
-
-  let text = "";
-  if (hours > 0) {
-    text = `${hours} h ${String(minutes % 60).padStart(2, "0")}`;
-  } else if (minutes > 0) {
-    text = `${minutes} min`;
-  } else {
-    text = `${totalSeconds} sec`;
-  }
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-1.5">
-        <div className={`h-1.5 w-1.5 rounded-full ${isUrgent ? "bg-[#ef4444]" : "bg-[#10b981]"}`} />
-        <span className="text-[11px] font-medium text-[var(--color-muted)]">
-          En cours
-        </span>
-      </div>
-      <div className={`text-[11.5px] font-semibold tabular-nums ${
-        isUrgent ? "text-[#ef4444]" : "text-[var(--color-foreground)]"
-      }`}>
-        Se termine dans {text}
-      </div>
-    </div>
-  );
-}
 
 // ─── Session Quick View Modal ────────────────────────────────────────────────
 
@@ -149,11 +35,10 @@ type SessionQuickViewProps = {
 const ease = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 const motion = `duration-[180ms] ${ease}`;
 
-function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: SessionQuickViewProps) {
+export function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: SessionQuickViewProps) {
   const [mounted, setMounted] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
-  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     setMounted(true);
@@ -166,28 +51,9 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Update time every second when modal is open
-  useEffect(() => {
-    if (!open) return;
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [open]);
-
-  const pending = session.total - session.signed;
+  const sigStateModal = resolveGroupSigningState(session);
+  const pending = sigStateModal.total - sigStateModal.coveredSigned;
   const timeInfo = getSessionTimeInfo(session.start_time, session.end_time, session.duration_minutes);
-
-  // Déterminer l'urgence (basé sur now en temps réel)
-  const endMs = timeInfo.endTime ? timeInfo.endTime.getTime() : null;
-  const remainingMs = endMs ? Math.max(0, endMs - now) : null;
-  const remainingMinutes = remainingMs ? remainingMs / 60000 : null;
-  const isUrgent = remainingMinutes !== null && remainingMinutes > 0 && remainingMinutes <= 30 && pending > 0;
-  const isCompleting = remainingMinutes !== null && remainingMinutes > 30 && remainingMinutes <= 120 && pending > 0;
-
-  // Temps restant pour affichage temps réel
-  const timeUntilEnd = endMs ? endMs - now : null;
-  const timeUntilStart = timeInfo.startTime ? timeInfo.startTime.getTime() - now : null;
 
   // Charger le QR si nécessaire
   useEffect(() => {
@@ -213,76 +79,71 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
   if (!open || !mounted) return null;
 
   const statusContent = variant === "ongoing" ? (
-    pending > 0 ? (
-      <div className={`flex items-start gap-3 rounded-xl p-4 ${
-        isUrgent
-          ? "bg-[color-mix(in_srgb,#dc2626_6%,var(--color-surface))]"
-          : isCompleting
-          ? "bg-[color-mix(in_srgb,#d97706_5%,var(--color-surface))]"
-          : "bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
-      }`}>
-        <div className="shrink-0 mt-0.5">
-          {isUrgent ? (
-            <AlertCircle size={18} strokeWidth={2.2} className="text-[#dc2626]" />
-          ) : isCompleting ? (
-            <AlertTriangle size={18} strokeWidth={2.2} className="text-[#d97706]" />
-          ) : (
-            <Clock size={18} strokeWidth={2.2} className="text-[var(--color-brand)]" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0 space-y-1">
-          <p className={`text-[14px] font-medium leading-snug ${
-            isUrgent ? "text-[#dc2626]" : isCompleting ? "text-[#d97706]" : "text-[var(--color-brand)]"
-          }`}>
-            {pending === 1 ? "1 signature manquante" : `${pending} signatures manquantes`}
-          </p>
-          {timeUntilEnd && timeUntilEnd > 0 && (() => {
-            const totalSeconds = Math.floor(timeUntilEnd / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return (
-              <p className={`text-[13px] font-medium tabular-nums ${
-                minutes < 10 ? "text-[#dc2626]" : "text-[var(--color-muted)]"
-              }`}>
-                {minutes > 0 ? (
-                  <>Temps restant : {minutes} min</>
-                ) : (
-                  <>Temps restant : {seconds} sec</>
-                )}
-              </p>
-            );
-          })()}
-        </div>
-      </div>
-    ) : (
-      <div className="flex items-start gap-3 rounded-xl bg-[color-mix(in_srgb,#059669_4%,var(--color-surface))] p-4">
-        <div className="shrink-0 mt-0.5">
+    <div className={`flex items-start gap-3 rounded-xl p-4 ${
+      !session.requires_signature
+        ? "bg-[color-mix(in_srgb,#10b981_4%,var(--color-surface))]"
+        : pending === 0
+        ? "bg-[color-mix(in_srgb,#059669_4%,var(--color-surface))]"
+        : "bg-[color-mix(in_srgb,var(--color-brand)_5%,var(--color-surface))]"
+    }`}>
+      <div className="shrink-0 mt-0.5">
+        {!session.requires_signature ? (
+          <CheckCircle2 size={18} strokeWidth={2.2} className="text-[#10b981]" />
+        ) : pending === 0 ? (
           <CheckCircle2 size={18} strokeWidth={2.2} className="text-[#059669]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
-            Toutes les signatures sont recueillies
-          </p>
-          <p className="mt-1 text-[13px] text-[var(--color-muted)]">
-            La session est prête
-          </p>
-        </div>
+        ) : (
+          <Clock size={18} strokeWidth={2.2} className="text-[var(--color-brand)]" />
+        )}
       </div>
-    )
+      <div className="flex-1 min-w-0 space-y-2">
+        <p className={`text-[14px] font-semibold leading-snug ${
+          !session.requires_signature ? "text-[#10b981]"
+          : pending === 0 ? "text-[var(--color-foreground)]"
+          : "text-[var(--color-brand)]"
+        }`}>
+          {!session.requires_signature
+            ? "🟢 Activité en cours"
+            : pending === 0
+            ? "🟢 Activité en cours"
+            : pending === 1
+            ? "1 signature manquante"
+            : `${pending} signatures manquantes`}
+        </p>
+        {!session.requires_signature ? (
+          <p className="text-[13px] text-[var(--color-muted)]">
+            {session.total === 0
+              ? "Aucun participant pour le moment."
+              : `${session.total} participant${session.total > 1 ? "s" : ""} enregistré${session.total > 1 ? "s" : ""}.`}
+          </p>
+        ) : pending === 0 ? (
+          <p className="text-[13px] text-[var(--color-muted)]">
+            Toutes les signatures ont été recueillies. La session restera ouverte jusqu&apos;à son heure de fin.
+          </p>
+        ) : (
+          <LiveCountdown
+            startTime={timeInfo.startTime}
+            endTime={timeInfo.endTime}
+            format="full"
+            showIndicator={true}
+          />
+        )}
+      </div>
+    </div>
   ) : (
     <div className="flex items-start gap-3 rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] p-4">
       <div className="shrink-0 mt-0.5">
         <Clock size={18} strokeWidth={2.2} className="text-[var(--color-brand)]" />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 space-y-2">
         <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
-          Session à venir
+          Activité à venir
         </p>
-        {timeUntilStart && timeUntilStart > 0 && (
-          <p className="mt-1 text-[13px] text-[var(--color-muted)]">
-            Débute {getTimeUntilText(timeUntilStart)}
-          </p>
-        )}
+        <LiveCountdown
+          startTime={timeInfo.startTime}
+          endTime={timeInfo.endTime}
+          format="full"
+          showIndicator={true}
+        />
       </div>
     </div>
   );
@@ -308,18 +169,23 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
               >
                 {session.name}
               </h2>
-              <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
-                {session.template_title}
-              </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)] transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
-              aria-label="Fermer"
-            >
-              <X size={16} strokeWidth={2} />
-            </button>
+            <div className="flex items-center gap-1">
+              <SessionActionsMenu
+                sessionId={session.id}
+                sessionName={session.name}
+                isCompleted={variant === "upcoming"}
+                variant="modal"
+              />
+              <button
+                type="button"
+                onClick={onClose}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)] transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+                aria-label="Fermer"
+              >
+                <X size={16} strokeWidth={2} />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -327,54 +193,79 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
             {/* Status */}
             {statusContent}
 
-            {/* Horaires */}
-            {(timeInfo.startTime || timeInfo.endTime) && (
-              <div>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
-                  Horaires
-                </p>
-                <div className="space-y-1">
-                  {timeInfo.startTime && (
-                    <p className="text-[13px] text-[var(--color-foreground)]">
-                      <span className="text-[var(--color-muted)]">Début :</span>{" "}
-                      {formatSessionDate(timeInfo.startTime)} · {timeInfo.endTime ? formatTimeRange(timeInfo.startTime, timeInfo.endTime).split(" - ")[0] : timeInfo.startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  )}
+            {/* Date & horaires — lecture naturelle */}
+            {timeInfo.startTime && (
+              <div className="flex items-center gap-2 text-[13.5px] font-medium text-[var(--color-foreground)]">
+                <span className="text-[15px]">📅</span>
+                <span>
+                  {formatSessionDate(timeInfo.startTime)}
+                  {" · "}
+                  {timeInfo.startTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                   {timeInfo.endTime && (
-                    <p className="text-[13px] text-[var(--color-foreground)]">
-                      <span className="text-[var(--color-muted)]">Fin :</span>{" "}
+                    <>
+                      {" → "}
                       {timeInfo.endTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                      {timeInfo.durationMinutes && (
-                        <span className="text-[var(--color-muted)]"> · {formatSessionDuration(timeInfo.durationMinutes)}</span>
-                      )}
-                    </p>
+                    </>
                   )}
-                </div>
+                  {timeInfo.durationMinutes && !timeInfo.endTime && (
+                    <span className="ml-1.5 text-[12.5px] font-normal text-[var(--color-muted)]">
+                      ({formatSessionDuration(timeInfo.durationMinutes)})
+                    </span>
+                  )}
+                </span>
               </div>
             )}
 
-            {/* Progression */}
+            {/* Participants / Signatures */}
             <div>
-              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
-                Progression
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
+                {session.requires_signature ? "Signatures" : "Participants"}
               </p>
-              <div className="flex items-baseline gap-2 mb-2 text-[14px]">
-                <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-                  {session.signed}
-                </span>
-                <span className="text-[var(--color-muted)]/40">/</span>
-                <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-                  {session.total}
-                </span>
-                <span className="text-[13px] text-[var(--color-muted)]">
-                  signature{session.total > 1 ? "s" : ""}
-                </span>
-              </div>
-              <GroupProgressBar
-                signed={session.signed}
-                total={session.total}
-                variant="default"
-              />
+              {session.total === 0 ? (
+                <p className="text-[13px] text-[var(--color-muted)]">Aucun participant ajouté</p>
+              ) : session.requires_signature ? (
+                sigStateModal.isRepMode ? (
+                  <p className="text-[14px] font-semibold text-[var(--color-foreground)]">
+                    {sigStateModal.repSigned ? (
+                      <span className="text-[var(--color-brand)]">✓ Représentant signé</span>
+                    ) : (
+                      <span className="text-[var(--color-muted)]">En attente du représentant</span>
+                    )}
+                    <span className="ml-2 text-[12px] font-normal text-[var(--color-muted)]">
+                      · {session.total} participant{session.total > 1 ? "s" : ""} couverts
+                    </span>
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-2 text-[14px]">
+                      <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                        {sigStateModal.coveredSigned}
+                      </span>
+                      <span className="text-[var(--color-muted)]/40">/</span>
+                      <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                        {session.total}
+                      </span>
+                      <span className="text-[13px] text-[var(--color-muted)]">
+                        signature{session.total > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <GroupProgressBar
+                      signed={sigStateModal.coveredSigned}
+                      total={session.total}
+                      variant="default"
+                    />
+                  </>
+                )
+              ) : (
+                <div className="flex items-baseline gap-2 text-[14px]">
+                  <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                    {session.total}
+                  </span>
+                  <span className="text-[13px] text-[var(--color-muted)]">
+                    participant{session.total > 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* QR Code pour sessions en cours */}
@@ -415,7 +306,7 @@ function SessionQuickViewModal({ session, variant, appUrl, open, onClose }: Sess
               href={`/dashboard/groupes/${session.id}`}
               className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-sm transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_90%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.98]`}
             >
-              Voir la session
+              Voir l&apos;activité
               <ArrowRight size={14} strokeWidth={2} />
             </Link>
           </div>
@@ -434,10 +325,12 @@ type SessionCardProps = {
   appUrl: string;
 };
 
-function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps) {
+export function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps) {
   const [completedModalOpen, setCompletedModalOpen] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
-  const pending = session.total - session.signed;
+
+  const sigState = resolveGroupSigningState(session);
+  const pending = sigState.total - sigState.coveredSigned;
 
   // Utiliser les nouveaux champs de temps
   const timeInfo = getSessionTimeInfo(
@@ -446,7 +339,6 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
     session.duration_minutes
   );
 
-  // Déterminer l'urgence
   const now = Date.now();
   const endMs = timeInfo.endTime ? timeInfo.endTime.getTime() : null;
   const remainingMs = endMs ? Math.max(0, endMs - now) : null;
@@ -456,83 +348,184 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
   // Styles selon le statut et variante
   const variantStyles = {
     ongoing: isUrgent
-      ? "border-[color-mix(in_srgb,#dc2626_25%,var(--color-border))] bg-[color-mix(in_srgb,#dc2626_4%,var(--color-surface))]"
+      ? "border-[color-mix(in_srgb,#dc2626_20%,var(--color-border))] bg-[color-mix(in_srgb,#dc2626_3%,var(--color-surface))] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_1px_color-mix(in_srgb,#dc2626_6%,transparent)]"
       : pending > 0
-      ? "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_3%,var(--color-surface))]"
-      : "border-[color-mix(in_srgb,var(--color-brand)_15%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_2%,var(--color-surface))]",
-    upcoming: "border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] bg-[var(--color-surface)]",
-    completed: "border-[color-mix(in_srgb,#059669_15%,var(--color-border))] bg-[color-mix(in_srgb,#059669_2%,var(--color-surface))] opacity-70",
+      ? "border-[color-mix(in_srgb,#10b981_25%,var(--color-border))] bg-[color-mix(in_srgb,#10b981_2%,var(--color-surface))] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_1px_color-mix(in_srgb,#10b981_6%,transparent)]"
+      : "border-[color-mix(in_srgb,#10b981_20%,var(--color-border))] bg-[color-mix(in_srgb,#10b981_1.5%,var(--color-surface))] shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
+    upcoming: "border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
+    completed: "border-[color-mix(in_srgb,var(--color-border)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-muted)_1.5%,var(--color-surface))] shadow-[0_1px_1px_rgba(0,0,0,0.02)] opacity-60",
   };
 
   const cardContent = (
-    <>
-      {/* Nom de la session */}
-      <h3 className={`truncate font-semibold leading-tight tracking-tight ${
-        variant === "completed"
-          ? "text-[13px] text-[var(--color-foreground)]/90"
-          : "text-[13.5px] text-[var(--color-foreground)]"
-      }`}>
-        {session.name}
-      </h3>
-
-      {/* Informations temporelles - priorité absolue */}
-      {variant !== "completed" && timeInfo.startTime && timeInfo.endTime && (
-        <div className="mt-1.5">
-          <LiveTimeRemaining
-            startTime={timeInfo.startTime}
-            endTime={timeInfo.endTime}
-            variant={variant}
+    <div className="space-y-2">
+      {/* En-tête de carte avec nom + menu actions */}
+      <div className="flex items-start justify-between gap-2">
+        <h3 className={`flex-1 truncate font-semibold leading-tight tracking-tight ${
+          variant === "completed"
+            ? "text-[12.5px] text-[var(--color-foreground)]/70"
+            : "text-[13.5px] text-[var(--color-foreground)]"
+        }`}>
+          {session.name}
+        </h3>
+        {variant !== "completed" && (
+          <SessionActionsMenu
+            sessionId={session.id}
+            sessionName={session.name}
+            isCompleted={false}
+            variant="card"
           />
-        </div>
+        )}
+      </div>
+
+      {/* État temporel & temps - Information principale */}
+      {variant !== "completed" && timeInfo.startTime && (
+        <LiveCountdown
+          startTime={timeInfo.startTime}
+          endTime={timeInfo.endTime}
+          format="full"
+          showIndicator={true}
+        />
       )}
 
-      {/* Progression */}
+      {/* Compteur participants + barre de progression */}
       {variant !== "completed" && (
-        <div className="mt-2">
-          <div className="mb-1 flex items-baseline gap-1 text-[11px]">
-            <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-              {session.signed}
-            </span>
-            <span className="text-[var(--color-muted)]/40">/</span>
-            <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-              {session.total}
-            </span>
-            <span className="text-[var(--color-muted)]/70">
-              signature{session.total > 1 ? "s" : ""}
-            </span>
-          </div>
-          <GroupProgressBar
-            signed={session.signed}
-            total={session.total}
-            variant="default"
-          />
+        <div className="space-y-1 pt-0.5">
+          {session.total === 0 ? (
+            <div className="text-[10px] font-medium text-[var(--color-muted)]">
+              👥 Aucun participant
+            </div>
+          ) : session.requires_signature ? (
+            sigState.isRepMode ? (
+              <div className="text-[10px] font-medium text-[var(--color-muted)]">
+                <span>✍</span>{" "}
+                {sigState.repSigned ? (
+                  <span className="font-semibold text-[var(--color-brand)]">Représentant signé ✓</span>
+                ) : (
+                  <span>En attente du représentant</span>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-1.5 text-[10px] text-[var(--color-muted)]">
+                  <span>✍</span>
+                  <span className="font-semibold text-[var(--color-foreground)]">
+                    {sigState.coveredSigned}
+                  </span>
+                  <span className="text-[var(--color-muted)]/40">/</span>
+                  <span className="font-medium">
+                    {session.total}
+                  </span>
+                  <span>
+                    signature{session.total > 1 ? "s" : ""}
+                  </span>
+                </div>
+                <GroupProgressBar
+                  signed={sigState.coveredSigned}
+                  total={session.total}
+                  variant="default"
+                />
+              </>
+            )
+          ) : (
+            <div className="flex items-baseline gap-1.5 text-[10px] text-[var(--color-muted)]">
+              <span>👥</span>
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {session.total}
+              </span>
+              <span>
+                participant{session.total > 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Completed sessions - minimal info */}
-      {variant === "completed" && (
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <CheckCircle2 size={11} strokeWidth={2.2} className="text-[#059669]" />
-          <span className="text-[10.5px] text-[var(--color-muted)]">
-            {session.signed >= session.total && session.total > 0
-              ? `${session.signed} signature${session.signed > 1 ? 's' : ''}`
-              : "Fermée"}
-          </span>
-        </div>
-      )}
-    </>
+      {/* Completed — fiche archive compacte */}
+      {variant === "completed" && (() => {
+        const startDate = session.start_time ? new Date(session.start_time) : null;
+        const endDate = session.end_time ? new Date(session.end_time) : null;
+        const computedEnd = endDate
+          ? endDate
+          : startDate && session.duration_minutes
+            ? new Date(startDate.getTime() + session.duration_minutes * 60_000)
+            : null;
+
+        // Date naturelle
+        const now = new Date();
+        const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+        let dateLabel: string | null = null;
+        if (startDate) {
+          const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+          if (sameDay(startDate, now)) dateLabel = "Aujourd'hui";
+          else if (sameDay(startDate, yesterday)) dateLabel = "Hier";
+          else dateLabel = startDate.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+        }
+
+        // Horaires
+        const fmtT = (d: Date) => d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        const timeRange = startDate && computedEnd
+          ? `${fmtT(startDate)} → ${fmtT(computedEnd)}`
+          : null;
+
+        return (
+          <div className="space-y-1.5">
+            {/* Date + horaires */}
+            {(dateLabel || timeRange) && (
+              <p className="text-[11px] text-[var(--color-muted)]">
+                {dateLabel && <span className="font-medium">{dateLabel}</span>}
+                {dateLabel && timeRange && <span className="mx-1 opacity-30">·</span>}
+                {timeRange && <span className="tabular-nums">{timeRange}</span>}
+              </p>
+            )}
+            {/* Participants + signatures */}
+            <div className="flex items-center gap-2 text-[11px] text-[var(--color-muted)]">
+              <span>
+                <span className="font-semibold tabular-nums text-[var(--color-foreground)]/60">
+                  {session.total}
+                </span>{" "}
+                participant{session.total !== 1 ? "s" : ""}
+              </span>
+              {session.requires_signature && session.total > 0 && (() => {
+                const cs = resolveGroupSigningState(session);
+                return (
+                  <>
+                    <span className="opacity-30">·</span>
+                    {cs.isRepMode ? (
+                      <span className={cs.repSigned ? "text-[#059669] font-semibold" : ""}>
+                        {cs.repSigned ? "Représentant ✓" : "En attente rep."}
+                      </span>
+                    ) : (
+                      <span className={cs.allCovered ? "text-[#059669] font-semibold" : ""}>
+                        {cs.coveredSigned}/{session.total} sig.
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
   );
 
   if (variant === "completed") {
     return (
       <>
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setCompletedModalOpen(true)}
-          className={`group block w-full text-left rounded-lg border p-2 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setCompletedModalOpen(true);
+            }
+          }}
+          className={`group block w-full text-left rounded-[10px] border px-2.5 py-1.5 transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.1)] hover:border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] cursor-pointer ${variantStyles[variant]}`}
         >
           {cardContent}
-        </button>
+        </div>
         <CompletedSessionModal
           session={{
             id: session.id,
@@ -542,6 +535,12 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
             total: session.total,
             signed: session.signed,
             end_time: session.end_time,
+            start_time: session.start_time,
+            scheduled_at: session.scheduled_at,
+            duration_minutes: session.duration_minutes,
+            requires_signature: session.requires_signature,
+            signature_mode: session.signature_mode,
+            rep_signed: session.rep_signed,
           }}
           open={completedModalOpen}
           onClose={() => setCompletedModalOpen(false)}
@@ -552,13 +551,20 @@ function SessionCard({ session, variant = "ongoing", appUrl }: SessionCardProps)
 
   return (
     <>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setQuickViewOpen(true)}
-        className={`group block w-full text-left rounded-lg border p-2.5 shadow-sm transition-[transform,box-shadow,border-color] duration-[140ms] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] ${variantStyles[variant]}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setQuickViewOpen(true);
+          }
+        }}
+        className={`group block w-full text-left rounded-[10px] border px-2.5 py-2 transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] hover:border-[color-mix(in_srgb,var(--color-border)_80%,var(--color-foreground))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] cursor-pointer ${variantStyles[variant]}`}
       >
         {cardContent}
-      </button>
+      </div>
       <SessionQuickViewModal
         session={session}
         variant={variant}
@@ -577,267 +583,187 @@ export function DashboardSessionsView({
   groups: DashboardGroupRow[];
   appUrl: string;
 }) {
-  const now = new Date();
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
 
-  // Définir les limites de "aujourd'hui" en heure locale
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-
-  // Définir "demain"
-  const tomorrowEnd = new Date(todayEnd);
-  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-
-  // Classifier les sessions en utilisant les champs temporels V2.
-  // Priorité : start_time (V2) > scheduled_at (V1 legacy)
-
-  /** Retourne true si la session est en cours maintenant. */
-  function isSessionOngoing(g: DashboardGroupRow): boolean {
-    if (g.status !== "open") return false;
-    const timeInfo = getSessionTimeInfo(g.start_time, g.end_time, g.duration_minutes);
-    // En cours = a commencé ET (pas de fin OU pas encore finie)
-    return timeInfo.isOngoing || !!(timeInfo.startTime && timeInfo.startTime <= now && !timeInfo.isPast);
-  }
-
-  /** Retourne true si la session est prévue aujourd'hui mais pas encore commencée. */
-  function isSessionTodayUpcoming(g: DashboardGroupRow): boolean {
-    if (g.status !== "open") return false;
-    const timeRef = g.start_time ?? g.scheduled_at;
-    if (!timeRef) return false;
-    const t = new Date(timeRef);
-    // La session est aujourd'hui ET dans le futur
-    return t >= todayStart && t < todayEnd && t > now;
-  }
-
-  /** Retourne true si la session est à venir (demain et après). */
-  function isSessionUpcoming(g: DashboardGroupRow): boolean {
-    if (g.status !== "open") return false;
-    const timeRef = g.start_time ?? g.scheduled_at;
-    if (!timeRef) return false;
-    const t = new Date(timeRef);
-    // La session est après aujourd'hui
-    return t >= todayEnd;
-  }
-
-  /** Retourne true si la session est terminée (tous signés, fermée, ou end_time dépassé). */
-  function isSessionCompleted(g: DashboardGroupRow): boolean {
-    if (g.status === "archived") return false;
-    if (g.status === "closed") return true;
-    if (g.signed >= g.total && g.total > 0) return true;
-    if (g.end_time && new Date(g.end_time) < now) return true;
-    return false;
-  }
-
-  // 1. Sessions EN COURS (commencées, pas terminées)
-  const ongoingSessions = groups
-    .filter(g => isSessionOngoing(g) && !isSessionCompleted(g))
-    .sort((a, b) => {
-      // Trier par urgence/temps restant
-      const aTimeInfo = getSessionTimeInfo(a.start_time, a.end_time, a.duration_minutes);
-      const bTimeInfo = getSessionTimeInfo(b.start_time, b.end_time, b.duration_minutes);
-
-      const aEndMs = aTimeInfo.endTime ? aTimeInfo.endTime.getTime() : Infinity;
-      const bEndMs = bTimeInfo.endTime ? bTimeInfo.endTime.getTime() : Infinity;
-
-      const aRemaining = Math.max(0, aEndMs - now.getTime());
-      const bRemaining = Math.max(0, bEndMs - now.getTime());
-
-      if (aRemaining !== bRemaining) return aRemaining - bRemaining;
-
-      // Si même urgence, trier par signatures manquantes
-      const aPending = a.total - a.signed;
-      const bPending = b.total - b.signed;
-      return bPending - aPending;
-    });
-
-  // 2. Sessions À VENIR AUJOURD'HUI (pas encore commencées)
-  const todayUpcoming = groups
-    .filter(g => isSessionTodayUpcoming(g) && !isSessionCompleted(g))
-    .sort((a, b) => {
-      const aTime = a.start_time ?? a.scheduled_at ?? "";
-      const bTime = b.start_time ?? b.scheduled_at ?? "";
-      return aTime.localeCompare(bTime);
-    });
-
-  // 3. Sessions DEMAIN ET APRÈS
-  const upcomingSessions = groups
-    .filter(isSessionUpcoming)
-    .sort((a, b) => {
-      const aTime = a.start_time ?? a.scheduled_at ?? "";
-      const bTime = b.start_time ?? b.scheduled_at ?? "";
-      return aTime.localeCompare(bTime);
-    })
-    .slice(0, 6);
-
-  // 4. Sessions TERMINÉES AUJOURD'HUI
-  const completedSessions = groups.filter(isSessionCompleted);
-  const completedToShow = showAllCompleted ? completedSessions : completedSessions.slice(0, 4);
-  const remainingCompleted = completedSessions.length - 4;
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* 1. EN COURS — Sessions actives maintenant */}
-      {ongoingSessions.length > 0 && (
-        <section>
-          <div className="mb-2.5 flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
-              En cours
-            </h2>
-            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/60">
-              {ongoingSessions.length}
-            </span>
-          </div>
+    <LiveSessionManager groups={groups}>
+      {(classified) => {
+        const { ongoing, todayUpcoming, upcoming, completed } = classified;
 
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {ongoingSessions.map(session => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                variant="ongoing"
-                appUrl={appUrl}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+        const upcomingSessions = upcoming.slice(0, 6);
+        const completedToShow = showAllCompleted ? completed : completed.slice(0, 4);
+        const remainingCompleted = completed.length - 4;
 
-      {/* 2. AUJOURD'HUI — À venir aujourd'hui */}
-      {todayUpcoming.length > 0 && (
-        <section>
-          <div className="mb-2.5 flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
-              Aujourd&apos;hui
-            </h2>
-            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/60">
-              {todayUpcoming.length}
-            </span>
-          </div>
-
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {todayUpcoming.map(session => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                variant="upcoming"
-                appUrl={appUrl}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 3. DEMAIN ET APRÈS — Collapsible */}
-      {upcomingSessions.length > 0 && (
-        <section>
-          <button
-            type="button"
-            onClick={() => setUpcomingExpanded(!upcomingExpanded)}
-            className="mb-2.5 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
-          >
-            <ChevronRight
-              size={14}
-              strokeWidth={2}
-              className={`text-[var(--color-muted)] transition-transform ${upcomingExpanded ? 'rotate-90' : ''}`}
-            />
-            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80">
-              Demain et après
-            </h2>
-            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
-              {upcomingSessions.length}
-            </span>
-          </button>
-
-          {upcomingExpanded && (
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {upcomingSessions.map(session => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  variant="upcoming"
-                  appUrl={appUrl}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* 4. ACTIVITÉ RÉCENTE — Collapsible */}
-      {completedSessions.length > 0 && (
-        <section className="pt-4 mt-4 border-t border-[color-mix(in_srgb,var(--color-border)_30%,transparent)]">
-          <button
-            type="button"
-            onClick={() => setActivityExpanded(!activityExpanded)}
-            className="mb-2.5 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
-          >
-            <ChevronRight
-              size={14}
-              strokeWidth={2}
-              className={`text-[var(--color-muted)] transition-transform ${activityExpanded ? 'rotate-90' : ''}`}
-            />
-            <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80">
-              Activité récente
-            </h2>
-            <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
-              {completedSessions.length}
-            </span>
-          </button>
-
-          {activityExpanded && (
-            <>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {completedToShow.map(session => (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    variant="completed"
-                    appUrl={appUrl}
-                  />
-                ))}
-              </div>
-
-              {/* Lien pour afficher toutes les sessions */}
-              {remainingCompleted > 0 && !showAllCompleted && (
-                <div className="mt-3 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAllCompleted(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-                  >
-                    Voir les {remainingCompleted} autre{remainingCompleted > 1 ? 's' : ''}
-                  </button>
+        return (
+          <div className="flex flex-col gap-6">
+            {/* 1. EN COURS — Sessions actives maintenant */}
+            {ongoing.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                    En cours
+                  </h2>
+                  <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
+                    {ongoing.length}
+                  </span>
                 </div>
-              )}
-            </>
-          )}
-        </section>
-      )}
 
-      {/* État vide */}
-      {ongoingSessions.length === 0 && todayUpcoming.length === 0 && upcomingSessions.length === 0 && completedSessions.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)]">
-            <Calendar size={24} strokeWidth={1.8} className="text-[var(--color-muted)]" />
+                <AnimatedSessionGrid layoutId="ongoing">
+                  {ongoing.map(session => (
+                    <AnimatedSessionCard key={session.id} sessionId={session.id}>
+                      <SessionCard
+                        session={session}
+                        variant="ongoing"
+                        appUrl={appUrl}
+                      />
+                    </AnimatedSessionCard>
+                  ))}
+                </AnimatedSessionGrid>
+              </section>
+            )}
+
+            {/* 2. AUJOURD'HUI — À venir aujourd'hui */}
+            {todayUpcoming.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                    Aujourd&apos;hui
+                  </h2>
+                  <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/50">
+                    {todayUpcoming.length}
+                  </span>
+                </div>
+
+                <AnimatedSessionGrid layoutId="today">
+                  {todayUpcoming.map(session => (
+                    <AnimatedSessionCard key={session.id} sessionId={session.id}>
+                      <SessionCard
+                        session={session}
+                        variant="upcoming"
+                        appUrl={appUrl}
+                      />
+                    </AnimatedSessionCard>
+                  ))}
+                </AnimatedSessionGrid>
+              </section>
+            )}
+
+            {/* 3. DEMAIN ET APRÈS — Collapsible */}
+            {upcomingSessions.length > 0 && (
+              <section>
+                <button
+                  type="button"
+                  onClick={() => setUpcomingExpanded(!upcomingExpanded)}
+                  className="mb-3 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
+                >
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    className={`text-[var(--color-muted)] transition-transform ${upcomingExpanded ? 'rotate-90' : ''}`}
+                  />
+                  <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80">
+                    Demain et après
+                  </h2>
+                  <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/40">
+                    {upcomingSessions.length}
+                  </span>
+                </button>
+
+                {upcomingExpanded && (
+                  <AnimatedSessionGrid layoutId="upcoming">
+                    {upcomingSessions.map(session => (
+                      <AnimatedSessionCard key={session.id} sessionId={session.id}>
+                        <SessionCard
+                          session={session}
+                          variant="upcoming"
+                          appUrl={appUrl}
+                        />
+                      </AnimatedSessionCard>
+                    ))}
+                  </AnimatedSessionGrid>
+                )}
+              </section>
+            )}
+
+            {/* 4. ACTIVITÉ RÉCENTE — Collapsible */}
+            {completed.length > 0 && (
+              <section className="pt-5 mt-1 border-t border-[color-mix(in_srgb,var(--color-border)_25%,transparent)]">
+                <button
+                  type="button"
+                  onClick={() => setActivityExpanded(!activityExpanded)}
+                  className="mb-3 flex w-full items-center gap-2 text-left transition-colors hover:text-[var(--color-foreground)]"
+                >
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    className={`text-[var(--color-muted)] transition-transform ${activityExpanded ? 'rotate-90' : ''}`}
+                  />
+                  <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/70">
+                    Activité récente
+                  </h2>
+                  <span className="text-[11px] font-medium tabular-nums text-[var(--color-muted)]/40">
+                    {completed.length}
+                  </span>
+                </button>
+
+                {activityExpanded && (
+                  <>
+                    <AnimatedSessionGrid layoutId="completed">
+                      {completedToShow.map(session => (
+                        <AnimatedSessionCard key={session.id} sessionId={session.id}>
+                          <SessionCard
+                            session={session}
+                            variant="completed"
+                            appUrl={appUrl}
+                          />
+                        </AnimatedSessionCard>
+                      ))}
+                    </AnimatedSessionGrid>
+
+                    {/* Lien pour afficher toutes les sessions */}
+                    {remainingCompleted > 0 && !showAllCompleted && (
+                      <div className="mt-3 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllCompleted(true)}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                        >
+                          Voir les {remainingCompleted} autre{remainingCompleted > 1 ? 's' : ''}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* État vide */}
+            {ongoing.length === 0 && todayUpcoming.length === 0 && upcomingSessions.length === 0 && completed.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-muted)_8%,transparent)]">
+                  <Calendar size={24} strokeWidth={1.8} className="text-[var(--color-muted)]" />
+                </div>
+                <p className="text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
+                  Aucune activité
+                </p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-muted)]">
+                  Créez une nouvelle activité pour commencer
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-new-session-modal'))}
+                  className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter,box-shadow] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
+                >
+                  <Plus size={15} strokeWidth={2.2} aria-hidden />
+                  Nouvelle activité
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-[14.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
-            Aucune session
-          </p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-muted)]">
-            Créez une nouvelle session pour commencer
-          </p>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-new-session-modal'))}
-            className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-xl bg-[var(--color-brand)] px-4 text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,var(--elev-1)] transition-[transform,filter,box-shadow] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:brightness-[1.03] hover:shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 active:scale-[0.98]"
-          >
-            <Plus size={15} strokeWidth={2.2} aria-hidden />
-            Nouvelle session
-          </button>
-        </div>
-      )}
-    </div>
+        );
+      }}
+    </LiveSessionManager>
   );
 }

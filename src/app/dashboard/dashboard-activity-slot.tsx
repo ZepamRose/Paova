@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { AlertTriangle, Clock, PartyPopper, CheckCircle2, Activity } from "lucide-react";
 import type {
@@ -5,6 +7,8 @@ import type {
   DashboardAttentionKind,
   DashboardGroupRow,
 } from "@/lib/dashboard/types";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
+import { useLiveTime } from "@/hooks/use-live-time";
 
 const ICON: Record<DashboardAttentionKind, typeof AlertTriangle> = {
   waiver_expiring: AlertTriangle,
@@ -26,27 +30,35 @@ const ICON_STYLE: Record<DashboardAttentionKind, string> = {
  * Le message guide l'action, les métriques sont secondaires.
  */
 export function DashboardHero({ groups }: { groups: DashboardGroupRow[] }) {
-  const now = new Date();
+  const now = useLiveTime();
 
-  // Classifier les sessions
+  // Classifier les sessions — classification basée uniquement sur le temps et le statut.
+  // Les signatures n'influencent JAMAIS cette classification.
+  const nowDate = new Date(now);
   const activeSessions = groups.filter(g => {
     if (g.status !== "open") return false;
-    const hasStarted = g.start_time ? new Date(g.start_time) <= now : true;
-    const hasEnded = g.end_time ? new Date(g.end_time) < now : false;
-    const isComplete = g.signed >= g.total && g.total > 0;
-    return hasStarted && !hasEnded && !isComplete;
+    const hasStarted = g.start_time ? new Date(g.start_time) <= nowDate : true;
+    const hasEnded = g.end_time ? new Date(g.end_time) < nowDate : false;
+    return hasStarted && !hasEnded;
   });
 
-  const totalPending = activeSessions.reduce((sum, s) => sum + (s.total - s.signed), 0);
-  const sessionsWithPending = activeSessions.filter(s => s.signed < s.total);
+  const totalPending = activeSessions.reduce((sum, s) => {
+    const { coveredSigned } = resolveGroupSigningState(s);
+    return sum + (s.total - coveredSigned);
+  }, 0);
+  const sessionsWithPending = activeSessions.filter(s => {
+    const { coveredSigned } = resolveGroupSigningState(s);
+    return coveredSigned < s.total;
+  });
 
   // Déterminer l'urgence
   const urgentSessions = activeSessions.filter(s => {
     if (!s.end_time) return false;
     const endMs = new Date(s.end_time).getTime();
-    const remainingMs = endMs - now.getTime();
+    const remainingMs = endMs - now;
     const remainingMinutes = remainingMs / 60000;
-    return remainingMinutes > 0 && remainingMinutes <= 30 && s.signed < s.total;
+    const { coveredSigned } = resolveGroupSigningState(s);
+    return remainingMinutes > 0 && remainingMinutes <= 30 && coveredSigned < s.total;
   });
 
   // Construire le message narratif

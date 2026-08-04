@@ -45,7 +45,7 @@ type TemplateOption = { id: string; title: string };
 type GroupOption = {
   id: string;
   name: string;
-  templateId: string;
+  templateId: string | null;
   status?: string;
 };
 
@@ -53,7 +53,7 @@ export type SortId = "date_desc" | "date_asc" | "name_asc" | "name_desc";
 
 type Filters = {
   q: string;
-  template: string;
+  template: string | null;
   group: string;
   from: string;
   to: string;
@@ -835,7 +835,7 @@ export function SignaturesLiveSearch({
                     </label>
                     <select
                       id="template"
-                      value={lockedGroup ? lockedGroup.templateId : filters.template}
+                      value={lockedGroup ? (lockedGroup.templateId ?? "") : (filters.template ?? "")}
                       onChange={(e) => patch({ template: e.target.value })}
                       disabled={Boolean(lockedGroup)}
                       title={

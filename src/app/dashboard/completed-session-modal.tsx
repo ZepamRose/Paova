@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { X, CheckCircle2, XCircle, Clock, Calendar, ArrowRight } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import { createPortal } from "react-dom";
+import { GroupProgressBar } from "@/components/groups/group-progress";
+import { resolveGroupSigningState } from "@/lib/groups/signing-state";
 
 type CompletedSessionModalProps = {
   session: {
@@ -16,6 +18,12 @@ type CompletedSessionModalProps = {
     end_time: string | null;
     scheduled_at?: string | null;
     start_time?: string | null;
+    duration_minutes?: number | null;
+    requires_signature: boolean;
+    /** V3: mode de signature — optional for backward compat */
+    signature_mode?: string | null;
+    /** V3: représentant déjà signé — optional for backward compat */
+    rep_signed?: boolean | null;
   };
   open: boolean;
   onClose: () => void;
@@ -24,81 +32,29 @@ type CompletedSessionModalProps = {
 const ease = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 const motion = `duration-[180ms] ${ease}`;
 
-function formatActivityDateTime(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  };
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: '2-digit',
-    minute: '2-digit',
-  };
-  const dateFormatted = date.toLocaleDateString('fr-FR', options);
-  const timeFormatted = date.toLocaleTimeString('fr-FR', timeOptions);
-  return `${dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1)} · ${timeFormatted}`;
+/** "Aujourd'hui", "Hier", ou "lundi 28 juillet" */
+function naturalDateLabel(date: Date): string {
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (sameDay(date, now)) return "Aujourd'hui";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(date, yesterday)) return "Hier";
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (sameDay(date, tomorrow)) return "Demain";
+  return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 }
 
-function getCompletionStory(session: CompletedSessionModalProps["session"]): {
-  icon: React.ReactNode;
-  headline: string;
-  body: string;
-  explanation?: string;
-  tone: "success" | "neutral";
-} {
-  const allSigned = session.signed >= session.total && session.total > 0;
-  const manuallyClosed = session.status === "closed";
-  const hasEndTime = !!session.end_time;
-  const activityTime = formatActivityDateTime(session.start_time || session.scheduled_at);
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
 
-  if (allSigned) {
-    return {
-      icon: <CheckCircle2 size={20} strokeWidth={2.2} className="text-[#059669]" />,
-      headline: "Toutes les signatures sont recueillies.",
-      body: "La session est prête. Aucune autre action n'est nécessaire.",
-      explanation: activityTime
-        ? `Cette session apparaît dans "Terminées aujourd'hui" car toutes les signatures ont été recueillies.`
-        : undefined,
-      tone: "success",
-    };
-  }
-
-  if (manuallyClosed) {
-    const detail = session.signed > 0
-      ? `${session.signed} signature${session.signed > 1 ? 's' : ''} sur ${session.total} ${session.signed > 1 ? 'ont été recueillies' : 'a été recueillie'}.`
-      : "Aucune signature n'a été recueillie.";
-    return {
-      icon: <XCircle size={20} strokeWidth={2.2} className="text-[var(--color-muted)]" />,
-      headline: "Cette session a été fermée manuellement.",
-      body: detail,
-      explanation: undefined,
-      tone: "neutral",
-    };
-  }
-
-  if (hasEndTime) {
-    const endDate = new Date(session.end_time!);
-    const now = new Date();
-    if (endDate <= now) {
-      return {
-        icon: <Clock size={20} strokeWidth={2.2} className="text-[var(--color-muted)]" />,
-        headline: "Cette session a atteint sa date de clôture.",
-        body: "La collecte des signatures s'est terminée automatiquement.",
-        explanation: undefined,
-        tone: "neutral",
-      };
-    }
-  }
-
-  return {
-    icon: <Calendar size={20} strokeWidth={2.2} className="text-[var(--color-muted)]" />,
-    headline: "Cette session est terminée.",
-    body: "Elle fait partie des activités terminées aujourd'hui.",
-    explanation: undefined,
-    tone: "neutral",
-  };
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, "0")}`;
 }
 
 export function CompletedSessionModal({
@@ -110,9 +66,7 @@ export function CompletedSessionModal({
 
   useEffect(() => {
     if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -120,9 +74,7 @@ export function CompletedSessionModal({
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -130,12 +82,37 @@ export function CompletedSessionModal({
 
   if (!open) return null;
 
-  const story = getCompletionStory(session);
-  const activityTime = formatActivityDateTime(session.start_time || session.scheduled_at);
+  // ── Données dérivées ──────────────────────────────────────────────────
+  const sigState = resolveGroupSigningState(session);
+  const startDate = session.start_time ? new Date(session.start_time) : null;
+  const endDate = session.end_time ? new Date(session.end_time) : null;
+
+  // Si end_time absent mais duration connue, on le calcule
+  const computedEnd = endDate
+    ? endDate
+    : startDate && session.duration_minutes
+      ? new Date(startDate.getTime() + session.duration_minutes * 60_000)
+      : null;
+
+  const dateLabel = startDate ? naturalDateLabel(startDate) : null;
+
+  const timeRange = startDate && computedEnd
+    ? `${fmtTime(session.start_time!)} → ${fmtTime(computedEnd.toISOString())}`
+    : startDate
+      ? fmtTime(session.start_time!)
+      : null;
+
+  const durationLabel = session.duration_minutes
+    ? formatDuration(session.duration_minutes)
+    : startDate && computedEnd
+      ? formatDuration(Math.round((computedEnd.getTime() - startDate.getTime()) / 60_000))
+      : null;
+
+  const allSigned = session.requires_signature && sigState.allCovered;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center bg-black/40 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -144,104 +121,163 @@ export function CompletedSessionModal({
         ref={ref}
         className="relative w-full max-w-md animate-in zoom-in-95 duration-200"
       >
-        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/5 dark:ring-white/10">
-          {/* Header — simplifié */}
-          <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+
+          {/* ── Header ──────────────────────────────────────────────── */}
+          <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
             <div className="flex-1 min-w-0">
+              <div className="mb-1.5">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                  allSigned
+                    ? "bg-[color-mix(in_srgb,#059669_10%,transparent)] text-[#059669]"
+                    : "bg-[color-mix(in_srgb,var(--color-muted)_10%,transparent)] text-[var(--color-muted)]"
+                }`}>
+                  <span aria-hidden>✓</span>
+                  Terminée
+                </span>
+              </div>
               <h2
                 id="modal-title"
                 className="text-[16px] font-bold leading-tight tracking-tight text-[var(--color-foreground)]"
               >
                 {session.name}
               </h2>
-              <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
-                {session.template_title}
-              </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)] transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted)] transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]`}
               aria-label="Fermer"
             >
               <X size={16} strokeWidth={2} />
             </button>
           </div>
 
-          {/* Content — histoire naturelle, sobre comme notification Apple */}
-          <div className="px-6 pb-6">
-            {/* Status principal — très sobre */}
-            <div
-              className={`flex items-start gap-3 rounded-xl p-4 mb-4 ${
-                story.tone === "success"
-                  ? "bg-[color-mix(in_srgb,#059669_4%,var(--color-surface))]"
-                  : "bg-[var(--color-surface-2)]/40"
-              }`}
-            >
-              <div className="shrink-0 mt-0.5">{story.icon}</div>
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <p className="text-[14px] font-medium leading-snug text-[var(--color-foreground)]">
-                  {story.headline}
-                </p>
-                <p className="text-[13px] leading-relaxed text-[var(--color-muted)]">
-                  {story.body}
-                </p>
-              </div>
-            </div>
+          {/* ── Fiche récapitulative ─────────────────────────────── */}
+          <div className="px-5 pb-5 space-y-4">
 
-            {/* Date de l'activité si disponible */}
-            {activityTime && (
-              <div className="mb-4">
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]/60">
-                  Activité
-                </p>
-                <p className="text-[13px] text-[var(--color-foreground)]">
-                  {activityTime}
-                </p>
+            {/* Bloc date / horaires */}
+            {(dateLabel || timeRange || durationLabel) && (
+              <div className="rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3 space-y-1.5">
+                {dateLabel && (
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="text-[var(--color-muted)] w-4 text-center" aria-hidden>📅</span>
+                    <span className="font-medium text-[var(--color-foreground)] capitalize">{dateLabel}</span>
+                  </div>
+                )}
+                {timeRange && (
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="text-[var(--color-muted)] w-4 text-center" aria-hidden>🕐</span>
+                    <span className="tabular-nums text-[var(--color-foreground)]/80">{timeRange}</span>
+                    {durationLabel && (
+                      <>
+                        <span className="text-[var(--color-muted)]/30">·</span>
+                        <span className="text-[var(--color-muted)]">{durationLabel}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {!timeRange && durationLabel && (
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="text-[var(--color-muted)] w-4 text-center" aria-hidden>⏱</span>
+                    <span className="text-[var(--color-foreground)]/80">{durationLabel}</span>
+                  </div>
+                )}
+                {/* Participants */}
+                <div className="flex items-center gap-2 text-[13px]">
+                  <span className="text-[var(--color-muted)] w-4 text-center" aria-hidden>👥</span>
+                  <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                    {session.total}
+                  </span>
+                  <span className="text-[var(--color-muted)]">
+                    participant{session.total !== 1 ? "s" : ""}
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Explication contextuelle */}
-            {story.explanation && (
-              <div className="mb-4 rounded-lg bg-[color-mix(in_srgb,var(--color-muted)_3%,transparent)] px-3 py-2.5">
-                <p className="text-[12px] leading-relaxed text-[var(--color-muted)]">
-                  {story.explanation}
-                </p>
+            {/* Participants si pas de date */}
+            {!dateLabel && !timeRange && !durationLabel && (
+              <div className="flex items-center gap-2 text-[13px] rounded-xl bg-[var(--color-surface-2)]/50 px-4 py-3">
+                <span className="text-[var(--color-muted)] w-4 text-center" aria-hidden>👥</span>
+                <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                  {session.total}
+                </span>
+                <span className="text-[var(--color-muted)]">
+                  participant{session.total !== 1 ? "s" : ""}
+                </span>
               </div>
             )}
 
-            {/* Stats — très discrètes */}
-            <div className="flex items-baseline gap-2 text-[13px] text-[var(--color-muted)]">
-              <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-                {session.signed}
-              </span>
-              <span className="text-[var(--color-muted)]/40">/</span>
-              <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
-                {session.total}
-              </span>
-              <span>
-                signature{session.total > 1 ? "s" : ""}
-              </span>
+            {/* ── Section participants / signatures ──────────────── */}
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] overflow-hidden">
+              {session.requires_signature ? (
+                <div className="px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-muted)]/70">
+                      Signatures
+                    </span>
+                    {sigState.isRepMode ? (
+                      <span className={`text-[13px] font-bold ${allSigned ? "text-[#059669]" : "text-[var(--color-foreground)]"}`}>
+                        {allSigned ? "Représentant ✓" : "En attente"}
+                      </span>
+                    ) : (
+                      <span className={`text-[13px] font-bold tabular-nums ${allSigned ? "text-[#059669]" : "text-[var(--color-foreground)]"}`}>
+                        {sigState.coveredSigned}
+                        <span className="font-normal text-[var(--color-muted)]">/{session.total}</span>
+                      </span>
+                    )}
+                  </div>
+                  {session.total > 0 && !sigState.isRepMode && (
+                    <GroupProgressBar
+                      signed={sigState.coveredSigned}
+                      total={session.total}
+                      variant="dashboard"
+                    />
+                  )}
+                  {session.template_title && (
+                    <p className="text-[12px] text-[var(--color-muted)]">
+                      Décharge :{" "}
+                      <span className="font-medium text-[var(--color-foreground)]/70">
+                        {session.template_title}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="px-4 py-3 space-y-1">
+                  <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-muted)]/70">
+                    Participants
+                  </span>
+                  <p className="text-[20px] font-bold tabular-nums text-[var(--color-foreground)]">
+                    {session.total}
+                    <span className="ml-2 text-[14px] font-normal text-[var(--color-muted)]">
+                      participant{session.total !== 1 ? "s" : ""}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Footer — hiérarchie inversée */}
-          <div className="flex items-center justify-between gap-3 border-t border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] px-6 py-4">
+          {/* ── Footer ──────────────────────────────────────────── */}
+          <div className="flex items-center justify-between gap-3 border-t border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] px-5 py-3.5">
             <button
               type="button"
               onClick={onClose}
-              className={`inline-flex h-9 items-center justify-center rounded-lg px-4 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]/80 transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.98]`}
+              className={`inline-flex h-9 items-center justify-center rounded-lg px-4 text-[13px] font-semibold text-[var(--color-foreground)]/70 transition-[background-color,color] ${motion} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]`}
             >
               Fermer
             </button>
             <Link
               href={`/dashboard/groupes/${session.id}`}
-              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] shadow-sm transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_90%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.98]`}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold text-[var(--color-foreground)] shadow-sm transition-[background-color,transform,box-shadow,border-color] ${motion} hover:-translate-y-px hover:bg-[var(--color-surface-2)] hover:shadow-md`}
             >
-              Voir les détails
+              Voir l&apos;activité
               <ArrowRight size={14} strokeWidth={2} />
             </Link>
           </div>
+
         </div>
       </div>
     </div>,

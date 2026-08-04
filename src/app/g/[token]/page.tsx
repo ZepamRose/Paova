@@ -19,6 +19,7 @@ import {
 } from "@/lib/waiver-packs";
 import { GroupSignFlow } from "./group-sign-flow";
 import { ExpressSignFlow } from "./express-sign-flow";
+import { GroupRepresentativeSignFlow } from "./group-representative-sign-flow";
 
 type WaiverField = {
   key: string;
@@ -62,7 +63,7 @@ export default async function PublicGroupPage({
   const { data: group } = await supabase
     .from("signing_group")
     .select(
-      "id, name, status, template_id, business_id, public_token, closes_at, kind",
+      "id, name, status, template_id, business_id, public_token, closes_at, kind, requires_signature, signature_mode, start_time, end_time, duration_minutes",
     )
     .eq("public_token", token)
     .maybeSingle();
@@ -98,6 +99,12 @@ export default async function PublicGroupPage({
   const accepting = acceptsGroupSignatures({ status, closes_at: closesAt });
   const closesLabel = formatClosesAt(closesAt);
   const isExpress = group.kind === "express";
+  const isStation = group.kind === "station";
+
+  // Sessions without signatures cannot be accessed via QR code
+  if (!group.requires_signature || !group.template_id) {
+    notFound();
+  }
 
   const { data: template } = await supabase
     .from("waiver_template")
@@ -126,7 +133,7 @@ export default async function PublicGroupPage({
   }[] = [];
   let rosterTruncated = false;
 
-  if (!isExpress) {
+  if (!isExpress && !isStation) {
     const { count: unsignedCount } = await supabase
       .from("signing_group_member")
       .select("id", { count: "exact", head: true })
@@ -148,6 +155,22 @@ export default async function PublicGroupPage({
   const fields = (
     Array.isArray(template.fields) ? template.fields : []
   ) as unknown as WaiverField[];
+
+  // For representative mode: check if already signed (server-side gate)
+  let repAlreadySigned: {
+    signer_name: string;
+    signed_at: string | null;
+    representative_role: string | null;
+  } | null = null;
+  if (group.signature_mode === "group_representative") {
+    const { data: existingRep } = await supabase
+      .from("submission")
+      .select("signer_name, signed_at, representative_role")
+      .eq("represented_group_id", group.id)
+      .eq("signature_type", "group_representative")
+      .maybeSingle();
+    repAlreadySigned = existingRep ?? null;
+  }
 
   const intent = resolveTemplateIntent({
     starterPackId: template.starter_pack_id,
@@ -204,7 +227,67 @@ export default async function PublicGroupPage({
             ? `Les signatures pour ce groupe sont closes depuis le ${closesLabel}.`
             : "Ce groupe n’accepte plus de signatures pour le moment."}
         </div>
-      ) : isExpress ? (
+      ) : group.signature_mode === "group_representative" && repAlreadySigned ? (
+        // ── Déjà signé : afficher la confirmation, bloquer le formulaire ──
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--color-brand)_30%,var(--color-border))] bg-[var(--color-surface)] p-6 shadow-[var(--elev-2)]">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M5 13l4 4L19 7" stroke="var(--color-brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2 className="mb-1 text-[1.15rem] font-semibold tracking-tight text-[var(--color-foreground)]">
+            Cette activité a déjà été signée
+          </h2>
+          <p className="mb-5 text-[13.5px] text-[var(--color-muted)]">
+            La décharge a été signée pour l&apos;ensemble du groupe.
+          </p>
+          <div className="rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-background)_50%,var(--color-surface))] px-4 py-3 text-[13.5px]">
+            <p className="mb-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-muted)]/70">
+              Signée par
+            </p>
+            <p className="font-semibold text-[var(--color-foreground)]">
+              {repAlreadySigned.signer_name}
+            </p>
+            {repAlreadySigned.representative_role ? (
+              <p className="text-[12.5px] text-[var(--color-muted)]">
+                {repAlreadySigned.representative_role}
+              </p>
+            ) : null}
+            {repAlreadySigned.signed_at ? (
+              <p className="mt-1.5 text-[12.5px] text-[var(--color-muted)]">
+                {new Date(repAlreadySigned.signed_at).toLocaleDateString("fr-FR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  timeZone: "Europe/Brussels",
+                })}{" "}
+                à{" "}
+                {new Date(repAlreadySigned.signed_at).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Europe/Brussels",
+                })}
+              </p>
+            ) : null}
+          </div>
+          <p className="mt-4 text-[12.5px] text-[var(--color-muted)]">
+            Cette signature couvre l&apos;ensemble des participants du groupe.
+          </p>
+        </div>
+      ) : group.signature_mode === "group_representative" ? (
+        // Mode représentant : formulaire de signature
+        <GroupRepresentativeSignFlow
+          groupId={group.id}
+          groupName={group.name}
+          groupToken={group.public_token}
+          templateId={group.template_id!}
+          slug={template.public_slug}
+          legalText={template.legal_text}
+          brandColor={business?.brand_color || "#6b8f71"}
+          participantCount={unsigned.length}
+          startTime={group.start_time}
+        />
+      ) : isExpress || isStation ? (
         <ExpressSignFlow
           groupToken={group.public_token}
           groupId={group.id}

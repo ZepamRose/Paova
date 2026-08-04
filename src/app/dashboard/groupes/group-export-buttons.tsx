@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileDown, FileArchive } from "lucide-react";
+import { FileDown, FileArchive, FileText } from "lucide-react";
 
 async function downloadFrom(href: string) {
   const res = await fetch(href);
@@ -28,16 +28,19 @@ export function GroupExportButtons({
   signedCount,
   className,
   compact = false,
+  signatureMode = "individual",
 }: {
   groupId: string;
   signedCount: number;
   className: string;
   compact?: boolean;
+  signatureMode?: string;
 }) {
-  const [busy, setBusy] = useState<"csv" | "zip" | null>(null);
+  const [busy, setBusy] = useState<"csv" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isRepMode = signatureMode === "group_representative";
 
-  async function run(kind: "csv" | "zip") {
+  async function run(kind: "csv" | "pdf") {
     if (busy) return;
     setBusy(kind);
     setError(null);
@@ -68,21 +71,29 @@ export function GroupExportButtons({
         </button>
         <button
           type="button"
-          onClick={() => run("zip")}
+          onClick={() => run("pdf")}
           disabled={busy !== null || signedCount === 0}
           className={className}
           title={
             signedCount === 0
               ? "Aucune signature à exporter"
-              : `ZIP de ${signedCount} PDF`
+              : isRepMode
+                ? "Télécharger le PDF de groupe"
+                : `ZIP de ${signedCount} PDF`
           }
         >
-          <FileArchive size={14} strokeWidth={1.85} aria-hidden />
-          {busy === "zip"
-            ? "ZIP…"
+          {isRepMode ? (
+            <FileText size={14} strokeWidth={1.85} aria-hidden />
+          ) : (
+            <FileArchive size={14} strokeWidth={1.85} aria-hidden />
+          )}
+          {busy === "pdf"
+            ? "PDF…"
             : signedCount === 0
               ? "PDF"
-              : `PDF (${signedCount})`}
+              : isRepMode
+                ? "PDF"
+                : `PDF (${signedCount})`}
         </button>
       </div>
       {error ? (
@@ -94,7 +105,9 @@ export function GroupExportButtons({
         </p>
       ) : !compact ? (
         <p className="text-[12px] text-[var(--color-muted)]">
-          CSV = liste complète. ZIP = preuves PDF.
+          {isRepMode
+            ? "CSV = liste des participants. PDF = décharge représentant."
+            : "CSV = liste complète. ZIP = preuves PDF."}
         </p>
       ) : null}
     </div>

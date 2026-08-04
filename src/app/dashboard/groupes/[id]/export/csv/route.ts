@@ -23,7 +23,7 @@ export async function GET(
 
   const { data: group } = await supabase
     .from("signing_group")
-    .select("id, name, template_id, business_id")
+    .select("id, name, template_id, business_id, requires_signature")
     .eq("id", id)
     .maybeSingle();
   if (!group) {

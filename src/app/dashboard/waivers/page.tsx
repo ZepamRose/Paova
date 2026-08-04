@@ -51,12 +51,12 @@ export default async function TemplatesPage() {
   // Get groups to calculate usage
   const { data: signingGroups } = await supabase
     .from("signing_group")
-    .select("id, template_id, status")
+    .select("id, template_id, status, requires_signature")
     .eq("business_id", business.id);
 
   const groupsByTemplate: Record<string, number> = {};
   (signingGroups ?? []).forEach((g) => {
-    if (g.status !== "archived") {
+    if (g.status !== "archived" && g.template_id) {
       groupsByTemplate[g.template_id] = (groupsByTemplate[g.template_id] || 0) + 1;
     }
   });

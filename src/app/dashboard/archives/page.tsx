@@ -42,7 +42,7 @@ export default async function ArchivesPage() {
   const { data: groups } = await supabase
     .from("signing_group")
     .select(
-      "id, name, status, template_id, scheduled_at, start_time, end_time, duration_minutes, created_at, public_token",
+      "id, name, status, template_id, scheduled_at, start_time, end_time, duration_minutes, requires_signature, created_at, public_token",
     )
     .eq("business_id", business.id)
     .not("archived_at", "is", null)
@@ -63,7 +63,7 @@ export default async function ArchivesPage() {
     });
   }
 
-  const templateIds = [...new Set((groups ?? []).map((g) => g.template_id))];
+  const templateIds = [...new Set((groups ?? []).map((g) => g.template_id).filter((id): id is string => id !== null))];
   const { data: groupTemplates } =
     templateIds.length > 0
       ? await supabase
@@ -79,12 +79,13 @@ export default async function ArchivesPage() {
       id: g.id,
       name: g.name,
       template_id: g.template_id,
-      template_title: titleById.get(g.template_id) ?? "Formulaire",
+      template_title: g.template_id ? (titleById.get(g.template_id) ?? "Formulaire") : "Sans signatures",
       status: g.status,
       scheduled_at: g.scheduled_at,
       start_time: g.start_time,
       end_time: g.end_time,
       duration_minutes: g.duration_minutes,
+      requires_signature: g.requires_signature,
       total: s.total,
       signed: s.signed,
       created_at: g.created_at,
