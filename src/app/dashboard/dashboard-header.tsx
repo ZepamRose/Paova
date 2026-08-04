@@ -218,6 +218,7 @@ export function DashboardHeader({
                   choices={templateChoices}
                   open={createModalOpen}
                   onOpenChange={setCreateModalOpen}
+                  openingHours={openingHours}
                 />
               </>
             ) : canManageWaivers || canCreateGroups ? (

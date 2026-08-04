@@ -6,10 +6,13 @@ import { X, Calendar, Zap } from "lucide-react";
 import { NewSessionModal } from "./new-session-modal";
 import { ExpressGroupForm } from "./express-group-form";
 import { createStation } from "./actions";
+import type { OpeningHours } from "@/lib/groups/lifecycle";
+import type { RosterMode } from "@/lib/groups";
 
 type TemplateChoice = {
   id: string;
   title: string;
+  rosterMode?: RosterMode;
   fieldLabels?: string[];
 };
 
@@ -21,10 +24,12 @@ export function CreateActivityModal({
   choices,
   open: controlledOpen,
   onOpenChange,
+  openingHours,
 }: {
   choices: TemplateChoice[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  openingHours?: OpeningHours | null;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -66,7 +71,7 @@ export function CreateActivityModal({
 
   // Si on est dans un sous-formulaire, on affiche ce formulaire
   if (open && view === "session") {
-    return <NewSessionModal choices={choices} open={true} onOpenChange={close} />;
+    return <NewSessionModal choices={choices} open={true} onOpenChange={close} openingHours={openingHours} />;
   }
 
   if (open && view === "station") {

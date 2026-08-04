@@ -1,0 +1,10 @@
+npm notice run paova@0.1.0 dev
+npm notice run next dev
+ ⚠ Port 3000 is in use by process 15188, using available port 3001 instead.
+   ▲ Next.js 15.5.22
+   - Local:        http://localhost:3001
+   - Network:      http://192.168. ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 1502ms (174 modules)
+ ○ Compiling /dashboard ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (107kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (258kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)

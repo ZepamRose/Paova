@@ -1,0 +1,100 @@
+npm notice run paova@0.1.0 build
+npm notice run next build
+   ▲ Next.js 15.5.22
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 10.7s
+   Linting and checking validity of types ...
+
+./src/app/dashboard/dashboard-home.tsx
+16:10  Warning: 'DashboardSessionsView' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/groupes/edit-session-modal.tsx
+52:10  Warning: 'parseStartDate' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/groupes/group-settings-form.tsx
+3:10  Warning: 'useState' is defined but never used.  @typescript-eslint/no-unused-vars
+10:3  Warning: 'parseDateString' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/groupes/session-actions-menu.tsx
+18:3  Warning: 'sessionName' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/groupes/[id]/page.tsx
+41:7  Warning: 'sectionLabel' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/sessions-timeline.tsx
+150:9  Warning: 'formatElapsedTime' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/dashboard/waivers/[id]/signature-hours-settings.tsx
+17:7  Warning: 'inputClass' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/g/[token]/merci/group-merci-view.tsx
+97:9  Warning: 'name' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+145:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/w/[slug]/sign-form.tsx
+267:3  Warning: 'brandColor' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/30) ...
+   Generating static pages (7/30) 
+   Generating static pages (14/30) 
+   Generating static pages (22/30) 
+ ✓ Generating static pages (30/30)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                           Size  First Load JS
+┌ ƒ /                                              2.22 kB         108 kB
+├ ƒ /_not-found                                       1 kB         103 kB
+├ ƒ /api/auth/claim-invites                          166 B         102 kB
+├ ƒ /api/health                                      166 B         102 kB
+├ ƒ /api/stripe/webhook                              166 B         102 kB
+├ ƒ /api/w/[slug]/events                             166 B         102 kB
+├ ƒ /auth/callback                                   166 B         102 kB
+├ ƒ /auth/confirm                                  6.97 kB         220 kB
+├ ƒ /auth/signout                                    166 B         102 kB
+├ ƒ /confidentialite                                 170 B         106 kB
+├ ƒ /dashboard                                     28.4 kB         200 kB
+├ ƒ /dashboard/archives                             2.5 kB         174 kB
+├ ƒ /dashboard/billing                              3.3 kB         149 kB
+├ ƒ /dashboard/groupes                             2.29 kB         148 kB
+├ ƒ /dashboard/groupes/[id]                        14.8 kB         174 kB
+├ ƒ /dashboard/groupes/[id]/export/csv               166 B         102 kB
+├ ƒ /dashboard/groupes/[id]/export/pdfs              166 B         102 kB
+├ ƒ /dashboard/groupes/express                     3.53 kB         109 kB
+├ ƒ /dashboard/groupes/new                           823 B         107 kB
+├ ƒ /dashboard/groupes/new/session                 5.86 kB         161 kB
+├ ƒ /dashboard/groupes/new/station                 2.85 kB         151 kB
+├ ƒ /dashboard/settings                            9.79 kB         229 kB
+├ ƒ /dashboard/settings/membres                    12.3 kB         225 kB
+├ ƒ /dashboard/signatures                            12 kB         235 kB
+├ ƒ /dashboard/signatures/export                     166 B         102 kB
+├ ƒ /dashboard/signatures/search                     166 B         102 kB
+├ ƒ /dashboard/waivers                             2.74 kB         110 kB
+├ ƒ /dashboard/waivers/[id]                        13.5 kB         241 kB
+├ ƒ /dashboard/waivers/[id]/edit                     138 B         158 kB
+├ ƒ /dashboard/waivers/[id]/submissions/[sid]/pdf    166 B         102 kB
+├ ƒ /dashboard/waivers/[id]/submissions/export       166 B         102 kB
+├ ƒ /dashboard/waivers/new                           137 B         158 kB
+├ ƒ /g/[token]                                     7.58 kB         110 kB
+├ ƒ /g/[token]/merci                               2.73 kB         145 kB
+├ ƒ /login                                         11.1 kB         224 kB
+├ ƒ /mentions-legales                                170 B         106 kB
+├ ƒ /onboarding                                      671 B         106 kB
+├ ƒ /onboarding/premiere-decharge                    682 B         106 kB
+├ ƒ /w/[slug]                                      6.19 kB         113 kB
+├ ƒ /w/[slug]/merci                                8.68 kB         154 kB
+└ ƒ /w/[slug]/pdf                                    166 B         102 kB
++ First Load JS shared by all                       102 kB
+  ├ chunks/1255-cf02c4775860a5ab.js                  46 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js            54.2 kB
+  └ other shared chunks (total)                    2.04 kB
+
+
+ƒ Middleware                                       93.1 kB
+
+ƒ  (Dynamic)  server-rendered on demand
+
