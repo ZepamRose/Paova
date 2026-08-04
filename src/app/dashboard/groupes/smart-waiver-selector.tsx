@@ -2,6 +2,7 @@
 
 import { Check } from "lucide-react";
 import { TemplateCombobox } from "./template-combobox";
+import { cn } from "@/lib/utils";
 
 type TemplateChoice = {
   id: string;
@@ -13,10 +14,12 @@ export function SmartWaiverSelector({
   choices,
   value,
   onChange,
+  compact = false,
 }: {
   choices: TemplateChoice[];
   value: string;
   onChange: (id: string) => void;
+  compact?: boolean;
 }) {
   const selected = choices.find((c) => c.id === value);
 
@@ -24,19 +27,25 @@ export function SmartWaiverSelector({
   if (choices.length === 1) {
     const waiver = choices[0];
     return (
-      <div className="flex items-start gap-2.5 rounded-xl border border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))] px-3.5 py-2.5">
+      <div
+        className={cn(
+          "flex items-start gap-2 rounded-lg border px-3",
+          compact ? "py-2" : "py-2.5",
+          "border-[color-mix(in_srgb,var(--color-brand)_20%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-brand)_4%,var(--color-surface))]"
+        )}
+      >
         <Check
-          size={16}
-          strokeWidth={2.2}
+          size={compact ? 13 : 16}
+          strokeWidth={2.5}
           className="mt-0.5 shrink-0 text-[var(--color-brand)]"
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-[var(--color-foreground)]">
+          <p className={cn("font-medium", compact ? "text-[12.5px]" : "text-[13px]")}>
             {waiver.title}
           </p>
           {waiver.fieldLabels && waiver.fieldLabels.length > 0 ? (
-            <p className="mt-0.5 truncate text-[12px] text-[var(--color-muted)]">
+            <p className={cn("mt-0.5 truncate text-[var(--color-muted)]", compact ? "text-[11px]" : "text-[12px]")}>
               {waiver.fieldLabels.join(" · ")}
             </p>
           ) : null}
@@ -55,7 +64,7 @@ export function SmartWaiverSelector({
         onChange={onChange}
       />
       {selected && selected.fieldLabels && selected.fieldLabels.length > 0 ? (
-        <p className="text-[12px] text-[var(--color-muted)]">
+        <p className={cn("text-[var(--color-muted)]", compact ? "text-[11px]" : "text-[12px]")}>
           {selected.fieldLabels.join(" · ")}
         </p>
       ) : null}
