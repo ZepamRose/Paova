@@ -1,8 +1,7 @@
 -- Migration: Ajouter le type "station" pour les QR permanents
--- Date: 2026-08-04 21:11:46
+-- Date: 2026-08-04
 -- Description: Ajoute "station" aux valeurs autorisées de signing_group.kind
 --              pour supporter les points de signature permanents avec interface kiosque
--- Note: Cette migration a été créée et appliquée via Supabase Dashboard
 
 -- Contexte métier:
 -- - roster: session avec liste de participants pré-établie
@@ -20,3 +19,9 @@ ALTER TABLE signing_group
 
 COMMENT ON COLUMN signing_group.kind IS 
   'Type d''activité: roster (liste préétablie), express (walk-in sans liste), station (QR permanent avec interface kiosque)';
+
+-- Note de rétrocompatibilité:
+-- - Toutes les activités existantes conservent leur kind actuel (roster ou express)
+-- - Aucune donnée existante n'est modifiée
+-- - Les nouvelles stations utilisent kind = 'station' avec requires_signature = true
+-- - Migration idempotente: peut être exécutée plusieurs fois sans erreur
