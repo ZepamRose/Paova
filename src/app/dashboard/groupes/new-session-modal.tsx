@@ -198,7 +198,7 @@ export function NewSessionModal({
               }}
               className="relative z-10 flex w-full max-w-[480px] max-h-[90vh] flex-col rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.22),0_0_0_1px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-4 py-3">
+              <div className="flex shrink-0 items-center justify-between border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] px-4 py-2.5">
                 <h2 className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">
                   Nouvelle session
                 </h2>
@@ -212,9 +212,9 @@ export function NewSessionModal({
                 </button>
               </div>
 
-              <form action={createSigningGroup} className="flex min-h-0 flex-col">
-                <div className="overflow-y-auto px-4 py-3">
-                  <div className="flex flex-col gap-3">
+              <form action={createSigningGroup} className="flex min-h-0 flex-1 flex-col">
+                <div className="flex-1 overflow-y-auto px-4 py-2.5">
+                  <div className="flex flex-col gap-2.5">
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="session-name" className="text-[13px] font-medium text-[var(--color-foreground)]">
                         Nom
@@ -283,7 +283,7 @@ export function NewSessionModal({
                             opacity: 1,
                             height: "auto",
                             filter: "blur(0px)",
-                            marginTop: 12,
+                            marginTop: 10,
                           }}
                           exit={{
                             opacity: 0,
@@ -297,7 +297,7 @@ export function NewSessionModal({
                             height: { duration: 0.22 },
                             opacity: { duration: 0.18 },
                           }}
-                          className="flex flex-col gap-3 overflow-hidden"
+                          className="flex flex-col gap-2.5 overflow-hidden"
                         >
                           <motion.div
                             initial={{ opacity: 0, y: -4 }}
@@ -322,11 +322,11 @@ export function NewSessionModal({
                             transition={{ duration: 0.2, delay: 0.08 }}
                             className="flex flex-col gap-1.5"
                           >
-                            <label className="text-[13px] font-medium text-[var(--color-foreground)]">Mode</label>
+                            <label className="text-[13px] font-medium text-[var(--color-foreground)]">Qui signe ?</label>
                             <CompactToggle
                               options={[
-                                { value: "individual" as const, label: "Individuel" },
-                                { value: "group_representative" as const, label: "Représentant" },
+                                { value: "individual" as const, label: "Chaque participant" },
+                                { value: "group_representative" as const, label: "Un représentant" },
                               ]}
                               value={signatureMode}
                               onChange={setSignatureMode}
@@ -354,7 +354,7 @@ export function NewSessionModal({
                   </>
                 )}
 
-                <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-4 py-3">
+                <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--color-border)_45%,transparent)] px-4 py-2.5">
                   <LiveSummary
                     name={name}
                     startDate={startDate}
@@ -366,7 +366,7 @@ export function NewSessionModal({
                     signatureMode={signatureMode}
                   />
 
-                  <div className="mt-3 flex items-center justify-between">
+                  <div className="mt-2.5 flex items-center justify-between">
                     <button
                       type="button"
                       onClick={handleClose}

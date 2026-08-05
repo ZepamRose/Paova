@@ -121,8 +121,8 @@ export function LiveSummary({
   }, [name, startDate, startTime, closingMode, durationMinutes, requiresSignature, selected, signatureMode]);
 
   return (
-    <div className="min-h-[120px] rounded-xl border border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] bg-gradient-to-br from-[var(--color-surface-2)]/50 to-[var(--color-surface-2)]/20 px-3.5 py-2.5">
-      <div className="mb-2 flex items-center gap-1.5">
+    <div className="min-h-[110px] rounded-xl border border-[color-mix(in_srgb,var(--color-border)_40%,transparent)] bg-gradient-to-br from-[var(--color-surface-2)]/50 to-[var(--color-surface-2)]/20 px-3 py-2">
+      <div className="mb-1.5 flex items-center gap-1.5">
         <Sparkles size={11} className="text-[var(--color-brand)]" strokeWidth={2.5} />
         <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-muted)]/70">
           Récapitulatif
@@ -156,7 +156,11 @@ export function LiveSummary({
               <span
                 className={cn(
                   "text-[12.5px]",
-                  item.muted ? "text-[var(--color-muted)]/70" : "text-[var(--color-foreground)]"
+                  item.muted
+                    ? "text-[var(--color-muted)]/70"
+                    : item.highlight
+                      ? "font-medium text-[var(--color-foreground)]"
+                      : "font-medium text-[var(--color-foreground)]"
                 )}
               >
                 {item.text}

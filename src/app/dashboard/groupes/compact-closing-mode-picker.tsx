@@ -93,7 +93,23 @@ export function CompactClosingModePicker({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="inline-flex h-8 items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
+      <div className="relative inline-flex h-8 items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
+        {/* Pill animé */}
+        <motion.div
+          layoutId="closing-mode-pill"
+          className="absolute inset-0.5 rounded-md bg-[var(--color-brand)] shadow-sm"
+          initial={false}
+          animate={{
+            x: visibleModes.findIndex((m) => m.value === mode) * (100 / visibleModes.length) + "%",
+            width: `calc(${100 / visibleModes.length}% - 2px)`,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 30,
+          }}
+        />
+
         {visibleModes.map(({ value, label, Icon }) => {
           const active = mode === value;
           return (
@@ -102,9 +118,9 @@ export function CompactClosingModePicker({
               type="button"
               onClick={() => onModeChange(value)}
               className={cn(
-                "relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-[11.5px] font-medium transition-all duration-150",
+                "relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-[11.5px] font-medium transition-colors duration-150",
                 active
-                  ? "bg-[var(--color-brand)] text-[var(--color-on-brand)] shadow-sm"
+                  ? "text-[var(--color-on-brand)]"
                   : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
               )}
             >
