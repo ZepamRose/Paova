@@ -1,0 +1,319 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { QrCode, Maximize2, Printer, ExternalLink, Copy, Check, Search, Download, Archive, Trash2, ChevronDown, FileText } from "lucide-react";
+import Link from "next/link";
+
+type StationDetailViewProps = {
+  stationId: string;
+  stationName: string;
+  templateTitle: string;
+  publicUrl: string;
+  qrDataUrl: string;
+  signaturesToday: number;
+  totalSignatures: number;
+  canArchive?: boolean;
+  canDelete?: boolean;
+};
+
+const motion = "duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
+
+export function StationDetailView({
+  stationId,
+  stationName,
+  templateTitle,
+  publicUrl,
+  qrDataUrl,
+  signaturesToday,
+  totalSignatures,
+  canArchive = true,
+  canDelete = true,
+}: StationDetailViewProps) {
+  const [kioskMode, setKioskMode] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showDangerZone, setShowDangerZone] = useState(false);
+
+  // Copy link handler
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  // Kiosk mode: auto-hide controls on mouse inactivity
+  useEffect(() => {
+    if (!kioskMode) return;
+
+    const handleMouseMove = () => {
+      setShowControls(true);
+      if (hideTimeout) clearTimeout(hideTimeout);
+      const timeout = setTimeout(() => setShowControls(false), 3000);
+      setHideTimeout(timeout);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    handleMouseMove(); // Initial trigger
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      if (hideTimeout) clearTimeout(hideTimeout);
+    };
+  }, [kioskMode, hideTimeout]);
+
+  if (kioskMode) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,#0f0f0f_0%,#0a0a0a_50%,#060606_100%)] overflow-hidden">
+        {/* Premium background layers */}
+        {/* Vignette subtile */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+
+        {/* Texture très légère */}
+        <div className="absolute inset-0 opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjEiLz48L3N2Zz4=')]" />
+
+        {/* Glow ambiant très subtil */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.01),transparent_60%)]" />
+
+        {/* Exit button - discret mais visible */}
+        <button
+          type="button"
+          onClick={() => setKioskMode(false)}
+          className="absolute top-4 right-4 z-20 inline-flex items-center gap-2 rounded-lg border border-white/8 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-white/30 backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:text-white/70"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+          <span>Quitter</span>
+        </button>
+
+        {/* Main content - centré et hiérarchisé */}
+        <div className="relative flex flex-col items-center gap-6 px-6 sm:gap-7 md:gap-8 lg:gap-10">
+
+          {/* 1. Nom de l'activité - En premier */}
+          <div className="text-center animate-[fadeIn_0.6s_ease-out]">
+            <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-white sm:text-[2rem] md:text-[2.5rem] lg:text-[3rem]">
+              {stationName}
+            </h1>
+          </div>
+
+          {/* 2. QR Code GÉANT - Le héros absolu */}
+          <div className="relative animate-[fadeIn_0.8s_ease-out_0.2s_both]" style={{ isolation: 'isolate' }}>
+            {/* Glow avec respiration très douce */}
+            <div
+              className="absolute -inset-8 rounded-[48px] bg-gradient-to-br from-white/8 via-white/4 to-transparent blur-[48px] animate-[breathe_6s_ease-in-out_infinite] sm:-inset-10 md:-inset-12"
+              style={{
+                animationTimingFunction: 'cubic-bezier(0.45, 0.05, 0.55, 0.95)'
+              }}
+            />
+
+            {/* Carte QR - grande et nette */}
+            <div className="relative rounded-[32px] border-[5px] border-white bg-white p-6 shadow-[0_24px_64px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.1)] sm:rounded-[40px] sm:p-8 md:p-10 lg:p-12">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrDataUrl}
+                alt={`QR Code pour ${stationName}`}
+                width={432}
+                height={432}
+                className="block w-[216px] h-[216px] sm:w-[270px] sm:h-[270px] md:w-[324px] md:h-[324px] lg:w-[432px] lg:h-[432px]"
+              />
+            </div>
+          </div>
+
+          {/* 3. Instructions - Claires et visibles */}
+          <div className="text-center space-y-1.5 animate-[fadeIn_1s_ease-out_0.4s_both] sm:space-y-2">
+            <p className="text-[1.5rem] font-bold leading-tight tracking-tight text-white sm:text-[1.75rem] md:text-[2rem] lg:text-[2.5rem]">
+              Scannez pour signer
+            </p>
+            <p className="text-[0.9375rem] font-medium leading-relaxed text-white/55 sm:text-[1.0625rem] md:text-[1.1875rem]">
+              Utilisez l&apos;appareil photo de votre téléphone
+            </p>
+          </div>
+
+          {/* 4. URL - Solution de secours très discrète */}
+          <div className="animate-[fadeIn_1.2s_ease-out_0.6s_both]">
+            <div className="inline-flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-1.5 backdrop-blur-sm sm:gap-2.5 sm:px-4 sm:py-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0 text-white/20 sm:w-3.5 sm:h-3.5">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <p className="font-mono text-[0.6875rem] font-medium text-white/25 sm:text-[0.75rem]">
+                {publicUrl.replace(/^https?:\/\//, "")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Animations CSS */}
+        <style jsx>{`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes breathe {
+            0%, 100% {
+              opacity: 0.3;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.05);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header actions */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#3b82f6,#2563eb)] shadow-[0_2px_8px_rgba(59,130,246,0.25)]">
+              <QrCode size={15} strokeWidth={2.5} className="text-white" />
+            </div>
+            <h1 className="text-[22px] font-bold tracking-tight text-[var(--color-foreground)]">
+              {stationName}
+            </h1>
+          </div>
+          <p className="text-[13.5px] text-[var(--color-muted)]">{templateTitle}</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setKioskMode(true)}
+            className={`group inline-flex h-9 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold text-[var(--color-foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[background-color,transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] hover:bg-[var(--color-surface-2)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]`}
+          >
+            <Maximize2 size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:scale-110" />
+            Mode kiosque
+          </button>
+          <Link
+            href={`/dashboard/groupes/${stationId}/print`}
+            className={`group inline-flex h-9 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] px-3.5 text-[13px] font-semibold text-[var(--color-foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[background-color,transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] hover:bg-[var(--color-surface-2)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]`}
+          >
+            <Printer size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:scale-110" />
+            Imprimer A4
+          </Link>
+        </div>
+      </div>
+
+      {/* QR Code section - HERO */}
+      <div className="relative overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,#3b82f6_3%,var(--color-surface)),var(--color-surface))] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04),0_0_0_1px_color-mix(in_srgb,var(--color-border)_30%,transparent)]">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,color-mix(in_srgb,#3b82f6_8%,transparent),transparent_70%)]" />
+
+        <div className="relative">
+          <div className="mb-3 text-center">
+            <h2 className="text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
+              Scannez pour signer
+            </h2>
+            <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
+              Pointez votre appareil photo vers le QR Code
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-5">
+            {/* QR Code avec carte premium */}
+            <div className="group relative">
+              <div className="absolute -inset-3 rounded-[28px] bg-[linear-gradient(135deg,#3b82f6,#2563eb)] opacity-[0.08] blur-xl transition-opacity duration-300 group-hover:opacity-[0.14]" />
+              <div className="relative rounded-[24px] border-2 border-white bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.02] group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.16),0_0_0_1px_rgba(0,0,0,0.04)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt={`QR Code — ${stationName}`} width={280} height={280} className="block" />
+              </div>
+            </div>
+
+            {/* URL avec bouton copie */}
+            <div className="w-full max-w-md">
+              <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]/70">
+                Lien public
+              </p>
+              <div className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <ExternalLink size={14} strokeWidth={2} className="shrink-0 text-[var(--color-muted)]/60" />
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 truncate font-mono text-[12.5px] text-[var(--color-foreground)]/80 transition-colors duration-150 hover:text-[#3b82f6]"
+                >
+                  {publicUrl.replace(/^https?:\/\//, "")}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(publicUrl);
+                  }}
+                  className="shrink-0 rounded-lg p-1.5 text-[var(--color-muted)] transition-[background-color,color,transform] duration-150 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] active:scale-95"
+                  title="Copier le lien"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Aujourd'hui */}
+        <div className="group relative overflow-hidden rounded-xl border border-[color-mix(in_srgb,#3b82f6_22%,var(--color-border))] bg-[linear-gradient(135deg,color-mix(in_srgb,#3b82f6_5%,var(--color-surface)),color-mix(in_srgb,#3b82f6_2%,var(--color-surface)))] p-5 shadow-[0_1px_3px_rgba(59,130,246,0.08)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(59,130,246,0.12)]">
+          {/* Decoration */}
+          <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-[#3b82f6] opacity-[0.06] blur-2xl transition-opacity duration-300 group-hover:opacity-[0.10]" />
+
+          <div className="relative">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[13px]">📊</span>
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,#3b82f6_70%,var(--color-foreground))]">
+                Aujourd&apos;hui
+              </div>
+            </div>
+            <div className="mb-1 text-[36px] font-bold leading-none tabular-nums tracking-tight text-[#3b82f6] transition-transform duration-200 group-hover:scale-[1.02]">
+              {signaturesToday}
+            </div>
+            <div className="text-[12px] font-medium text-[var(--color-muted)]">
+              signature{signaturesToday !== 1 ? "s" : ""}
+            </div>
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="group relative overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-border)_75%,transparent)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+          {/* Decoration */}
+          <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-[var(--color-foreground)] opacity-[0.02] blur-2xl transition-opacity duration-300 group-hover:opacity-[0.04]" />
+
+          <div className="relative">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[13px]">✨</span>
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                Total
+              </div>
+            </div>
+            <div className="mb-1 text-[36px] font-bold leading-none tabular-nums tracking-tight text-[var(--color-foreground)] transition-transform duration-200 group-hover:scale-[1.02]">
+              {totalSignatures}
+            </div>
+            <div className="text-[12px] font-medium text-[var(--color-muted)]">
+              depuis création
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

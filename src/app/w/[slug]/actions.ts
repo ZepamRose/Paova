@@ -381,6 +381,7 @@ export async function submitWaiver(formData: FormData) {
       answers: answers as unknown as Json,
       signature_url: signatureUrl,
       ip_address: ip,
+      represented_group_id: verifiedGroupId,
     })
     .select("id, signed_at")
     .single();

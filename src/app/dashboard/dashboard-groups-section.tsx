@@ -281,7 +281,16 @@ export function DashboardGroupsSection({
                             href={`/dashboard/groupes/${g.id}`}
                             className="block rounded-xl bg-[color-mix(in_srgb,var(--color-brand)_8%,var(--color-surface))] px-3 py-2.5 ring-1 ring-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] transition-[background-color,ring-color] duration-[150ms] hover:bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                           >
-                            {sigState.isRepMode ? (
+                            {sigState.isStation ? (
+                              <p className="text-[12.5px] font-medium text-[var(--color-foreground)]/80">
+                                <span className="font-semibold text-[var(--color-brand)]">
+                                  {sigState.statusLabel}
+                                </span>
+                                <span className="ml-1.5 text-[var(--color-muted)]/60">
+                                  · Signature libre
+                                </span>
+                              </p>
+                            ) : sigState.isRepMode ? (
                               <p className="text-[12.5px] font-medium text-[var(--color-foreground)]/80">
                                 {sigState.repSigned ? (
                                   <span className="font-semibold text-[var(--color-brand)]">✓ Représentant signé</span>

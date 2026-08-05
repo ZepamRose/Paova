@@ -85,7 +85,7 @@ export function ThankYouPdfButton({
   const busy = status === "preparing";
 
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full flex-col gap-1.5">
       <button
         type="button"
         onClick={handleClick}
@@ -100,7 +100,7 @@ export function ThankYouPdfButton({
                 ? "Échec du téléchargement — réessayer"
                 : "Télécharger le PDF"
         }
-        className={`relative inline-flex h-11 w-full items-center justify-center gap-2 overflow-hidden ${radiusClass} border px-5 text-sm font-semibold transition-[transform,background-color,border-color,box-shadow,filter,opacity] ${MOTION} hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-85`}
+        className={`relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden ${radiusClass} border px-5 text-[13.5px] font-semibold transition-[transform,background-color,border-color,box-shadow,filter,opacity] ${MOTION} hover:-translate-y-[1.5px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.988] disabled:pointer-events-none disabled:opacity-80`}
         style={
           emphasis
             ? {
@@ -108,12 +108,12 @@ export function ThankYouPdfButton({
                 borderColor: brandColor,
                 color: "#fff",
                 boxShadow:
-                  "0 1px 0 rgba(255,255,255,0.12) inset, 0 1px 2px rgba(0,0,0,0.06), 0 10px 22px -12px rgba(0,0,0,0.32)",
+                  "0 1px 0 rgba(255,255,255,0.14) inset, 0 1px 2px rgba(0,0,0,0.08), 0 12px 26px -14px rgba(0,0,0,0.36)",
               }
             : {
                 backgroundColor:
-                  "color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-2))",
-                borderColor: `color-mix(in srgb, ${brandColor} 38%, var(--color-border))`,
+                  "color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-2))",
+                borderColor: `color-mix(in srgb, ${brandColor} 36%, var(--color-border))`,
                 color: brandColor,
                 boxShadow: "var(--elev-1)",
               }
@@ -194,7 +194,7 @@ export function ThankYouPdfButton({
         </AnimatePresence>
       </button>
 
-      <p className="text-center text-[12px] leading-relaxed text-[var(--color-muted)]/68">
+      <p className="text-center text-[11.5px] leading-relaxed text-[var(--color-muted)]/62">
         {status === "error"
           ? "Le téléchargement a pris trop de temps. Réessayez."
           : `Conservez votre exemplaire de ${documentLabel}.`}

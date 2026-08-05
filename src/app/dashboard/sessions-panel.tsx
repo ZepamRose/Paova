@@ -148,8 +148,11 @@ function TabContent({ sessions, viewMode, isCompleted, tab, appUrl }: {
 }) {
   if (sessions.length === 0) return <EmptyState tab={tab} />;
 
-  // Stations : toujours en mode cards, pas de liste
+  // Stations : supporter les deux modes (liste et grille)
   if (tab === "stations") {
+    if (viewMode === "list") {
+      return <SessionTimeline sessions={sessions} isCompleted={false} appUrl={appUrl} />;
+    }
     return (
       <AnimatedSessionGrid layoutId={tab}>
         {sessions.map((station) => (

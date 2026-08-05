@@ -379,12 +379,20 @@ export function SessionCard({ session, variant = "ongoing", appUrl }: SessionCar
 
       {/* État temporel & temps - Information principale */}
       {variant !== "completed" && timeInfo.startTime && (
-        <LiveCountdown
-          startTime={timeInfo.startTime}
-          endTime={timeInfo.endTime}
-          format="full"
-          showIndicator={true}
-        />
+        <div className="space-y-1">
+          <LiveCountdown
+            startTime={timeInfo.startTime}
+            endTime={timeInfo.endTime}
+            format="full"
+            showIndicator={true}
+          />
+          {/* Afficher l'heure de fin si elle existe */}
+          {timeInfo.endTime && (
+            <div className="text-[10px] font-medium text-[var(--color-muted)]/70">
+              Jusqu&apos;à {timeInfo.endTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Compteur participants + barre de progression */}

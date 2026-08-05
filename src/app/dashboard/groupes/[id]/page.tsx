@@ -15,7 +15,6 @@ import {
 } from "@/lib/groups/lifecycle";
 import {
   computeSessionPhase,
-  formatTimeRange,
 } from "@/lib/session-time";
 import { AddParticipantForm } from "../add-participant-form";
 import { AddRosterForm } from "../add-roster-form";
@@ -27,6 +26,7 @@ import { GroupExportButtons } from "../group-export-buttons";
 import { LiveRefresh } from "../live-refresh";
 import { EditSessionButton } from "./edit-session-button";
 import { StationDetailView } from "../station-detail-view";
+import { SessionTimeDisplay } from "./session-time-display";
 import {
   archiveGroup,
   setGroupStatus,
@@ -46,22 +46,6 @@ const card = "rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** "Aujourd'hui", "Demain", "Hier", ou date longue fr */
-function sessionDateLabel(date: Date): string {
-  const now = new Date();
-  const d = (d: Date) => d.toDateString();
-  if (d(date) === d(now)) return "Aujourd'hui";
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  if (d(date) === d(tomorrow)) return "Demain";
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (d(date) === d(yesterday)) return "Hier";
-  return date.toLocaleDateString("fr-FR", {
-    weekday: "short",
-    day: "numeric",
-    month: "long",
-  });
-}
 
 /** "14:03" */
 function fmtTime(iso: string): string {
@@ -194,6 +178,49 @@ export default async function SessionDetailPage({
 
   // Station view: simplified interface for continuous signature collection
   if (isStation) {
+    // Fetch signatures for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data: todaySignatures } = await supabase
+      .from("submission")
+      .select("id")
+      .eq("represented_group_id", group.id)
+      .gte("signed_at", today.toISOString());
+
+    const signaturesToday = todaySignatures?.length ?? 0;
+
+    // Fetch total signatures
+    const { data: allSignatures } = await supabase
+      .from("submission")
+      .select("id")
+      .eq("represented_group_id", group.id);
+
+    const totalSignatures = allSignatures?.length ?? 0;
+
+    // Fetch last signature
+    const { data: lastSig } = await supabase
+      .from("submission")
+      .select("signed_at")
+      .eq("represented_group_id", group.id)
+      .order("signed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const lastSignatureAt = lastSig?.signed_at ? new Date(lastSig.signed_at) : null;
+
+    // Fetch recent signatures
+    const { data: recentSigs } = await supabase
+      .from("submission")
+      .select("signer_name, signed_at")
+      .eq("represented_group_id", group.id)
+      .order("signed_at", { ascending: false })
+      .limit(5);
+
+    const recentSignatures = (recentSigs ?? []).map(sig => ({
+      name: sig.signer_name ?? "Anonyme",
+      signedAt: new Date(sig.signed_at),
+    }));
+
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-4 py-7 sm:px-6 sm:py-8">
         <nav>
@@ -213,8 +240,11 @@ export default async function SessionDetailPage({
           templateTitle={template?.title ?? "Formulaire"}
           publicUrl={publicUrl}
           qrDataUrl={qrDataUrl}
-          signaturesToday={total}
-          totalSignatures={total}
+          signaturesToday={signaturesToday}
+          totalSignatures={totalSignatures}
+          lastSignatureAt={lastSignatureAt}
+          recentSignatures={recentSignatures}
+          createdAt={new Date(group.created_at)}
         />
       </main>
     );
@@ -226,16 +256,6 @@ export default async function SessionDetailPage({
   const phase = computeSessionPhase(status, startTime, endTime, allSigned);
   const isArchived = phase === "archived";
   const isDone = phase === "done";
-
-  // Session time header: "Aujourd'hui 14:00 – 15:30"
-  const startDate = startTime ? new Date(startTime) : null;
-  const endDate = endTime ? new Date(endTime) : null;
-  const timeLabel =
-    startDate && endDate
-      ? `${sessionDateLabel(startDate)} ${formatTimeRange(startDate, endDate)}`
-      : startDate
-        ? sessionDateLabel(startDate)
-        : null;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-4 py-7 sm:px-6 sm:py-8">
@@ -264,12 +284,7 @@ export default async function SessionDetailPage({
             endTime={endTime}
             allSigned={allSigned}
           />
-          {timeLabel ? (
-            <>
-              <span className="text-[var(--color-muted)]/30">·</span>
-              <span className="text-[var(--color-muted)]">{timeLabel}</span>
-            </>
-          ) : null}
+          <SessionTimeDisplay startTime={startTime} endTime={endTime} />
           {durationMinutes && durationMinutes > 0 ? (
             <>
               <span className="text-[var(--color-muted)]/30">·</span>

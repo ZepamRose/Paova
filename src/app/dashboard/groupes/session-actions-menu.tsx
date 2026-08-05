@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical, Eye, Edit2, CheckCircle, Archive, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { setGroupStatus, archiveGroup, deleteGroup } from "./actions";
@@ -20,17 +21,39 @@ export function SessionActionsMenu({
   variant = "card",
 }: SessionActionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
+
+    // Calculate menu position
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 180, // menu width
+      });
+    }
+
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -114,88 +137,93 @@ export function SessionActionsMenu({
 
   return (
     <>
-      <div ref={menuRef} className="relative z-50" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen(!open);
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+        aria-label="Actions"
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={buttonClass}
+      >
+        <MoreVertical size={variant === "modal" ? 16 : 15} strokeWidth={2} />
+      </button>
+
+      {open && mounted && menuPosition && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          className="fixed z-[9999] min-w-[180px] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-1 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12),0_0_0_0.5px_color-mix(in_srgb,var(--color-border)_40%,transparent)] animate-in fade-in slide-in-from-top-2 duration-150"
+          style={{
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
           }}
-          aria-label="Actions"
-          aria-expanded={open}
-          aria-haspopup="true"
-          className={buttonClass}
+          onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical size={variant === "modal" ? 16 : 15} strokeWidth={2} />
-        </button>
-
-        {open && (
-          <div
-            role="menu"
-            className="absolute right-0 top-[calc(100%+4px)] z-[9999] min-w-[180px] overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-1 shadow-[var(--elev-3),0_0_0_0.5px_color-mix(in_srgb,var(--color-border)_40%,transparent)] animate-in fade-in slide-in-from-top-2 duration-150"
-            onClick={(e) => e.stopPropagation()}
+          <Link
+            href={`/dashboard/groupes/${sessionId}`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className={menuItemClass}
           >
-            <Link
-              href={`/dashboard/groupes/${sessionId}`}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className={menuItemClass}
-            >
-              <Eye size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
-              Voir l&apos;activité
-            </Link>
+            <Eye size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
+            Voir l&apos;activité
+          </Link>
 
-            <Link
-              href={`/dashboard/groupes/${sessionId}?edit=true`}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className={menuItemClass}
-            >
-              <Edit2 size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
-              Modifier
-            </Link>
+          <Link
+            href={`/dashboard/groupes/${sessionId}?edit=true`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className={menuItemClass}
+          >
+            <Edit2 size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
+            Modifier
+          </Link>
 
-            {!isCompleted && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={handleTerminate}
-                disabled={isTerminating}
-                className={menuItemClass}
-              >
-                <CheckCircle size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
-                {isTerminating ? "Fermeture..." : "Terminer maintenant"}
-              </button>
-            )}
-
-            <div className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_50%,transparent)]" />
-
+          {!isCompleted && (
             <button
               type="button"
               role="menuitem"
-              onClick={handleArchive}
-              disabled={isArchiving}
+              onClick={handleTerminate}
+              disabled={isTerminating}
               className={menuItemClass}
             >
-              <Archive size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
-              {isArchiving ? "Archivage..." : "Archiver"}
+              <CheckCircle size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
+              {isTerminating ? "Fermeture..." : "Terminer maintenant"}
             </button>
+          )}
 
-            <div className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_50%,transparent)]" />
+          <div className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_50%,transparent)]" />
 
-            <button
-              type="button"
-              role="menuitem"
-              onClick={openDeleteDialog}
-              disabled={isDeleting}
-              className={`${menuItemClass} text-[color-mix(in_srgb,#dc2626_80%,var(--color-foreground))] hover:bg-[color-mix(in_srgb,#dc2626_7%,var(--color-surface-2))] hover:text-[color-mix(in_srgb,#dc2626_90%,var(--color-foreground))]`}
-            >
-              <Trash2 size={14} strokeWidth={1.9} />
-              {isDeleting ? "Suppression..." : "Supprimer"}
-            </button>
-          </div>
-        )}
-      </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleArchive}
+            disabled={isArchiving}
+            className={menuItemClass}
+          >
+            <Archive size={14} strokeWidth={1.9} className="text-[var(--color-muted)]" />
+            {isArchiving ? "Archivage..." : "Archiver"}
+          </button>
+
+          <div className="my-1 h-px bg-[color-mix(in_srgb,var(--color-border)_50%,transparent)]" />
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={openDeleteDialog}
+            disabled={isDeleting}
+            className={`${menuItemClass} text-[color-mix(in_srgb,#dc2626_80%,var(--color-foreground))] hover:bg-[color-mix(in_srgb,#dc2626_7%,var(--color-surface-2))] hover:text-[color-mix(in_srgb,#dc2626_90%,var(--color-foreground))]`}
+          >
+            <Trash2 size={14} strokeWidth={1.9} />
+            {isDeleting ? "Suppression..." : "Supprimer"}
+          </button>
+        </div>,
+        document.body
+      )}
 
       {/* ── Confirmation modal ──────────────────────────────────────── */}
       <ConfirmDialog

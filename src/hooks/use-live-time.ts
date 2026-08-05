@@ -223,31 +223,41 @@ function formatSmartCountdownText(ms: number, prefix: string): string {
 }
 
 /**
- * Formatage du temps écoulé
+ * Formatage du temps écoulé - affichage naturel et lisible
  */
 function formatElapsedText(ms: number): string {
-  if (ms < 0) return "depuis maintenant";
+  if (ms < 0) return "0 min";
 
-  // Moins d'1 heure : afficher les minutes
-  if (ms < HOUR) {
-    const minutes = Math.floor(ms / MINUTE);
-    return `depuis ${minutes} min`;
-  }
-
-  // Moins de 24 heures : afficher les heures
-  if (ms < DAY) {
-    const hours = Math.floor(ms / HOUR);
-    return `depuis ${hours} h`;
-  }
-
-  // Exactement 1 jour (24h à 48h)
-  if (ms < 2 * DAY) {
-    return "depuis hier";
-  }
-
-  // 2 jours ou plus
+  const totalMinutes = Math.floor(ms / MINUTE);
+  const hours = Math.floor(ms / HOUR);
   const days = Math.floor(ms / DAY);
-  return `depuis ${days} jours`;
+
+  // 0 à 59 min → "26 min"
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`;
+  }
+
+  // 1 h à 23 h → "2 h 15"
+  if (hours < 24) {
+    const minutes = Math.floor((ms % HOUR) / MINUTE);
+    return minutes > 0 ? `${hours} h ${minutes}` : `${hours} h`;
+  }
+
+  // 24 h à 47 h → "1 jour 2 h"
+  if (days === 1) {
+    const remainingHours = Math.floor((ms % DAY) / HOUR);
+    return remainingHours > 0 ? `1 jour ${remainingHours} h` : `1 jour`;
+  }
+
+  // 48 h+ → "2 jours", "3 jours", etc.
+  // Affiche les heures seulement si < 3 jours
+  if (days < 3) {
+    const remainingHours = Math.floor((ms % DAY) / HOUR);
+    return remainingHours > 0 ? `${days} jours ${remainingHours} h` : `${days} jours`;
+  }
+
+  // 3+ jours → juste les jours
+  return `${days} jours`;
 }
 
 /**
@@ -267,23 +277,40 @@ function formatCountdownShort(ms: number): string {
 }
 
 /**
- * Format court pour le temps écoulé
+ * Format court pour le temps écoulé - même logique que formatElapsedText
  */
 function formatElapsedShort(ms: number): string {
-  if (ms < HOUR) {
-    const minutes = Math.floor(ms / MINUTE);
-    return `${minutes} min`;
-  }
+  if (ms < 0) return "0 min";
 
-  if (ms < DAY) {
-    const hours = Math.floor(ms / HOUR);
-    const minutes = Math.floor((ms % HOUR) / MINUTE);
-    return `${hours}h${String(minutes).padStart(2, "0")}`;
-  }
-
+  const totalMinutes = Math.floor(ms / MINUTE);
+  const hours = Math.floor(ms / HOUR);
   const days = Math.floor(ms / DAY);
-  const hours = Math.floor((ms % DAY) / HOUR);
-  return `${days}j ${hours}h`;
+
+  // 0 à 59 min → "26 min"
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`;
+  }
+
+  // 1 h à 23 h → "2h15"
+  if (hours < 24) {
+    const minutes = Math.floor((ms % HOUR) / MINUTE);
+    return minutes > 0 ? `${hours}h${String(minutes).padStart(2, "0")}` : `${hours}h`;
+  }
+
+  // 1 jour → "1j 2h"
+  if (days === 1) {
+    const remainingHours = Math.floor((ms % DAY) / HOUR);
+    return remainingHours > 0 ? `1j ${remainingHours}h` : `1j`;
+  }
+
+  // 2+ jours
+  if (days < 3) {
+    const remainingHours = Math.floor((ms % DAY) / HOUR);
+    return remainingHours > 0 ? `${days}j ${remainingHours}h` : `${days}j`;
+  }
+
+  // 3+ jours
+  return `${days}j`;
 }
 
 // ─── useAutoRefresh Hook ─────────────────────────────────────────────────────

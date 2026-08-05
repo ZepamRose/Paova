@@ -37,42 +37,42 @@ function useShowKioskCta(forcedBorne: boolean) {
 function SuccessMark({ reduced }: { reduced: boolean }) {
   return (
     <div
-      className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center"
+      className="relative flex h-[5.25rem] w-[5.25rem] items-center justify-center"
       aria-hidden
     >
       {!reduced ? (
         <>
           <motion.span
-            className="absolute inset-[-8px] rounded-full bg-[color-mix(in_srgb,var(--color-brand)_18%,transparent)]"
-            initial={{ scale: 0.75, opacity: 0 }}
-            animate={{ scale: [0.9, 1.08, 1], opacity: [0, 0.45, 0.22] }}
-            transition={{ duration: 0.65, ease: EASE }}
+            className="absolute inset-[-10px] rounded-full bg-[color-mix(in_srgb,var(--color-brand)_15%,transparent)]"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: [0.92, 1.06, 1], opacity: [0, 0.5, 0.2] }}
+            transition={{ duration: 0.75, ease: EASE }}
           />
           <motion.span
-            className="absolute inset-0 rounded-full ring-1 ring-[color-mix(in_srgb,var(--color-brand)_32%,transparent)]"
-            initial={{ scale: 0.7, opacity: 0.55 }}
-            animate={{ scale: 1.35, opacity: 0 }}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
+            className="absolute inset-0 rounded-full ring-[1.5px] ring-[color-mix(in_srgb,var(--color-brand)_28%,transparent)]"
+            initial={{ scale: 0.75, opacity: 0.6 }}
+            animate={{ scale: 1.4, opacity: 0 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 0.08 }}
           />
         </>
       ) : null}
       <motion.div
-        className="relative flex h-full w-full items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_14%,transparent)] text-[var(--color-brand)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-brand)_24%,transparent),0_10px_24px_-12px_color-mix(in_srgb,var(--color-brand)_40%,transparent)]"
-        initial={reduced ? false : { scale: 0.78, opacity: 0 }}
+        className="relative flex h-full w-full items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-brand)_22%,transparent),0_12px_28px_-14px_color-mix(in_srgb,var(--color-brand)_45%,transparent),0_4px_12px_-4px_color-mix(in_srgb,var(--color-brand)_20%,transparent)]"
+        initial={reduced ? false : { scale: 0.75, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={
           reduced
             ? { duration: 0 }
-            : { type: "spring", stiffness: 420, damping: 24, delay: 0.04 }
+            : { type: "spring", stiffness: 380, damping: 26, delay: 0.05 }
         }
       >
         <svg
-          width="32"
-          height="32"
+          width="36"
+          height="36"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2.35"
+          strokeWidth="2.25"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -85,11 +85,11 @@ function SuccessMark({ reduced }: { reduced: boolean }) {
                 ? { duration: 0 }
                 : {
                     pathLength: {
-                      duration: 0.4,
+                      duration: 0.42,
                       ease: EASE,
-                      delay: 0.2,
+                      delay: 0.22,
                     },
-                    opacity: { duration: 0.1, delay: 0.2 },
+                    opacity: { duration: 0.08, delay: 0.22 },
                   }
             }
           />
@@ -118,22 +118,22 @@ function CopyReference({ value }: { value: string }) {
       onClick={copy}
       aria-label={copied ? "Référence copiée" : "Copier la référence"}
       title={copied ? "Copié" : "Copier"}
-      className={`relative inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-[var(--color-muted)]/70 transition-[color,background-color,transform] ${MOTION} before:absolute before:-inset-1 before:content-[''] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.97]`}
+      className={`relative inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[var(--color-muted)]/60 transition-[color,background-color,transform] ${MOTION} before:absolute before:-inset-0.5 before:content-[''] hover:bg-[var(--color-surface-2)]/60 hover:text-[var(--color-foreground)]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:scale-[0.96]`}
     >
       {copied ? (
         <>
           <Check
-            size={13}
-            strokeWidth={2.2}
+            size={12}
+            strokeWidth={2.4}
             className="text-[var(--color-brand)]"
             aria-hidden
           />
-          <span className="text-[11px] font-medium text-[var(--color-brand)]">
+          <span className="text-[10.5px] font-medium text-[var(--color-brand)]">
             Copié
           </span>
         </>
       ) : (
-        <Copy size={13} strokeWidth={1.85} aria-hidden />
+        <Copy size={12} strokeWidth={1.9} aria-hidden />
       )}
     </button>
   );
@@ -150,16 +150,16 @@ function InfoRow({
 }) {
   return (
     <li
-      className={`grid grid-cols-1 gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[6.75rem_minmax(0,1fr)] sm:items-center sm:gap-3 ${
+      className={`grid grid-cols-1 gap-0.5 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-3 ${
         last
           ? ""
-          : "border-b border-[color-mix(in_srgb,var(--color-border)_55%,transparent)]"
+          : "border-b border-[color-mix(in_srgb,var(--color-border)_48%,transparent)]"
       }`}
     >
-      <span className="text-[11.5px] font-medium tracking-tight text-[var(--color-muted)]">
+      <span className="text-[11px] font-medium tracking-tight text-[var(--color-muted)]/85">
         {label}
       </span>
-      <div className="min-w-0 text-[13.5px] font-medium tracking-tight text-[var(--color-foreground)] sm:text-right">
+      <div className="min-w-0 text-[13px] font-medium tracking-tight text-[var(--color-foreground)] sm:text-right">
         {children}
       </div>
     </li>
@@ -252,12 +252,12 @@ export function MerciView({
         />
       </div>
 
-      <main className="relative mx-auto flex min-h-screen max-w-[26.5rem] flex-col items-center justify-center gap-6 px-5 py-10 sm:px-6 sm:py-12">
+      <main className="relative mx-auto flex min-h-screen max-w-[26.5rem] flex-col items-center justify-center gap-4 px-5 py-8 sm:px-6 sm:py-10">
         <motion.section
           initial={reduced ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.34, ease: EASE }}
-          className="w-full rounded-[1.35rem] border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-foreground))] bg-[var(--color-surface)] px-6 py-8 shadow-[var(--elev-3)] sm:px-8 sm:py-9"
+          className="w-full rounded-[1.25rem] border border-[color-mix(in_srgb,var(--color-border)_72%,var(--color-foreground))] bg-[var(--color-surface)] px-6 py-7 shadow-[var(--elev-3)] sm:px-7 sm:py-8"
         >
           <div className="flex flex-col items-center text-center">
             {logoUrl ? (
@@ -269,7 +269,7 @@ export function MerciView({
                   ease: EASE,
                   delay: reduced ? 0 : 0.02,
                 }}
-                className="mb-5 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[var(--color-surface)] p-1.5 shadow-[var(--elev-1)]"
+                className="mb-4 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-1.5 shadow-[var(--elev-1)]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -287,7 +287,7 @@ export function MerciView({
                   ease: EASE,
                   delay: reduced ? 0 : 0.02,
                 }}
-                className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl text-[13px] font-semibold text-[var(--color-on-brand)] shadow-[var(--elev-1)]"
+                className="mb-4 flex h-9 w-9 items-center justify-center rounded-xl text-[12.5px] font-semibold text-[var(--color-on-brand)] shadow-[var(--elev-1)]"
                 style={{ backgroundColor: brandColor }}
                 aria-hidden
               >
@@ -305,18 +305,18 @@ export function MerciView({
                 ease: EASE,
                 delay: reduced ? 0 : 0.26,
               }}
-              className="mt-5 flex flex-col items-center"
+              className="mt-4 flex flex-col items-center"
             >
-              <h1 className="text-[1.5rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.6rem]">
+              <h1 className="text-[1.65rem] font-semibold tracking-tight text-[var(--color-foreground)] sm:text-[1.75rem]">
                 {title}
               </h1>
-              <p className="mt-2.5 max-w-[22rem] whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--color-muted)]">
+              <p className="mt-2 max-w-[22rem] whitespace-pre-wrap text-[13.5px] leading-relaxed text-[var(--color-muted)]">
                 {message}
               </p>
               {emailFailed ? (
                 <p
                   role="status"
-                  className="mt-3 max-w-[22rem] rounded-lg border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_55%,var(--color-background))] px-3 py-2.5 text-[13px] leading-relaxed text-[var(--color-foreground)]/85"
+                  className="mt-2.5 max-w-[22rem] rounded-lg border border-[color-mix(in_srgb,var(--color-border)_65%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_50%,var(--color-background))] px-3 py-2 text-[12.5px] leading-relaxed text-[var(--color-foreground)]/85"
                 >
                   L&apos;e-mail de confirmation n&apos;a pas pu être envoyé.
                   {pdfHref
@@ -335,7 +335,7 @@ export function MerciView({
                   ease: EASE,
                   delay: reduced ? 0 : 0.36,
                 }}
-                className="mt-7 w-full rounded-xl border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_42%,var(--color-background))] px-4 py-1 text-left sm:px-5"
+                className="mt-5 w-full rounded-[0.875rem] border border-[color-mix(in_srgb,var(--color-border)_55%,transparent)] bg-[color-mix(in_srgb,var(--color-surface-2)_38%,var(--color-background))] px-4 py-1 text-left sm:px-4.5"
               >
                 <ul className="flex flex-col">
                   {businessName ? (
@@ -351,7 +351,7 @@ export function MerciView({
                   {reference ? (
                     <InfoRow label="Référence" last>
                       <span className="inline-flex items-center justify-end gap-1">
-                        <span className="font-mono text-[12.5px] tracking-tight text-[var(--color-foreground)]/90">
+                        <span className="font-mono text-[12px] tracking-tight text-[var(--color-foreground)]/90">
                           {reference}
                         </span>
                         <CopyReference value={reference} />
@@ -371,18 +371,18 @@ export function MerciView({
                   ease: EASE,
                   delay: reduced ? 0 : 0.44,
                 }}
-                className="mt-7 flex w-full flex-col gap-2.5"
+                className="mt-5 flex w-full flex-col gap-2.5"
               >
                 {showKioskCta ? (
                   <div className="flex w-full flex-col gap-2">
                     <Link
                       href={`/w/${slug}${borne ? "?borne=1" : ""}`}
-                      className={`inline-flex h-11 w-full items-center justify-center ${radiusClass} px-5 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_1px_2px_rgba(0,0,0,0.06),0_10px_22px_-12px_rgba(0,0,0,0.32)] transition-[transform,filter,box-shadow] ${MOTION} hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99]`}
+                      className={`inline-flex h-12 w-full items-center justify-center ${radiusClass} px-5 text-[13.5px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.08),0_12px_26px_-14px_rgba(0,0,0,0.36)] transition-[transform,filter,box-shadow] ${MOTION} hover:-translate-y-[1.5px] hover:shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_2px_4px_rgba(0,0,0,0.1),0_16px_32px_-16px_rgba(0,0,0,0.42)] hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.988]`}
                       style={{ backgroundColor: brandColor }}
                     >
                       Faire signer la personne suivante
                     </Link>
-                    <p className="text-center text-[12px] leading-relaxed text-[var(--color-muted)]/65">
+                    <p className="text-center text-[11.5px] leading-relaxed text-[var(--color-muted)]/60">
                       Ouvre un nouveau formulaire sur cette borne.
                     </p>
                   </div>
@@ -401,24 +401,21 @@ export function MerciView({
                     href={externalCtaUrl}
                     rel="noopener noreferrer"
                     referrerPolicy="no-referrer"
-                    className={`inline-flex h-11 w-full items-center justify-center ${radiusClass} border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-surface-2))] px-5 text-sm font-medium text-[var(--color-foreground)]/80 shadow-[var(--elev-1)] transition-[transform,background-color,border-color,color,box-shadow] ${MOTION} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_88%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.99]`}
+                    className={`inline-flex h-11 w-full items-center justify-center ${radiusClass} border border-[color-mix(in_srgb,var(--color-border)_68%,transparent)] bg-[color-mix(in_srgb,var(--color-surface)_90%,var(--color-surface-2))] px-5 text-[13.5px] font-medium text-[var(--color-foreground)]/80 shadow-[var(--elev-1)] transition-[transform,background-color,border-color,color,box-shadow] ${MOTION} hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-border)_85%,var(--color-foreground))] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)] hover:shadow-[var(--elev-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] active:translate-y-0 active:scale-[0.988]`}
                   >
                     {externalCtaLabel}
                   </a>
                 ) : null}
-                {!showKioskCta && !externalCtaUrl ? (
-                  <p className="pt-0.5 text-center text-[12.5px] leading-relaxed text-[var(--color-muted)]/70">
-                    Vous pouvez fermer cette page en toute sécurité.
-                  </p>
-                ) : null}
               </motion.div>
-            ) : !showKioskCta && !externalCtaUrl ? (
-              <p className="mt-6 text-[12.5px] leading-relaxed text-[var(--color-muted)]/70">
-                Vous pouvez fermer cette page en toute sécurité.
-              </p>
             ) : null}
           </div>
         </motion.section>
+
+        {!showKioskCta && !externalCtaUrl && !hasActions ? (
+          <p className="text-[12px] leading-relaxed text-[var(--color-muted)]/65">
+            Vous pouvez fermer cette page en toute sécurité.
+          </p>
+        ) : null}
 
         <footer className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 text-[11.5px] text-[var(--color-muted)]/75">
           <span className="font-medium tracking-tight text-[var(--color-muted)]/90">

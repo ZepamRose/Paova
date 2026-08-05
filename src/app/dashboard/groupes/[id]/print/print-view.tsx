@@ -34,7 +34,7 @@ export function PrintView({
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#3b82f6] px-4 text-[13px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#3b82f6] px-4 text-[13px] font-semibold text-white shadow-lg transition-[transform,filter] duration-200 hover:scale-105 hover:brightness-110 active:scale-[0.98]"
         >
           <Printer size={16} strokeWidth={2} />
           Imprimer
@@ -42,81 +42,65 @@ export function PrintView({
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-foreground)] shadow-sm transition-transform hover:scale-105"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-foreground)] shadow-sm transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-[var(--color-surface-2)] active:scale-[0.98]"
         >
           <X size={18} strokeWidth={2} />
         </button>
       </div>
 
-      {/* Print content */}
-      <div className="min-h-screen bg-white p-8 print:p-0">
-        <div className="mx-auto flex min-h-screen max-w-[210mm] flex-col items-center justify-center gap-8 print:gap-12">
+      {/* Print content - Affiche A4 minimaliste */}
+      <div className="min-h-screen bg-white print:bg-white">
+        <div className="mx-auto flex min-h-screen max-w-[210mm] flex-col items-center justify-center gap-8 px-8 print:gap-12 print:px-0">
 
-          {/* Header */}
-          <div className="text-center">
-            <h1 className="mb-2 text-[32px] font-bold tracking-tight text-black print:text-[40px]">
-              {stationName}
+          {/* QR Code - 70% de l'attention visuelle */}
+          <div className="flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrDataUrl}
+              alt="QR Code"
+              width={800}
+              height={800}
+              className="block w-[320px] h-[320px] print:w-[500px] print:h-[500px]"
+            />
+          </div>
+
+          {/* Instructions - 20% + 10% */}
+          <div className="text-center space-y-2 print:space-y-3">
+            <h1 className="text-[32px] font-bold leading-tight tracking-tight text-black print:text-[44px]">
+              Scannez pour signer
             </h1>
-            <p className="text-[18px] text-gray-600 print:text-[20px]">
-              {templateTitle}
+            <p className="text-[16px] font-normal leading-relaxed text-gray-600 print:text-[20px]">
+              Utilisez l&apos;appareil photo de votre téléphone
             </p>
           </div>
 
-          {/* QR Code - Large */}
-          <div className="flex flex-col items-center gap-6">
-            <div className="rounded-3xl bg-white p-8 shadow-2xl print:rounded-none print:p-0 print:shadow-none">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrDataUrl}
-                alt={`QR Code pour ${stationName}`}
-                width={400}
-                height={400}
-                className="block print:w-[500px] print:h-[500px]"
-              />
-            </div>
-
-            {/* Instructions */}
-            <div className="text-center">
-              <p className="mb-3 text-[24px] font-semibold text-black print:text-[28px]">
-                Scannez pour signer votre décharge
-              </p>
-              <p className="text-[16px] text-gray-600 print:text-[18px]">
-                Utilisez l&apos;appareil photo de votre téléphone
-              </p>
-            </div>
-          </div>
-
-          {/* URL */}
-          <div className="rounded-2xl border-2 border-gray-200 bg-gray-50 px-6 py-4 print:border-gray-300 print:bg-white">
-            <p className="text-center font-mono text-[14px] font-medium text-gray-700 print:text-[16px]">
-              {publicUrl}
-            </p>
-          </div>
-
-          {/* Footer note */}
-          <div className="text-center text-[12px] text-gray-500 print:text-[14px]">
-            <p>Ce QR code reste actif en permanence</p>
-            <p className="mt-1">Aucune limite de signatures</p>
-          </div>
         </div>
       </div>
 
-      {/* Print-specific styles */}
+      {/* Print-specific styles - Affiche A4 pure */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 15mm;
+            margin: 20mm 15mm;
           }
 
           body {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+            margin: 0;
+            padding: 0;
           }
 
           * {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+          }
+
+          /* Force une seule page */
+          html, body {
+            height: 100%;
+            overflow: hidden;
           }
         }
       `}</style>
