@@ -28,7 +28,7 @@ export function CompactToggle<T extends string | boolean>({
             "relative flex flex-1 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium transition-all duration-150",
             value === opt.value
               ? "bg-[var(--color-brand)] text-[var(--color-on-brand)] shadow-sm"
-              : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+              : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)]/50 hover:text-[var(--color-foreground)]"
           )}
         >
           {value === opt.value && <Check size={12} strokeWidth={2.5} aria-hidden />}

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock, Building2, CalendarClock, Hand } from "lucide-react";
 import type { ClosingMode, OpeningHours } from "@/lib/groups/lifecycle";
-import { TimePicker } from "@/components/ui/datetime-picker";
 import { getBusinessCloseTime } from "@/lib/groups/lifecycle";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +51,7 @@ export function CompactClosingModePicker({
   onValidationChange?: (valid: boolean) => void;
 }) {
   const [durationOpen, setDurationOpen] = useState(false);
+  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   const businessCloseTime =
     mode === "business_close" && startDate
@@ -90,31 +90,36 @@ export function CompactClosingModePicker({
   }, [businessCloseValidation.valid, onValidationChange]);
 
   const visibleModes = MODE_OPTIONS.filter((m) => m.value !== "business_close" || openingHours);
+  const activeIndex = visibleModes.findIndex((m) => m.value === mode);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="relative inline-flex h-8 items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
         {/* Pill animé */}
-        <motion.div
-          layoutId="closing-mode-pill"
-          className="absolute inset-0.5 rounded-md bg-[var(--color-brand)] shadow-sm"
-          initial={false}
-          animate={{
-            x: visibleModes.findIndex((m) => m.value === mode) * (100 / visibleModes.length) + "%",
-            width: `calc(${100 / visibleModes.length}% - 2px)`,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 30,
-          }}
-        />
+        {activeIndex >= 0 && (
+          <motion.div
+            className="absolute inset-y-0.5 rounded-md bg-[var(--color-brand)] shadow-sm"
+            initial={false}
+            animate={{
+              left: `calc(${(activeIndex / visibleModes.length) * 100}% + 2px)`,
+              width: `calc(${100 / visibleModes.length}% - 4px)`,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 30,
+            }}
+          />
+        )}
 
-        {visibleModes.map(({ value, label, Icon }) => {
+        {visibleModes.map(({ value, label, Icon }, index) => {
           const active = mode === value;
           return (
             <button
               key={value}
+              ref={(el) => {
+                buttonsRef.current[index] = el;
+              }}
               type="button"
               onClick={() => onModeChange(value)}
               className={cn(
@@ -145,7 +150,7 @@ export function CompactClosingModePicker({
               <button
                 type="button"
                 onClick={() => setDurationOpen((v) => !v)}
-                className="flex h-8 w-full items-center justify-between rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] px-3 text-[12px] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+                className="flex h-8 w-full items-center justify-between rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] px-3 text-[12px] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
               >
                 <span className={durationMinutes ? "text-[var(--color-foreground)]" : "text-[var(--color-muted)]"}>
                   {durationLabel}
@@ -224,7 +229,13 @@ export function CompactClosingModePicker({
             transition={{ duration: 0.18, ease: EASE }}
             className="overflow-hidden"
           >
-            <TimePicker value={fixedEndTime} onChange={onFixedEndTimeChange} placeholder="--:--" />
+            <input
+              type="time"
+              value={fixedEndTime}
+              onChange={(e) => onFixedEndTimeChange(e.target.value)}
+              placeholder="--:--"
+              className="flex h-8 w-full items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] px-3 text-[12px] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+            />
           </motion.div>
         )}
 

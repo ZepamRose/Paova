@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X, Plus, Loader2, ArrowRight } from "lucide-react";
+import { X, Plus, Loader2, ArrowRight, User, Users } from "lucide-react";
 import { CompactClosingModePicker } from "./compact-closing-mode-picker";
 import { CompactToggle } from "./compact-toggle";
 import { SmartWaiverSelector } from "./smart-waiver-selector";
@@ -259,7 +259,7 @@ export function NewSessionModal({
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[13px] font-medium text-[var(--color-foreground)]">Décharge ?</label>
+                      <label className="text-[13px] font-medium text-[var(--color-foreground)]">Besoin d&apos;une décharge ?</label>
                       <CompactToggle
                         options={[
                           { value: true, label: "Oui" },
@@ -323,14 +323,34 @@ export function NewSessionModal({
                             className="flex flex-col gap-1.5"
                           >
                             <label className="text-[13px] font-medium text-[var(--color-foreground)]">Qui signe ?</label>
-                            <CompactToggle
-                              options={[
-                                { value: "individual" as const, label: "Chaque participant" },
-                                { value: "group_representative" as const, label: "Un représentant" },
-                              ]}
-                              value={signatureMode}
-                              onChange={setSignatureMode}
-                            />
+                            <div className="inline-flex h-8 w-full items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setSignatureMode("individual")}
+                                className={cn(
+                                  "relative flex flex-1 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium transition-all duration-150",
+                                  signatureMode === "individual"
+                                    ? "bg-[var(--color-brand)] text-[var(--color-on-brand)] shadow-sm"
+                                    : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)]/50 hover:text-[var(--color-foreground)]"
+                                )}
+                              >
+                                <User size={12} strokeWidth={2.5} />
+                                <span>Chaque participant</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSignatureMode("group_representative")}
+                                className={cn(
+                                  "relative flex flex-1 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium transition-all duration-150",
+                                  signatureMode === "group_representative"
+                                    ? "bg-[var(--color-brand)] text-[var(--color-on-brand)] shadow-sm"
+                                    : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)]/50 hover:text-[var(--color-foreground)]"
+                                )}
+                              >
+                                <Users size={12} strokeWidth={2.5} />
+                                <span>Un représentant</span>
+                              </button>
+                            </div>
                           </motion.div>
                         </motion.div>
                       )}
