@@ -51,7 +51,7 @@ export function CompactClosingModePicker({
   onValidationChange?: (valid: boolean) => void;
 }) {
   const [durationOpen, setDurationOpen] = useState(false);
-  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const businessCloseTime =
     mode === "business_close" && startDate
@@ -94,32 +94,30 @@ export function CompactClosingModePicker({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative inline-flex h-8 items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
-        {/* Pill animé */}
+      <div ref={containerRef} className="relative inline-flex h-8 items-stretch rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] p-0.5">
+        {/* Pill animé - calculé en pourcentage du conteneur */}
         {activeIndex >= 0 && (
           <motion.div
             className="absolute inset-y-0.5 rounded-md bg-[var(--color-brand)] shadow-sm"
             initial={false}
             animate={{
               left: `calc(${(activeIndex / visibleModes.length) * 100}% + 2px)`,
-              width: `calc(${100 / visibleModes.length}% - 4px)`,
+              right: `calc(${((visibleModes.length - activeIndex - 1) / visibleModes.length) * 100}% + 2px)`,
             }}
             transition={{
               type: "spring",
-              stiffness: 400,
-              damping: 30,
+              stiffness: 500,
+              damping: 35,
+              mass: 0.8,
             }}
           />
         )}
 
-        {visibleModes.map(({ value, label, Icon }, index) => {
+        {visibleModes.map(({ value, label, Icon }) => {
           const active = mode === value;
           return (
             <button
               key={value}
-              ref={(el) => {
-                buttonsRef.current[index] = el;
-              }}
               type="button"
               onClick={() => onModeChange(value)}
               className={cn(
@@ -233,8 +231,7 @@ export function CompactClosingModePicker({
               type="time"
               value={fixedEndTime}
               onChange={(e) => onFixedEndTimeChange(e.target.value)}
-              placeholder="--:--"
-              className="flex h-8 w-full items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] px-3 text-[12px] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
+              className="flex h-8 w-full items-center rounded-lg border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-foreground)] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] focus:border-[var(--color-brand)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand)_16%,transparent)]"
             />
           </motion.div>
         )}
