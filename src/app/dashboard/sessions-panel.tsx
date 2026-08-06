@@ -11,10 +11,12 @@ import { StationCard } from "./station-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabId = "today" | "upcoming" | "recent" | "stations";
+type ActivityType = "sessions" | "stations";
+type TimeFilter = "today" | "upcoming" | "recent";
 type ViewMode = "cards" | "list";
 
 const STORAGE_KEY = "paova-sessions-view-mode";
+const TYPE_STORAGE_KEY = "paova-activity-type";
 
 function getStoredViewMode(): ViewMode {
   if (typeof window === "undefined") return "cards";
@@ -25,24 +27,95 @@ function getStoredViewMode(): ViewMode {
   return "cards";
 }
 
-// ─── Tab Nav ─────────────────────────────────────────────────────────────────
+function getStoredActivityType(): ActivityType {
+  if (typeof window === "undefined") return "sessions";
+  try {
+    const v = localStorage.getItem(TYPE_STORAGE_KEY);
+    if (v === "sessions" || v === "stations") return v;
+  } catch { /* ignore */ }
+  return "sessions";
+}
 
-function TabNav({ activeTab, onChange, counts }: {
-  activeTab: TabId;
-  onChange: (t: TabId) => void;
-  counts: Record<TabId, number>;
+// ─── Type Selector ────────────────────────────────────────────────────────────
+
+function TypeSelector({ activeType, onChange, sessionCount, stationCount }: {
+  activeType: ActivityType;
+  onChange: (t: ActivityType) => void;
+  sessionCount: number;
+  stationCount: number;
 }) {
-  const tabs: { id: TabId; label: string }[] = [
+  return (
+    <div className="flex items-center gap-1 rounded-xl border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] p-1">
+      <button
+        type="button"
+        onClick={() => onChange("sessions")}
+        className={
+          "relative flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all duration-150 " +
+          (activeType === "sessions"
+            ? "bg-[var(--color-surface-2)] text-[var(--color-foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.07)]"
+            : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]")
+        }
+      >
+        <Calendar size={14} strokeWidth={2} />
+        <span>Sessions planifiées</span>
+        {sessionCount > 0 && (
+          <span className={
+            "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums " +
+            (activeType === "sessions"
+              ? "bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]"
+              : "bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-[var(--color-muted)]")
+          }>
+            {sessionCount}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("stations")}
+        className={
+          "relative flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all duration-150 " +
+          (activeType === "stations"
+            ? "bg-[var(--color-surface-2)] text-[var(--color-foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.07)]"
+            : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]")
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 9h6M9 12h6M9 15h4" />
+        </svg>
+        <span>Signatures libres</span>
+        {stationCount > 0 && (
+          <span className={
+            "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums " +
+            (activeType === "stations"
+              ? "bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]"
+              : "bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-[var(--color-muted)]")
+          }>
+            {stationCount}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ─── Time Filter Nav ─────────────────────────────────────────────────────────
+
+function TimeFilterNav({ activeFilter, onChange, counts }: {
+  activeFilter: TimeFilter;
+  onChange: (t: TimeFilter) => void;
+  counts: Record<TimeFilter, number>;
+}) {
+  const filters: { id: TimeFilter; label: string }[] = [
     { id: "today", label: "Aujourd'hui" },
-    { id: "upcoming", label: "Demain et après" },
-    { id: "recent", label: "Récentes" },
-    { id: "stations", label: "Signature libre" },
+    { id: "upcoming", label: "À venir" },
+    { id: "recent", label: "Terminées" },
   ];
 
   return (
-    <nav className="flex items-center gap-0.5" role="tablist" aria-label="Onglets sessions">
-      {tabs.map(({ id, label }) => {
-        const active = activeTab === id;
+    <nav className="flex items-center gap-0.5" role="tablist" aria-label="Filtres temporels">
+      {filters.map(({ id, label }) => {
+        const active = activeFilter === id;
         return (
           <button
             key={id}
@@ -108,22 +181,31 @@ function ViewToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
-function EmptyState({ tab }: { tab: TabId }) {
-  const messages: Record<TabId, { title: string; sub: string }> = {
-    today: { title: "Aucune session aujourd'hui", sub: "Créez une session pour commencer la journée." },
-    upcoming: { title: "Aucune session à venir", sub: "Planifiez vos prochaines activités." },
-    recent: { title: "Aucune session terminée", sub: "Les sessions passées apparaîtront ici." },
-    stations: { title: "Aucune station active", sub: "Créez une station pour la signature libre en continu." },
+function EmptyState({ type, filter }: { type: ActivityType; filter: TimeFilter | null }) {
+  const messages = {
+    sessions: {
+      today: { title: "Aucune session aujourd'hui", sub: "Créez une session pour commencer la journée." },
+      upcoming: { title: "Aucune session à venir", sub: "Planifiez vos prochaines activités." },
+      recent: { title: "Aucune session terminée", sub: "Les sessions passées apparaîtront ici." },
+    },
+    stations: {
+      title: "Aucune signature libre active",
+      sub: "Créez une station pour la signature libre en continu.",
+    },
   };
-  const { title, sub } = messages[tab];
+
+  const message = type === "stations"
+    ? messages.stations
+    : messages.sessions[filter as TimeFilter];
+
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-muted)_7%,transparent)]">
         <Calendar size={20} strokeWidth={1.8} className="text-[var(--color-muted)]" />
       </div>
-      <p className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">{title}</p>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">{sub}</p>
-      {tab === "today" && (
+      <p className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">{message.title}</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-muted)]">{message.sub}</p>
+      {type === "sessions" && filter === "today" && (
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("open-new-session-modal"))}
@@ -139,22 +221,23 @@ function EmptyState({ tab }: { tab: TabId }) {
 
 // ─── Tab Content ──────────────────────────────────────────────────────────────
 
-function TabContent({ sessions, viewMode, isCompleted, tab, appUrl }: {
+function TabContent({ sessions, viewMode, isCompleted, type, filter, appUrl }: {
   sessions: DashboardGroupRow[];
   viewMode: ViewMode;
   isCompleted: boolean;
-  tab: TabId;
+  type: ActivityType;
+  filter: TimeFilter | null;
   appUrl: string;
 }) {
-  if (sessions.length === 0) return <EmptyState tab={tab} />;
+  if (sessions.length === 0) return <EmptyState type={type} filter={filter} />;
 
   // Stations : supporter les deux modes (liste et grille)
-  if (tab === "stations") {
+  if (type === "stations") {
     if (viewMode === "list") {
       return <SessionTimeline sessions={sessions} isCompleted={false} appUrl={appUrl} />;
     }
     return (
-      <AnimatedSessionGrid layoutId={tab}>
+      <AnimatedSessionGrid layoutId="stations">
         {sessions.map((station) => (
           <AnimatedSessionCard key={station.id} sessionId={station.id}>
             <StationCard station={station} appUrl={appUrl} />
@@ -171,7 +254,7 @@ function TabContent({ sessions, viewMode, isCompleted, tab, appUrl }: {
   // Cards view
   const now = new Date();
   return (
-    <AnimatedSessionGrid layoutId={tab}>
+    <AnimatedSessionGrid layoutId={filter || "sessions"}>
       {sessions.map((session) => {
         const cardVariant: "ongoing" | "upcoming" | "completed" = isCompleted
           ? "completed"
@@ -194,18 +277,25 @@ export function SessionsPanel({ groups, appUrl }: {
   groups: DashboardGroupRow[];
   appUrl: string;
 }) {
-  const [activeTab, setActiveTab] = useState<TabId>("today");
+  const [activityType, setActivityType] = useState<ActivityType>("sessions");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("today");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setViewMode(getStoredViewMode());
+    setActivityType(getStoredActivityType());
     setMounted(true);
   }, []);
 
   function handleViewMode(m: ViewMode) {
     setViewMode(m);
     try { localStorage.setItem(STORAGE_KEY, m); } catch { /* ignore */ }
+  }
+
+  function handleActivityType(t: ActivityType) {
+    setActivityType(t);
+    try { localStorage.setItem(TYPE_STORAGE_KEY, t); } catch { /* ignore */ }
   }
 
   // Séparer les stations des sessions régulières
@@ -228,35 +318,55 @@ export function SessionsPanel({ groups, appUrl }: {
           [ongoing.map(g => g.id).join(","), todayUpcoming.map(g => g.id).join(",")]
         );
 
-        const counts: Record<TabId, number> = {
+        const timeCounts: Record<TimeFilter, number> = {
           today: todaySessions.length,
           upcoming: upcoming.length,
           recent: completed.length,
-          stations: stations.length,
         };
 
-        const currentSessions =
-          activeTab === "today" ? todaySessions :
-          activeTab === "upcoming" ? upcoming :
-          activeTab === "recent" ? completed :
-          stations;
+        const currentSessions = activityType === "stations"
+          ? stations
+          : timeFilter === "today"
+          ? todaySessions
+          : timeFilter === "upcoming"
+          ? upcoming
+          : completed;
 
-        const isCurrentCompleted = activeTab === "recent";
+        const isCurrentCompleted = activityType === "sessions" && timeFilter === "recent";
+        const totalSessionCount = todaySessions.length + upcoming.length + completed.length;
 
         return (
-          <div className="flex flex-col gap-3">
-            {/* Toolbar: tabs + view toggle */}
+          <div className="flex flex-col gap-4">
+            {/* Niveau 1: Type d'activité */}
+            <TypeSelector
+              activeType={activityType}
+              onChange={handleActivityType}
+              sessionCount={totalSessionCount}
+              stationCount={stations.length}
+            />
+
+            {/* Niveau 2: Filtres temporels + View toggle */}
             <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 rounded-xl bg-[color-mix(in_srgb,var(--color-surface-2)_70%,transparent)] p-1">
-                <TabNav activeTab={activeTab} onChange={setActiveTab} counts={counts} />
-              </div>
+              {activityType === "sessions" ? (
+                <div className="min-w-0 rounded-xl bg-[color-mix(in_srgb,var(--color-surface-2)_70%,transparent)] p-1">
+                  <TimeFilterNav activeFilter={timeFilter} onChange={setTimeFilter} counts={timeCounts} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-[13px] text-[var(--color-muted)]">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                  <span>Actives en permanence</span>
+                </div>
+              )}
               {mounted && <ViewToggle mode={viewMode} onChange={handleViewMode} />}
             </div>
 
             {/* Animated content */}
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${activeTab}-${viewMode}`}
+                key={`${activityType}-${timeFilter}-${viewMode}`}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -3 }}
@@ -266,7 +376,8 @@ export function SessionsPanel({ groups, appUrl }: {
                   sessions={currentSessions}
                   viewMode={viewMode}
                   isCompleted={isCurrentCompleted}
-                  tab={activeTab}
+                  type={activityType}
+                  filter={activityType === "sessions" ? timeFilter : null}
                   appUrl={appUrl}
                 />
               </motion.div>
