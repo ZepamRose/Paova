@@ -30,10 +30,10 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
         href={`/dashboard/groupes/${station.id}`}
         className={`block w-full rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-border)_50%,transparent)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow,border-color] ${motion} hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.04)]`}
       >
-        <div className="flex flex-col gap-3 p-4">
+        <div className="flex flex-col gap-2 p-3">
           {/* Header : Nom + Badge + Menu */}
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
                 {station.name}
               </h3>
@@ -72,7 +72,7 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
           </div>
 
           {/* Statistique principale */}
-          <div className="flex items-baseline gap-2 pt-1">
+          <div className="flex items-baseline gap-2 pt-0.5">
             <span className="text-[22px] font-bold tabular-nums tracking-tight text-[var(--color-foreground)]">
               {totalSignatures}
             </span>
@@ -82,7 +82,7 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
           </div>
 
           {/* Informations secondaires : Modèle */}
-          <div className="flex flex-col gap-1.5 pt-1">
+          <div className="flex flex-col gap-1 pt-0.5">
             <div className="flex items-center gap-1.5 text-[12px] text-[var(--color-muted)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

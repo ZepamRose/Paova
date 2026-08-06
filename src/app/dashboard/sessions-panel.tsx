@@ -352,13 +352,7 @@ export function SessionsPanel({ groups, appUrl }: {
                   <TimeFilterNav activeFilter={timeFilter} onChange={setTimeFilter} counts={timeCounts} />
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-[13px] text-[var(--color-muted)]">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                  <span>Actives en permanence</span>
-                </div>
+                <div />
               )}
               {mounted && <ViewToggle mode={viewMode} onChange={handleViewMode} />}
             </div>
