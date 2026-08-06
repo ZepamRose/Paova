@@ -157,7 +157,7 @@ function TabContent({ sessions, viewMode, isCompleted, tab, appUrl }: {
       <AnimatedSessionGrid layoutId={tab}>
         {sessions.map((station) => (
           <AnimatedSessionCard key={station.id} sessionId={station.id}>
-            <StationCard station={station} />
+            <StationCard station={station} appUrl={appUrl} />
           </AnimatedSessionCard>
         ))}
       </AnimatedSessionGrid>
