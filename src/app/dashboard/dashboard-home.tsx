@@ -119,9 +119,9 @@ export function DashboardHome({
       {/* Vue Sessions — layout 2 colonnes */}
       {!q && (
         <DashboardEntrance step={3} className="flex flex-col">
-          <div className="flex items-start gap-5">
+          <div className="flex items-start gap-6">
             {/* Colonne principale : onglets + liste/cartes */}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1" style={{ maxWidth: '800px' }}>
               <SessionsPanel groups={filteredGroups} appUrl={appUrl} />
             </div>
             {/* Colonne latérale : stats du jour + dernières signatures */}
