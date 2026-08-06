@@ -544,7 +544,7 @@ function TimelineRow({ session, isFirst, isLast, isCompleted, appUrl, segmentCol
 
         {/* Colonne 4: Progression signatures OU participants */}
         <div className="flex items-start pt-2.5">
-          {showSignatures ? (
+          {showSignatures && !isStation ? (
             <div className="w-full space-y-1.5">
               <div className="flex items-baseline gap-1.5 text-[10.5px]">
                 <span className="font-bold tabular-nums tracking-[-0.02em] text-[var(--color-foreground)]/95 transition-colors duration-[600ms]">
@@ -562,6 +562,18 @@ function TimelineRow({ session, isFirst, isLast, isCompleted, appUrl, segmentCol
                   total={session.total}
                   variant="default"
                 />
+              </div>
+            </div>
+          ) : showSignatures && isStation ? (
+            <div className="flex items-center gap-2 rounded-lg bg-[color-mix(in_srgb,var(--color-brand)_5%,transparent)] px-3 py-1.5 transition-all duration-[600ms]">
+              <span className="text-[13px]">✍️</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[12px] font-bold tabular-nums tracking-[-0.02em] text-[var(--color-brand)]">
+                  {sigState.coveredSigned}
+                </span>
+                <span className="text-[10px] font-medium tracking-[-0.01em] text-[var(--color-brand)]/70">
+                  signature{sigState.coveredSigned > 1 ? "s" : ""}
+                </span>
               </div>
             </div>
           ) : showParticipants ? (
