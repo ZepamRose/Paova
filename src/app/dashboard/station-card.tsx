@@ -20,9 +20,22 @@ function formatCreatedDate(date: string): string {
   }).format(new Date(date));
 }
 
+function getContextualInfo(totalSignatures: number): string {
+  if (totalSignatures === 0) {
+    return "Aucune signature pour le moment";
+  }
+  if (totalSignatures === 1) {
+    return "1 signature collectée";
+  }
+  // Pour les autres cas, on affiche un message générique
+  // Dans une version future, on pourrait ajouter "Dernière signature il y a X min"
+  return "Collecte en cours";
+}
+
 export function StationCard({ station, appUrl, canArchive = true }: StationCardProps) {
   const publicUrl = `${appUrl}/g/${station.public_token}`;
   const totalSignatures = station.total;
+  const contextInfo = getContextualInfo(totalSignatures);
 
   return (
     <div className="group relative">
@@ -34,17 +47,24 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
           {/* Header : Nom + Badge + Menu */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
-                {station.name}
-              </h3>
+              <div className="space-y-0.5">
+                <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
+                  {station.name}
+                </h3>
+
+                {/* Info contextuelle */}
+                <p className="text-[11px] font-medium text-[var(--color-muted)]/60">
+                  {contextInfo}
+                </p>
+              </div>
 
               {/* Badge discret */}
-              <div className="inline-flex w-fit items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--color-brand)_6%,var(--color-surface))] px-1.5 py-0.5">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2.5" className="text-[var(--color-brand)]" />
-                  <path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-[var(--color-brand)]" />
+              <div className="inline-flex w-fit items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--color-muted)_8%,var(--color-surface))] px-1.5 py-0.5">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2.5" className="text-[var(--color-muted)]" />
+                  <path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-[var(--color-muted)]" />
                 </svg>
-                <span className="text-[10px] font-medium tracking-tight text-[var(--color-brand)]/70">
+                <span className="text-[9.5px] font-medium tracking-tight text-[var(--color-muted)]">
                   Signature libre
                 </span>
               </div>
