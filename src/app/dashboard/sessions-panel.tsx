@@ -60,10 +60,10 @@ function TypeSelector({ activeType, onChange, sessionCount, stationCount }: {
         <span>Sessions planifiées</span>
         {sessionCount > 0 && (
           <span className={
-            "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums " +
+            "flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums " +
             (activeType === "sessions"
-              ? "bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]"
-              : "bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-[var(--color-muted)]")
+              ? "bg-[color-mix(in_srgb,var(--color-brand)_10%,transparent)] text-[var(--color-brand)]"
+              : "bg-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-muted)]/70")
           }>
             {sessionCount}
           </span>
@@ -86,10 +86,10 @@ function TypeSelector({ activeType, onChange, sessionCount, stationCount }: {
         <span>Signatures libres</span>
         {stationCount > 0 && (
           <span className={
-            "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums " +
+            "flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums " +
             (activeType === "stations"
-              ? "bg-[color-mix(in_srgb,var(--color-brand)_12%,transparent)] text-[var(--color-brand)]"
-              : "bg-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-[var(--color-muted)]")
+              ? "bg-[color-mix(in_srgb,var(--color-brand)_10%,transparent)] text-[var(--color-brand)]"
+              : "bg-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-muted)]/70")
           }>
             {stationCount}
           </span>

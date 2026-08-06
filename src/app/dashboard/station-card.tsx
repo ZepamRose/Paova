@@ -48,9 +48,14 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="space-y-0.5">
-                <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
-                  {station.name}
-                </h3>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
+                    {station.name}
+                  </h3>
+                  <span className="shrink-0 text-[13px] font-bold tabular-nums text-[var(--color-brand)]">
+                    {totalSignatures}
+                  </span>
+                </div>
 
                 {/* Info contextuelle */}
                 <p className="text-[11px] font-medium text-[var(--color-muted)]/60">
@@ -89,16 +94,6 @@ export function StationCard({ station, appUrl, canArchive = true }: StationCardP
               <path d="M8 2v4M16 2v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <span>Créée le {formatCreatedDate(station.created_at)}</span>
-          </div>
-
-          {/* Statistique principale */}
-          <div className="flex items-baseline gap-2 pt-0.5">
-            <span className="text-[22px] font-bold tabular-nums tracking-tight text-[var(--color-foreground)]">
-              {totalSignatures}
-            </span>
-            <span className="text-[13px] font-medium text-[var(--color-muted)]">
-              signature{totalSignatures !== 1 ? "s" : ""} collectée{totalSignatures !== 1 ? "s" : ""}
-            </span>
           </div>
 
           {/* Informations secondaires : Modèle */}
